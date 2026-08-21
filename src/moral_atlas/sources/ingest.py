@@ -65,6 +65,19 @@ def ingest_one(seed: dict[str, Any], progress: Callable[[str], None] | None = No
     try:
         wiki = wiki_mod.fetch(title, year, seed.get("wikipedia"))
         row["wikipedia_title"] = wiki.get("article")
+        # OPUS is keyed by IMDb id. Wikidata supplies one with no credential,
+        # so the subtitle layer does not depend on having a TMDB account.
+        if wiki.get("article"):
+            try:
+                facts = wiki_mod.wikidata_facts(wiki["article"])
+                if not row.get("imdb_id"):
+                    row["imdb_id"] = facts.get("imdb_id")
+                if not row.get("runtime"):
+                    row["runtime"] = facts.get("runtime")
+                report["imdb_id"] = row.get("imdb_id")
+                report["runtime"] = row.get("runtime")
+            except Exception as e:  # noqa: BLE001
+                report["imdb_lookup_note"] = str(e)
         db.upsert_film(row)
         for layer in ("plot", "themes", "reception"):
             content = wiki.get(layer) or ""
@@ -81,20 +94,17 @@ def ingest_one(seed: dict[str, Any], progress: Callable[[str], None] | None = No
 
     # ---- subtitles ------------------------------------------------------
     try:
-        raw, meta = subs_mod.acquire(
-            film_id, title, year, row.get("imdb_id"), row.get("tmdb_id")
+        cues, meta = subs_mod.acquire(
+            film_id, title, year, row.get("imdb_id"), row.get("tmdb_id"),
+            runtime=row.get("runtime"),
         )
-        if raw:
-            cues = subs_mod.parse_srt(raw)
-            if cues:
-                db.upsert_evidence(
-                    film_id, "subtitles", subs_mod.cues_to_text(cues), None,
-                    {**meta, "n_cues": len(cues),
-                     "final_lines": subs_mod.final_lines(cues)},
-                )
-                report["layers"]["subtitles"] = len(cues)
-            else:
-                report["subtitles_error"] = "file downloaded but parsed to zero cues"
+        if cues:
+            db.upsert_evidence(
+                film_id, "subtitles", subs_mod.cues_to_text(cues), None,
+                {**meta, "n_cues": len(cues),
+                 "final_lines": subs_mod.final_lines(cues)},
+            )
+            report["layers"]["subtitles"] = len(cues)
         else:
             report["layers"]["subtitles"] = 0
             report["subtitles_note"] = meta.get("reason", "unavailable")

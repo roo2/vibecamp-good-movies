@@ -223,36 +223,54 @@ def download_opensubtitles(file_id: int) -> str | None:
         return client.get(link).text
 
 
-def acquire(film_id: str, title: str, year: int | None,
-            imdb_id: str | None, tmdb_id: int | None) -> tuple[str | None, dict[str, Any]]:
-    """Get a track from the local drop-folder first, then OpenSubtitles.
+def acquire(
+    film_id: str, title: str, year: int | None,
+    imdb_id: str | None, tmdb_id: int | None, runtime: int | None = None,
+) -> tuple[list[Cue], dict[str, Any]]:
+    """Get a track as timed cues, trying sources in order of preference.
 
-    Returns (raw_srt, meta). Local wins so a hand-curated track always beats
-    whatever the API ranks highest.
+    1. SUBTITLES_DIR — a hand-supplied file always wins. It is the only source
+       that can carry SDH speaker labels, so it beats whatever a bulk archive
+       or an API ranking picks.
+    2. OPUS — no account, no daily limit, ~80 KB per film via ranged requests
+       into the research archive. This is the one that scales to 2,000 films.
+    3. OpenSubtitles API — 20 downloads/day on a free account. Reserved for the
+       gaps: films newer than the archive release, and anything OPUS lacks.
     """
     local = from_local_dir(film_id, title, year)
     if local:
-        return local, {"source": "local", "sdh": None}
+        return parse_any(local), {"source": "local", "sdh": None}
+
+    if imdb_id:
+        try:
+            from . import opus
+            cues, meta = opus.fetch_cues(imdb_id, runtime=runtime)
+            if cues:
+                return [Cue(ms, text) for ms, text in cues], meta
+            opus_reason = meta.get("reason")
+        except Exception as e:  # noqa: BLE001
+            opus_reason = f"opus error: {e}"
+    else:
+        opus_reason = "no imdb id, cannot look up OPUS"
 
     results = search_opensubtitles(imdb_id, tmdb_id)
     if not results:
-        return None, {"source": None, "reason": "no results or no API key"}
+        return [], {"source": None, "reason": opus_reason}
 
     top = results[0]
     files = top.get("attributes", {}).get("files", [])
     if not files:
-        return None, {"source": None, "reason": "result had no files"}
+        return [], {"source": None, "reason": "opensubtitles result had no files"}
 
     raw = download_opensubtitles(files[0]["file_id"])
     if not raw:
-        return None, {
+        return [], {
             "source": None,
-            "reason": "search succeeded but download needs OPENSUBTITLES_USERNAME/PASSWORD",
-            "candidate_file_id": files[0]["file_id"],
+            "reason": f"{opus_reason}; opensubtitles download needs "
+                      f"OPENSUBTITLES_USERNAME/PASSWORD",
         }
-    return raw, {
+    return parse_any(raw), {
         "source": "opensubtitles",
         "sdh": top["attributes"].get("hearing_impaired"),
         "release": top["attributes"].get("release"),
-        "downloads": top["attributes"].get("download_count"),
     }

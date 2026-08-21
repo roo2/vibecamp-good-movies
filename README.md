@@ -20,8 +20,8 @@ the personal moral axis everything is finally ranked along.
 
 | Stage | State |
 |---|---|
-| Ingestion (TMDB / Wikipedia / subtitles) | working, verified on 40 films |
-| Evidence packets and A/B variants | working |
+| Ingestion (Wikipedia / Wikidata / OPUS subtitles) | working — 40/40 plot, 40/40 reception, 39/40 subtitles, no API keys |
+| Evidence packets and A/B variants | working — all four conditions runnable on 39/40 films |
 | Moral skeleton extraction | built, needs `ANTHROPIC_API_KEY` |
 | Proposition harvesting | built, needs key |
 | Item bank construction | built, needs key (or `--no-llm` to cluster only) |
@@ -78,11 +78,50 @@ cheap source is *wrong*, and flips poison a factor analysis silently. A
 which the salience mask already models honestly. A 20% disagreement made of
 silence is a very different verdict from 20% made of flips.
 
-### Subtitles without an OpenSubtitles account
+## Where subtitles come from
 
-Set `SUBTITLES_DIR` to a folder of `.srt` files named `<film_id>.srt` (e.g.
-`the-lion-king-1994.srt`). Local files always win over the API, so 40
-hand-supplied tracks run the whole pipeline with no subtitle credential at all.
+The obvious route, the OpenSubtitles REST API, does not scale here: 5 downloads
+per day anonymously, 20 with a free account, ~1,000 on a paid VIP subscription.
+A 40-film pilot is two days of waiting; a 2,000-film sweep is three months.
+
+So the default source is the **OPUS OpenSubtitles corpus** (Helsinki NLP), which
+republishes the whole collection as a citable research corpus. It ships as one
+very large zip — 13.7 GB for v2018, 35.8 GB for v2024 — but the host supports
+HTTP range requests, so the archive is never downloaded. `atlas opus-index`
+fetches only the Zip64 central directory (~70-180 MB, once) and builds a local
+index of IMDb id to byte offset; each film then costs two ranged requests and
+about 80 KB.
+
+```bash
+atlas opus-index --version v2024     # 444,595 titles, one-off
+atlas ingest                         # subtitles now arrive with everything else
+```
+
+Sources are tried in order:
+
+1. **`SUBTITLES_DIR`** — a hand-supplied `.srt` named `<film_id>.srt`. Always
+   wins. The only route that carries SDH speaker labels.
+2. **OPUS** — v2024 then v2018. No account, no daily limit.
+3. **OpenSubtitles API** — for films newer than the archive release.
+
+Three things worth knowing:
+
+- **OPUS strips SDH speaker labels.** Dash-prefixed two-speaker cues survive, so
+  turn-taking is visible, but `[MUFASA]`-style attribution is gone in v2018
+  (v2024 retains more). Where it matters, hand-supply the track.
+- **Track selection is by plausibility, not size.** OPUS holds dozens of tracks
+  per film, and the largest is often a concatenated dual-language file — the
+  biggest Lion King track runs 3,132 cues to 165 minutes for an 88-minute
+  picture. Candidates are ordered by closeness to the median size and validated
+  against the film's runtime (from Wikidata P2047) before being accepted. A
+  wrong timeline silently puts the "closing 15%" in the wrong place, which would
+  corrupt every ending-derived proposition.
+- **IMDb ids come from Wikidata** (P345), not TMDB, so the subtitle layer needs
+  no TMDB account either.
+
+Cite the corpus if any of this is published: Lison & Tiedemann (2016),
+*OpenSubtitles2016: Extracting Large Parallel Corpora from Movie and TV
+Subtitles*, LREC.
 
 ## Design notes
 

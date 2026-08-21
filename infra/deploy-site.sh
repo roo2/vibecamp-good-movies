@@ -9,6 +9,12 @@
 # is a working payload.
 set -euo pipefail
 
+# Pinned for the same reason as deploy.sh, and skipped in CI for the same
+# reason too — see the note there.
+if [ -z "${CI:-}" ]; then
+  export AWS_PROFILE="${ATLAS_AWS_PROFILE:-ai-sandbox}"
+fi
+
 PROJECT="${PROJECT:-moral-atlas}"
 ENVIRONMENT="${ENVIRONMENT:-dev}"
 REGION="${AWS_REGION:-ap-southeast-2}"

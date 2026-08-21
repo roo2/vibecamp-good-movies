@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap">
+  <style>
+    body { margin: 0; background: #171310; font-family: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #eda36b; text-decoration: none; }
+    a:hover { color: #f5c093; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #171310; color: #f5efe6; display: flex; flex-direction: column; padding: 52px 24px 28px; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+    <span style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #7e766c; font-weight: 600;">Tonight&#39;s list</span>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div onClick="{{ onUndo }}" style="display: flex; align-items: center; gap: 6px; height: 30px; cursor: pointer;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7e766c" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a5 5 0 010 10H8"></path><path d="M6.5 4.5L3 8l3.5 3.5"></path></svg>
+        <span style="font-size: 12px; color: #7e766c;">Undo</span>
+      </div>
+      <span style="font-size: 12px; color: #b3aa9e; font-variant-numeric: tabular-nums;">{{ remaining }} left</span>
+    </div>
+  </div>
+
+  <div style="position: relative; flex-grow: 1;">
+
+    <div style="position: absolute; left: 14px; right: 14px; top: 10px; height: 200px; border-radius: 18px; border: 1px solid #2d251f; background: #1c1713;"></div>
+
+    <div style="position: absolute; inset: 0 0 auto; border: 1px solid #3a312a; border-radius: 18px; background: #1c1713; overflow: hidden; display: flex; flex-direction: column;">
+
+      <div style="position: relative; height: 218px; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; background: linear-gradient(155deg, {{ film.p1 }} 0%, {{ film.p2 }} 100%);">
+        <div style="position: absolute; top: 16px; left: 20px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,239,230,0.38); font-weight: 600;">Poster placeholder</div>
+        <h2 style="position: relative; font-family: &#39;Instrument Serif&#39;, Georgia, serif; font-weight: 400; font-size: 36px; line-height: 1.02; letter-spacing: -0.01em; color: #f5efe6; margin: 0;">{{ film.title }}</h2>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 20px;">
+
+        <span style="font-size: 12px; color: #7e766c;">{{ film.meta }}</span>
+
+        <sc-if value="{{ film.read }}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <p style="font-family: &#39;Instrument Serif&#39;, Georgia, serif; font-size: 20px; line-height: 1.3; color: #f5efe6; margin: 0; text-wrap: pretty;">{{ film.premise }}</p>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <sc-for list="{{ film.tags }}" as="tag" hint-placeholder-count="2">
+                <div style="display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 15px; border: 1px solid #3a312a;">
+                  <span style="display: flex; gap: 3px;">
+                    <i style="width: 7px; height: 7px; border-radius: 50%; display: block; background: {{ tag.c1 }};"></i>
+                    <i style="width: 7px; height: 7px; border-radius: 50%; display: block; background: {{ tag.c2 }};"></i>
+                  </span>
+                  <span style="font-size: 12px; color: #b3aa9e;">{{ tag.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ showWhy }}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; gap: 9px; align-items: flex-start; padding-top: 2px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#574f47" stroke-width="1.9" stroke-linecap="round" style="flex-shrink: 0; margin-top: 2px;"><path d="M12 3l2.2 5.6L20 10l-4.4 3.4L16.8 19 12 16l-4.8 3 1.2-5.6L4 10l5.8-1.4z"></path></svg>
+                <p style="font-size: 12.5px; line-height: 1.45; color: #7e766c; margin: 0;">{{ film.why }}</p>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ film.unread }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7e766c" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"></path><path d="M4 5v14a1 1 0 001.4.9L12 17l6.6 2.9A1 1 0 0020 19V7"></path></svg>
+              <span style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #7e766c; font-weight: 600;">We haven&#39;t read this one</span>
+            </div>
+            <p style="font-family: &#39;Instrument Serif&#39;, Georgia, serif; font-size: 20px; line-height: 1.3; color: #b3aa9e; margin: 0; text-wrap: pretty;">No subtitles for it in the corpus, so we can&#39;t tell you what it argues.</p>
+            <div style="display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border-radius: 15px; border: 1px dashed #3a312a; align-self: flex-start;">
+              <span style="font-size: 12px; color: #7e766c;">Matched on popularity only</span>
+            </div>
+            <p style="font-size: 12.5px; line-height: 1.45; color: #574f47; margin: 0;">It&#39;s here because people whose maps sit near yours rate it highly. That&#39;s a weaker reason than the others &mdash; treat it as one.</p>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: center; gap: 22px; padding: 22px 0 14px;">
+    <div onClick="{{ onPass }}" style="width: 60px; height: 60px; border-radius: 30px; border: 1px solid #3a312a; background: #1c1713; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b3aa9e" stroke-width="1.9" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+    </div>
+    <div onClick="{{ onPass }}" style="height: 46px; padding: 0 16px; border-radius: 23px; border: 1px solid #2d251f; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7e766c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z"></path><circle cx="12" cy="12" r="2.4"></circle></svg>
+      <span style="font-size: 12px; color: #7e766c;">Seen it</span>
+    </div>
+    <div onClick="{{ onWant }}" style="width: 68px; height: 68px; border-radius: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: {{ accent }};">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="#171310" stroke="#171310" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20.5S4 15.4 4 10.2A4.6 4.6 0 0112 7.4a4.6 4.6 0 018 2.8c0 5.2-8 10.3-8 10.3z"></path></svg>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#574f47" stroke-width="1.9" stroke-linecap="round"><path d="M3 3l18 18"></path><path d="M10.6 6A9.9 9.9 0 0112 5.9c6.2 0 10 6.1 10 6.1a17 17 0 01-3.3 4"></path><path d="M6.3 8.1A17 17 0 002 12s3.8 6.1 10 6.1a10 10 0 004-.8"></path></svg>
+    <p style="font-size: 12px; color: #574f47; margin: 0;">Sam is on card 7. Nothing shows until you both vote.</p>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"accent":{"editor":"color","default":"#eda36b","options":["#eda36b","#5cc3c0","#d9d2c6","#c9836b"],"section":"Theme"},"showWhy":{"editor":"boolean","default":true,"section":"Card"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { i: 0 };
+  }
+  renderVals() {
+    var accent = this.props.accent || '#eda36b';
+    var mate = '#5cc3c0';
+    var off = '#3a312a';
+    var films = [
+      {
+        title: 'Spotlight',
+        meta: '2015 · Drama · 2h 09m',
+        p1: '#3f3529', p2: '#221c17',
+        premise: 'Reporters work out how much of their own city they are willing to burn down in order to print the truth.',
+        tags: [
+          { label: 'Everyone counts the same', c1: accent, c2: mate },
+          { label: 'The rot is in the system', c1: accent, c2: mate }
+        ],
+        why: 'It sits squarely on the two things you and Sam agree hardest about.'
+      },
+      {
+        title: 'Hell or High Water',
+        meta: '2016 · Western · 1h 42m',
+        p1: '#463a2c', p2: '#241c16',
+        premise: 'Two brothers rob the bank that is about to take their mother’s land, and the film refuses to say whether they are owed it.',
+        tags: [
+          { label: 'They should pay', c1: accent, c2: off },
+          { label: 'Told from the margin', c1: accent, c2: mate }
+        ],
+        why: 'Sam wants the debt forgiven, you want it paid. This one will not settle it — which is rather the point.'
+      },
+      {
+        title: 'Paddington 2',
+        meta: '2017 · Comedy · 1h 43m',
+        p1: '#2b3a3a', p2: '#1a2323',
+        premise: 'A convict decides whether the person who ruined him is still worth being kind to.',
+        tags: [
+          { label: 'Repair, not punishment', c1: off, c2: mate },
+          { label: 'The old order was right', c1: accent, c2: off }
+        ],
+        why: 'Sam’s pick more than yours — it repairs rather than punishes, which is the one you two split on.'
+      },
+      {
+        title: 'The Ascent',
+        meta: '1977 · Drama · 1h 51m',
+        p1: '#33353a', p2: '#1a1c1f',
+        unread: true,
+        premise: '',
+        tags: [],
+        why: ''
+      }
+    ];
+    var i = this.state.i;
+    var self = this;
+    return {
+      accent: accent,
+      showWhy: this.props.showWhy !== false,
+      film: (function () {
+        var f = films[i % films.length];
+        return Object.assign({}, f, { unread: !!f.unread, read: !f.unread });
+      })(),
+      remaining: 12 - i,
+      onWant: function () { self.setState({ i: (i + 1) % films.length }); },
+      onPass: function () { self.setState({ i: (i + 1) % films.length }); },
+      onUndo: function () { self.setState({ i: (i + films.length - 1) % films.length }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

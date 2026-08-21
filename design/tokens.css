@@ -1,0 +1,76 @@
+/* Parable — design tokens.
+   Lifted from the artboards in this folder. These are the real values used in
+   the mockups; build against them rather than re-deriving from screenshots. */
+
+:root {
+  /* Ground. Warm near-black — a dark room, not a black rectangle.
+     Never use pure #000; the warmth is what stops it reading as generic. */
+  --bg:            #171310;
+  --surface:       #1c1713;  /* cards, sheets, inset panels */
+  --surface-2:     #2d251f;  /* pressed / filled-but-quiet */
+  --border:        #3a312a;  /* visible edge */
+  --border-quiet:  #221c17;  /* list dividers */
+  --plot-grid:     #241e19;  /* map axis lines */
+
+  /* Ink. Warm creams, never pure white. */
+  --ink:           #f5efe6;
+  --ink-dim:       #b3aa9e;
+  --ink-faint:     #7e766c;
+  --ink-ghost:     #574f47;
+
+  /* THE LOAD-BEARING DECISION: person colour is identity, not decoration.
+     Amber is always the viewer. Teal is always the other person. This never
+     varies by screen, and it is why no screen needs a legend. Do not reuse
+     either hue for status, links, or emphasis. */
+  --you:           #eda36b;   /* oklch(0.78 0.14 65)  */
+  --them:          #5cc3c0;   /* oklch(0.78 0.14 195) — same L and C, hue only */
+  --you-wash:      rgba(237, 163, 107, 0.13);
+  --them-wash:     rgba(92, 195, 192, 0.13);
+  /* A value that matched neither person renders in --border, not a third hue. */
+
+  /* Poster placeholders. Low-chroma so they never compete with person colour.
+     Replaced by real TMDB artwork at render time — see INTERFACE-CONTRACT.md. */
+  --poster-warm:   linear-gradient(155deg, #3f3529 0%, #221c17 100%);
+  --poster-earth:  linear-gradient(155deg, #463a2c 0%, #241c16 100%);
+  --poster-cool:   linear-gradient(155deg, #2b3a3a 0%, #1a2323 100%);
+  --poster-slate:  linear-gradient(155deg, #33353a 0%, #1a1c1f 100%);
+
+  /* Type. Instrument Serif carries meaning — headlines, film titles, the moral
+     premise on a card, any single number that matters. Instrument Sans carries
+     the machinery. Never set body copy in the serif; never set a premise in the sans. */
+  --font-display: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-ui:      "Instrument Sans", "Helvetica Neue", system-ui, sans-serif;
+
+  --t-hero:    44px/1.04  var(--font-display);   /* welcome only */
+  --t-title:   32px/1.10  var(--font-display);   /* screen headline */
+  --t-film:    36px/1.02  var(--font-display);   /* film title on a card */
+  --t-premise: 20px/1.30  var(--font-display);   /* the moral question */
+  --t-body:    14px/1.50  var(--font-ui);
+  --t-small:   12px/1.45  var(--font-ui);
+  --t-micro:   10px/1.20  var(--font-ui);        /* map dot labels, anchors */
+
+  /* Eyebrow: 11px, 600, uppercase, 0.14em tracking, --ink-faint. Used on every
+     screen as the orienting label. It is the only uppercase in the system. */
+  --eyebrow-tracking: 0.14em;
+
+  /* Geometry */
+  --r-sheet:  26px;   /* bottom sheets, top corners only */
+  --r-card:   18px;
+  --r-panel:  16px;
+  --r-chip:   15px;   /* == half the 30px chip height: a true pill */
+  --r-input:  12px;
+
+  /* Screen padding: 52px top leaves the real status bar alone (never draw one),
+     28px bottom clears the home indicator, 24px sides throughout. */
+  --pad-top:    52px;
+  --pad-side:   24px;
+  --pad-bottom: 28px;
+
+  /* Controls. 44px is the floor for anything tappable — no exceptions. */
+  --h-primary: 54px;   /* filled CTA, --you background, --bg text, 600 */
+  --h-ghost:   48px;   /* outlined, --border, --ink-dim text */
+  --h-chip:    30px;   /* non-interactive value tags */
+  --h-tap:     44px;   /* smallest interactive element */
+  --h-vote-yes: 68px;  /* the want button; deliberately the largest thing */
+  --h-vote-no:  60px;
+}

@@ -1,0 +1,127 @@
+# Phase 0 seed corpus — 40 films.
+#
+# Chosen for three things at once:
+#   1. The split-case battery (note: battery) — films the space MUST separate.
+#      If these collapse together the ontology is broken, so they go in first.
+#   2. Spread across era (1942-2024), country, and register, so any factor that
+#      is really "is this a modern American prestige picture" shows itself.
+#   3. Documentation depth — all should carry a full Wikipedia plot section, and
+#      most a themes/analysis section, which is what phase 0 is testing.
+#
+# `wikipedia` overrides the article title where the plain title is ambiguous.
+
+films:
+  # ---- split-case battery ----
+  - title: "The Lion King"
+    year: 1994  
+    note: battery
+  - title: "Maleficent"
+    year: 2014  
+    note: battery
+  - title: "The Lord of the Rings: The Return of the King"
+    year: 2003  
+    note: battery
+  - title: "Les Misérables"
+    year: 2012  
+    note: battery
+    wikipedia: "Les Misérables (2012 film)"
+  - title: "Hacksaw Ridge"
+    year: 2016  
+    note: battery
+  - title: "The Dark Knight"
+    year: 2008  
+    note: battery
+  - title: "Frozen"
+    year: 2013  
+    note: battery
+    wikipedia: "Frozen (2013 film)"
+  - title: "Joker"
+    year: 2019  
+    note: battery
+    wikipedia: "Joker (2019 film)"
+  - title: "Starship Troopers"
+    year: 1997  
+    note: battery
+    wikipedia: "Starship Troopers (film)"
+  - title: "Dead Poets Society"
+    year: 1989  
+    note: battery
+
+  # ---- revision pair, for the displacement probe ----
+  - title: "Sleeping Beauty"
+    year: 1959  
+    note: revision-parent
+    wikipedia: "Sleeping Beauty (1959 film)"
+  - title: "Wicked"
+    year: 2024  
+    note: revision-child
+    wikipedia: "Wicked (2024 film)"
+  - title: "The Wizard of Oz"
+    year: 1939  
+    note: revision-parent
+    wikipedia: "The Wizard of Oz (1939 film)"
+
+  # ---- spread ----
+  - title: "Casablanca"
+    year: 1942
+  - title: "It's a Wonderful Life"
+    year: 1946
+  - title: "Bicycle Thieves"
+    year: 1948
+  - title: "Rashomon"
+    year: 1950
+  - title: "Tokyo Story"
+    year: 1953
+  - title: "Seven Samurai"
+    year: 1954
+  - title: "A Man for All Seasons"
+    year: 1966
+    wikipedia: "A Man for All Seasons (1966 film)"
+  - title: "The Godfather"
+    year: 1972
+  - title: "Chariots of Fire"
+    year: 1981
+  - title: "Do the Right Thing"
+    year: 1989
+  - title: "Thelma & Louise"
+    year: 1991
+  - title: "Groundhog Day"
+    year: 1993
+    wikipedia: "Groundhog Day (film)"
+  - title: "Schindler's List"
+    year: 1993
+  - title: "Princess Mononoke"
+    year: 1997
+  - title: "Fight Club"
+    year: 1999
+    wikipedia: "Fight Club"
+  - title: "The Matrix"
+    year: 1999
+  - title: "Billy Elliot"
+    year: 2000
+  - title: "Gladiator"
+    year: 2000
+    wikipedia: "Gladiator (2000 film)"
+  - title: "Spirited Away"
+    year: 2001
+  - title: "Shrek"
+    year: 2001
+  - title: "V for Vendetta"
+    year: 2005
+    wikipedia: "V for Vendetta (film)"
+  - title: "No Country for Old Men"
+    year: 2007
+    wikipedia: "No Country for Old Men (film)"
+  - title: "WALL-E"
+    year: 2008
+  - title: "A Separation"
+    year: 2011
+  - title: "The Wolf of Wall Street"
+    year: 2013
+    wikipedia: "The Wolf of Wall Street (2013 film)"
+  - title: "Arrival"
+    year: 2016
+    wikipedia: "Arrival (film)"
+  - title: "Parasite"
+    year: 2019
+    wikipedia: "Parasite (2019 film)"

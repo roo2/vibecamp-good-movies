@@ -1,0 +1,69 @@
+{
+  "_comment": "Sample payload matching INTERFACE-CONTRACT.md. Positions and factor names are PLACEHOLDER — invented to unblock UI work, not produced by the atlas. Replace as soon as factor analysis reports.",
+  "factors": [
+    {
+      "id": "f1",
+      "name": "Given order ↔ Self-authorship",
+      "pole_low":  { "label": "The old order was right", "anchor_film": "the-lion-king-1994" },
+      "pole_high": { "label": "The old order was the problem", "anchor_film": "maleficent-2014" },
+      "variance_explained": 0.44
+    },
+    {
+      "id": "f2",
+      "name": "Evil simply is ↔ Evil is made",
+      "pole_low":  { "label": "Some people are simply bad", "anchor_film": "the-lord-of-the-rings-2001" },
+      "pole_high": { "label": "Everyone was made that way", "anchor_film": "monster-2003" },
+      "variance_explained": 0.27
+    }
+  ],
+  "people": [
+    { "id": "you",  "name": "You", "position": { "f1": 0.66, "f2": 0.66 } },
+    { "id": "them", "name": "Sam", "position": { "f1": 0.45, "f2": 0.79 } }
+  ],
+  "films": [
+    {
+      "id": "spotlight-2015", "title": "Spotlight", "year": 2015, "runtime_min": 129,
+      "coverage": { "read": true, "layers": ["plot", "subs", "themes"] },
+      "position": { "f1": 0.68, "f2": 0.85 },
+      "premise": "Reporters work out how much of their own city they are willing to burn down in order to print the truth.",
+      "tags": [
+        { "label": "Everyone counts the same", "matches": ["you", "them"] },
+        { "label": "The rot is in the system", "matches": ["you", "them"] }
+      ]
+    },
+    {
+      "id": "hell-or-high-water-2016", "title": "Hell or High Water", "year": 2016, "runtime_min": 102,
+      "coverage": { "read": true, "layers": ["plot", "subs"] },
+      "position": { "f1": 0.65, "f2": 0.16 },
+      "premise": "Two brothers rob the bank that is about to take their mother's land, and the film refuses to say whether they are owed it.",
+      "tags": [
+        { "label": "They should pay", "matches": ["you"] },
+        { "label": "Told from the margin", "matches": ["you", "them"] }
+      ]
+    },
+    {
+      "id": "paddington-2-2017", "title": "Paddington 2", "year": 2017, "runtime_min": 103,
+      "coverage": { "read": true, "layers": ["plot", "subs", "themes"] },
+      "position": { "f1": 0.29, "f2": 0.61 },
+      "premise": "A convict decides whether the person who ruined him is still worth being kind to.",
+      "tags": [
+        { "label": "Repair, not punishment", "matches": ["them"] },
+        { "label": "The old order was right", "matches": ["you"] }
+      ]
+    },
+    {
+      "id": "the-ascent-1977", "title": "The Ascent", "year": 1977, "runtime_min": 111,
+      "coverage": { "read": false, "layers": [] },
+      "position": null,
+      "premise": null,
+      "tags": []
+    }
+  ],
+  "session": {
+    "shortlist": ["spotlight-2015", "paddington-2-2017"],
+    "agreement": [{ "factor": "f2", "gap": 0.13 }],
+    "friction": [
+      { "factor": "f1", "gap": 0.21, "read": "You want the debt paid. Sam wants it repaired." }
+    ]
+  }
+}

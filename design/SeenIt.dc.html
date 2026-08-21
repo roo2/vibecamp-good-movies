@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Instrument+Serif:ital@0;1&display=swap">
+  <style>
+    body { margin: 0; background: #171310; font-family: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    a { color: #eda36b; text-decoration: none; }
+    a:hover { color: #f5c093; }
+  </style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #171310; color: #f5efe6; display: flex; flex-direction: column; padding: 52px 24px 28px; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 22px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b3aa9e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    <div style="flex-grow: 1; display: flex; gap: 4px;">
+      <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: #eda36b;"></div>
+      <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: #2d251f;"></div>
+      <div style="flex-grow: 1; height: 3px; border-radius: 2px; background: #2d251f;"></div>
+    </div>
+    <span style="font-size: 12px; color: #7e766c; font-variant-numeric: tabular-nums;">4 / 12</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+    <span style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #7e766c; font-weight: 600;">Step one &middot; Gut reaction</span>
+    <h1 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 30px; line-height: 1.1; color: #f5efe6; margin: 0;">Seen it? Did you like it?</h1>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 16px;">
+    <div style="position: relative; border-radius: 16px; overflow: hidden; height: 340px; background: linear-gradient(155deg, #4a3a2c 0%, #241d18 100%); display: flex; flex-direction: column; justify-content: flex-end; padding: 24px;">
+      <div style="position: absolute; inset: 0; background: radial-gradient(120% 90% at 70% 12%, rgba(237,163,107,0.16), transparent 60%);"></div>
+      <div style="position: absolute; top: 20px; left: 24px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(245,239,230,0.42); font-weight: 600;">Poster placeholder</div>
+      <h2 style="position: relative; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 40px; line-height: 1.0; letter-spacing: -0.01em; color: #f5efe6; margin: 0;">The Lion<br>King</h2>
+      <p style="position: relative; font-size: 13px; color: #b3aa9e; margin: 10px 0 0;">1994 &middot; Animation &middot; 1h 28m</p>
+    </div>
+
+    <div style="display: flex; gap: 12px;">
+      <div style="flex-grow: 1; height: 60px; border-radius: 14px; border: 1px solid #3a312a; background: #1c1713; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b3aa9e" stroke-width="1.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+        <span style="font-size: 11px; color: #b3aa9e;">Not for me</span>
+      </div>
+      <div style="flex-grow: 1; height: 60px; border-radius: 14px; border: 1px solid #3a312a; background: #1c1713; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#b3aa9e" stroke-width="1.8" stroke-linecap="round"><path d="M5 12h14"></path></svg>
+        <span style="font-size: 11px; color: #b3aa9e;">Haven't seen it</span>
+      </div>
+      <div style="flex-grow: 1; height: 60px; border-radius: 14px; border: 1px solid #eda36b; background: rgba(237,163,107,0.12); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#eda36b" stroke="#eda36b" stroke-width="1.6" stroke-linejoin="round"><path d="M12 20s-7-4.6-7-9.4A4.1 4.1 0 0112 8a4.1 4.1 0 017 2.6C19 15.4 12 20 12 20z"></path></svg>
+          <span style="font-size: 11px; color: #eda36b; font-weight: 600;">Loved it</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: #1c1713; margin-top: 18px;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7e766c" stroke-width="1.8" stroke-linecap="round" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 16v-5M12 8h.01"></path></svg>
+    <p style="font-size: 12px; line-height: 1.45; color: #7e766c; margin: 0;">We're not learning your genres. We're reading what these stories <em style="font-style: italic; color: #b3aa9e;">believe</em> &mdash; and what you believed along with them.</p>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

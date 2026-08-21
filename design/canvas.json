@@ -1,0 +1,45 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Flow" },
+    { "id": "page-2", "name": "Alternates" }
+  ],
+  "artboards": [
+    { "file": "Welcome.dc.html",      "x": 0,    "y": 0,    "w": 390, "h": 844, "title": "1 · Welcome",             "page": "page-1" },
+    { "file": "SeenIt.dc.html",       "x": 480,  "y": 0,    "w": 390, "h": 844, "title": "2 · Gut reactions",       "page": "page-1" },
+    { "file": "Fork.dc.html",         "x": 960,  "y": 0,    "w": 390, "h": 844, "title": "3 · The fork",            "page": "page-1" },
+    { "file": "Compass.dc.html",      "x": 1440, "y": 0,    "w": 390, "h": 844, "title": "4 · Compass (bars)",      "page": "page-1" },
+    { "file": "PairUp.dc.html",       "x": 1920, "y": 0,    "w": 390, "h": 844, "title": "5 · Pair up",             "page": "page-1" },
+    { "file": "CommonGround.dc.html", "x": 0,    "y": 1060, "w": 390, "h": 844, "title": "6 · Overlap (bars)",      "page": "page-1" },
+    { "file": "Main.dc.html",         "x": 480,  "y": 1060, "w": 390, "h": 844, "title": "7 · The deck — live",     "page": "page-1" },
+    { "file": "Match.dc.html",        "x": 960,  "y": 1060, "w": 390, "h": 844, "title": "8 · Both said yes",       "page": "page-1" },
+    { "file": "Tiebreak.dc.html",     "x": 1440, "y": 1060, "w": 390, "h": 844, "title": "9 · Tiebreak",            "page": "page-1" },
+    { "file": "Limits.dc.html",       "x": 1920, "y": 1060, "w": 390, "h": 844, "title": "10 · Limits",             "page": "page-1" },
+    { "file": "MapPair.dc.html",      "x": 0,    "y": 2120, "w": 390, "h": 844, "title": "6b · Overlap as a map",   "page": "page-1" },
+    { "file": "Map.dc.html",          "x": 1440, "y": 2120, "w": 390, "h": 844, "title": "4b · Compass as a map",   "page": "page-1" },
+    { "file": "DirectionB.dc.html",   "x": 0,    "y": 0,    "w": 390, "h": 844, "title": "Direction B",             "page": "page-2" },
+    { "file": "DirectionC.dc.html",   "x": 480,  "y": 0,    "w": 390, "h": 844, "title": "Direction C",             "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "note-capture", "x": 0, "y": -196, "w": 900, "page": "page-1",
+      "text": "1–5 · WORKING OUT WHAT YOU BELIEVE\nTwelve gut reactions on films they've already seen do most of the work invisibly — no survey, and the app never asks an abstract ethics question. Note that screen 2 IS the labelling method you described to the atlas agent: every person who onboards is also labelling films you agree or disagree with morally, which is the training signal, not a by-product of it.\nThe forks only break ties, and are shown de-branded — no title, no poster, no cast — so the answer is about the shape of the story rather than the franchise. Screen 3 is the master anchor pair (The Lion King ↔ Maleficent) rendered as two premises." },
+
+    { "id": "note-decide", "x": 0, "y": 924, "w": 900, "page": "page-1",
+      "text": "6–10 · DECIDING TOGETHER\nVotes stay blind until both are in, so neither anchors the other. Disagreement is surfaced as a feature — screens 6 and 6b name the argument they're going to have rather than smoothing it away. Screen 7 is live: tap the buttons and the deck advances; its fourth card is the sparse-coverage state." },
+
+    { "id": "note-map", "x": 500, "y": 2180, "w": 820, "page": "page-1",
+      "text": "4b + 6b · THE SAME TWO SCREENS IF THE ANSWER IS TWO DIMENSIONS\nYou told the atlas agent you wanted this narrowed to one or two dimensions for easy visualisation. Six stacked bars don't serve that; a plane does. Same data, same colour rule — you are amber, they are teal — but the whole relationship reads in one glance instead of six rows, and the shortlist is literally the films sitting in the gap between two points.\n\nThe bars (4 and 6) are the better screen if the factor analysis lands on four or more factors. Pick after it reports; both are built." },
+
+    { "id": "note-colour", "x": 2400, "y": 0, "w": 320, "page": "page-1",
+      "text": "COLOUR CARRIES MEANING\nAmber is you. Teal is the other person. That never changes, so any screen showing two opinions is readable without a legend — and a two-dot chip on a card says instantly whether a value matched you, them, or both." },
+
+    { "id": "note-axes", "x": 2400, "y": 360, "w": 320, "page": "page-1",
+      "text": "THE AXES ARE EMERGENT, AND THE UI SAYS SO\nThese screens no longer present the eight axes as a fixed schema. Per the v2 plan, factors fall out of a bank of ~300 moral propositions rather than being hand-authored, so the copy on screens 4 and 4b credits the corpus, not us: “These fell out of the films themselves — nobody wrote them.”\n\nThat matters beyond honesty. If the UI claims a fixed ontology and the factor analysis returns something different, every label is a lie you have to ship around. Naming the factors from their top-loading propositions means the screen can be regenerated from whatever the model reports.\n\nNeither the bar nor the map component cares how many factors exist." },
+
+    { "id": "note-data", "x": 2400, "y": 1000, "w": 320, "page": "page-1",
+      "text": "WHAT THE DATA WORK CONSTRAINS\nPosters — TMDB's terms bar using its content as ML input, so posters are a render-time fetch and nothing else. Fine here: the drawn placeholders become real artwork at render, and no poster ever enters the model.\n\nCoverage — subtitles beat scripts as the substrate (shooting drafts get rewritten at the ending, which is exactly where moral propositions are settled), but subtitle coverage is patchy. So the deck needs an honest unread state rather than pretending: card 4 on screen 7 says we haven't read it and that popularity is a weaker reason. Do not let an unread film borrow the confident presentation of a read one." },
+
+    { "id": "note-alt", "x": 0, "y": -150, "w": 900, "page": "page-2",
+      "text": "TWO ALTERNATE STRUCTURES, DELIBERATELY LOW-FI\nBoth drop the swipe deck to test whether it's load-bearing. B makes the value model the whole interface; C makes the moral question the daily product. Each names what it costs you." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

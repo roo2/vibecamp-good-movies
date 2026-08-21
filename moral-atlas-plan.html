@@ -1,0 +1,550 @@
+<title>The Moral Atlas of Film</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500;6..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F3F2F6; --surface:#FFFFFF; --surface2:#EAE9F1; --sunk:#E3E1EC;
+  --ink:#17161D; --ink2:#494657; --ink3:#7B7789;
+  --rule:#DAD8E3; --rule2:#C7C4D4;
+  --a:#2E4B9E; --b:#9E7422;
+  --a-soft:rgba(46,75,158,.10); --b-soft:rgba(158,116,34,.12);
+  --shadow:0 1px 2px rgba(23,22,29,.05),0 8px 24px -12px rgba(23,22,29,.16);
+  --step--1:.813rem; --step-0:1rem; --step-1:1.15rem; --step-2:1.55rem;
+  --step-3:2.1rem; --step-4:3rem; --step-5:4.1rem;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#131219; --surface:#1B1A23; --surface2:#23222D; --sunk:#0F0E14;
+    --ink:#EDECF2; --ink2:#B2AFBF; --ink3:#807C8E;
+    --rule:#302E3C; --rule2:#413E4F;
+    --a:#7E9DF0; --b:#D9A94A;
+    --a-soft:rgba(126,157,240,.13); --b-soft:rgba(217,169,74,.13);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#131219; --surface:#1B1A23; --surface2:#23222D; --sunk:#0F0E14;
+  --ink:#EDECF2; --ink2:#B2AFBF; --ink3:#807C8E;
+  --rule:#302E3C; --rule2:#413E4F;
+  --a:#7E9DF0; --b:#D9A94A;
+  --a-soft:rgba(126,157,240,.13); --b-soft:rgba(217,169,74,.13);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:var(--step-0); line-height:1.62; font-weight:400;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1060px; margin:0 auto; padding:0 28px}
+.prose{max-width:66ch}
+h1,h2{font-family:"Bodoni Moda",Georgia,serif; text-wrap:balance; margin:0; font-weight:500}
+h3{font-family:"IBM Plex Sans",sans-serif; margin:0; font-weight:600;
+  font-size:var(--step-1); line-height:1.3; letter-spacing:-.005em; text-wrap:balance}
+h1{font-size:var(--step-5); line-height:1.02; letter-spacing:-.015em}
+h2{font-size:var(--step-3); line-height:1.12; letter-spacing:-.01em}
+p{margin:0}
+strong{font-weight:600; color:var(--ink)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+.eyebrow{font-family:"IBM Plex Mono",monospace; font-size:var(--step--1);
+  text-transform:uppercase; letter-spacing:.14em; color:var(--ink3)}
+
+header{padding:88px 0 0}
+.hgrid{display:flex; flex-direction:column; gap:22px}
+.deck{font-size:var(--step-2); line-height:1.42; color:var(--ink2); max-width:36ch;
+  font-family:"Bodoni Moda",Georgia,serif; font-weight:400}
+.meta{display:flex; flex-wrap:wrap; gap:8px 26px; padding-top:6px}
+.meta span{font-family:"IBM Plex Mono",monospace; font-size:var(--step--1); color:var(--ink3)}
+
+section{padding:64px 0; border-top:1px solid var(--rule)}
+section:first-of-type{border-top:none}
+.shead{display:flex; flex-direction:column; gap:12px; margin-bottom:32px}
+.shead p{max-width:62ch; color:var(--ink2); font-size:var(--step--1)}
+.stack{display:flex; flex-direction:column; gap:18px}
+.stack-sm{display:flex; flex-direction:column; gap:12px}
+
+/* spectrum */
+.spec{background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  padding:32px 34px 26px; display:flex; flex-direction:column; gap:16px; box-shadow:var(--shadow)}
+.spec__scroll{overflow-x:auto; padding-bottom:2px}
+.spec__inner{min-width:520px}
+.spec__poles{display:flex; justify-content:space-between; gap:16px}
+.pole{font-family:"IBM Plex Mono",monospace; font-size:var(--step-0); font-weight:500}
+.pole--a{color:var(--a)} .pole--b{color:var(--b); text-align:right}
+.track{position:relative; height:112px}
+.bar{position:absolute; left:0; right:0; top:54px; height:6px; border-radius:3px;
+  background:linear-gradient(90deg,var(--a),var(--rule2) 50%,var(--b)); opacity:.75}
+.mark{position:absolute; top:0; height:112px; transform:translateX(-50%); pointer-events:none}
+.mark i{position:absolute; top:48px; left:50%; transform:translateX(-50%);
+  width:16px; height:16px; border-radius:50%; background:var(--surface);
+  border:2px solid var(--ink3); display:block}
+.mark b{position:absolute; left:50%; transform:translateX(-50%); white-space:nowrap;
+  font-family:"IBM Plex Mono",monospace; font-size:.84rem; font-weight:400; color:var(--ink2)}
+.mark--up b{bottom:70px} .mark--down b{top:70px}
+.mark--start{transform:translateX(0)} .mark--start b{left:0; transform:none}
+.mark--end{transform:translateX(-100%)} .mark--end b{left:auto; right:0; transform:none}
+.mark--fa i{border-color:var(--a); background:var(--a)}
+.mark--fa b{color:var(--a); font-weight:500}
+.mark--fb i{border-color:var(--b); background:var(--b)}
+.mark--fb b{color:var(--b); font-weight:500}
+.spec__tell{font-size:var(--step--1); color:var(--ink3);
+  border-top:1px dashed var(--rule); padding-top:12px}
+.spec__tell strong{font-weight:500; color:var(--ink2)}
+
+.poles2{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+.pcard{border-radius:3px; padding:22px 24px; display:flex; flex-direction:column; gap:12px}
+.pcard--a{background:var(--a-soft); border-left:3px solid var(--a)}
+.pcard--b{background:var(--b-soft); border-left:3px solid var(--b)}
+.pcard h3{font-size:var(--step-0)}
+.pcard--a h3{color:var(--a)} .pcard--b h3{color:var(--b)}
+.pcard p{font-size:var(--step--1); line-height:1.6; color:var(--ink2)}
+
+/* tables */
+.tscroll{overflow-x:auto; border:1px solid var(--rule); border-radius:3px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; min-width:640px; font-size:var(--step--1)}
+th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--rule); vertical-align:top}
+th{font-family:"IBM Plex Mono",monospace; font-weight:500; text-transform:uppercase;
+  letter-spacing:.09em; font-size:.7rem; color:var(--ink3); background:var(--surface2)}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:center; font-variant-numeric:tabular-nums;
+  font-family:"IBM Plex Mono",monospace; white-space:nowrap; width:120px}
+.tier{font-family:"IBM Plex Mono",monospace; font-weight:500; color:var(--ink)}
+.v{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:1rem}
+.v--y{color:var(--a)} .v--n{color:var(--b)} .v--o{color:var(--rule2)}
+.item{font-family:"IBM Plex Mono",monospace; font-size:.78rem; line-height:1.5; color:var(--ink2)}
+
+/* steps */
+.steps{display:flex; flex-direction:column}
+.step{display:grid; grid-template-columns:52px 1fr; gap:20px; padding:22px 0;
+  border-bottom:1px solid var(--rule)}
+.step:first-child{border-top:1px solid var(--rule)}
+.step__n{font-family:"Bodoni Moda",Georgia,serif; font-size:var(--step-2); line-height:1;
+  color:var(--rule2); font-weight:500; padding-top:2px}
+.step__b{display:flex; flex-direction:column; gap:9px}
+.step__b p{font-size:var(--step--1); color:var(--ink2)}
+
+/* splits */
+.splits{display:flex; flex-direction:column; border-top:1px solid var(--rule)}
+.split{display:grid; grid-template-columns:180px 1fr; gap:24px; padding:20px 0;
+  border-bottom:1px solid var(--rule); align-items:start}
+.split__film{font-weight:600; font-size:var(--step-0); line-height:1.35}
+.split__film span{display:block; font-family:"IBM Plex Mono",monospace; font-weight:400;
+  font-size:var(--step--1); color:var(--ink3); margin-top:3px}
+.split__body{font-size:var(--step--1); color:var(--ink2); line-height:1.65}
+.chip{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:.7rem;
+  padding:1px 6px; border-radius:2px; margin-right:5px; white-space:nowrap; font-weight:500}
+.chip--a{background:var(--a-soft); color:var(--a)}
+.chip--b{background:var(--b-soft); color:var(--b)}
+
+.note{border-left:3px solid var(--b); background:var(--b-soft);
+  padding:18px 22px; border-radius:0 3px 3px 0; display:flex; flex-direction:column; gap:8px}
+.note .eyebrow{color:var(--b)}
+.note p{font-size:var(--step--1); color:var(--ink2)}
+.note--a{border-left-color:var(--a); background:var(--a-soft)}
+.note--a .eyebrow{color:var(--a)}
+
+.views{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:3px; overflow:hidden}
+.view{background:var(--surface); padding:20px 22px; display:flex; flex-direction:column; gap:8px}
+.view h3{font-size:var(--step-0)}
+.view p{font-size:var(--step--1); color:var(--ink2)}
+.view .eyebrow{font-size:.68rem}
+
+.phase{display:grid; grid-template-columns:150px 1fr 100px; gap:20px; padding:18px 0;
+  border-bottom:1px solid var(--rule); align-items:baseline}
+.phase:first-child{border-top:1px solid var(--rule)}
+.phase__t{font-family:"IBM Plex Mono",monospace; font-size:var(--step--1); font-weight:500}
+.phase__d{font-size:var(--step--1); color:var(--ink2)}
+.phase__c{font-family:"IBM Plex Mono",monospace; font-size:var(--step--1); color:var(--ink3);
+  text-align:right; font-variant-numeric:tabular-nums}
+
+ul{margin:0; padding-left:1.1em}
+li{margin-bottom:8px; color:var(--ink2)}
+li::marker{color:var(--ink3)}
+li strong{color:var(--ink)}
+.prose p+p{margin-top:0}
+
+footer{padding:56px 0 90px; border-top:1px solid var(--rule); color:var(--ink3); font-size:var(--step--1)}
+
+@media (max-width:760px){
+  :root{--step-5:2.7rem; --step-3:1.7rem; --step-2:1.25rem}
+  .wrap{padding:0 20px} header{padding:56px 0 0} section{padding:48px 0}
+  .poles2,.views{grid-template-columns:1fr}
+  .split{grid-template-columns:1fr; gap:8px}
+  .phase{grid-template-columns:1fr; gap:6px} .phase__c{text-align:left}
+  .spec{padding:22px 18px 16px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+:focus-visible{outline:2px solid var(--a); outline-offset:3px}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="hgrid">
+    <span class="eyebrow">Project plan v2 &middot; Moral cartography of narrative film</span>
+    <h1>The Moral Atlas<br>of Film</h1>
+    <p class="deck">Letting the moral structure fall out of the text, then bending it onto a single axis using the only judgement you're actually qualified to make.</p>
+    <div class="meta">
+      <span>Method: emergent, not imposed</span>
+      <span>&asymp;3 hrs of your labelling</span>
+      <span>Four evidence layers</span>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">01 &middot; The axis you described</span>
+    <h2>Given Order &harr; Self-Authorship</h2>
+    <p>Kept from v1, but demoted. It is no longer the measuring instrument &mdash; it's the hypothesis the emergent factors will be tested against.</p>
+  </div>
+
+  <div class="stack">
+    <div class="spec">
+      <div class="spec__poles">
+        <span class="pole pole--a">Given Order</span>
+        <span class="pole pole--b">Self-Authorship</span>
+      </div>
+      <div class="spec__scroll"><div class="spec__inner">
+        <div class="track">
+          <div class="bar"></div>
+          <span class="mark mark--up mark--start" style="left:3%"><i></i><b>A Man for All Seasons</b></span>
+          <span class="mark mark--down" style="left:14%"><i></i><b>The Lord of the Rings</b></span>
+          <span class="mark mark--up mark--fa" style="left:22%"><i></i><b>The Lion King</b></span>
+          <span class="mark mark--down" style="left:44%"><i></i><b>Gladiator</b></span>
+          <span class="mark mark--up" style="left:63%"><i></i><b>Frozen</b></span>
+          <span class="mark mark--down mark--fb" style="left:82%"><i></i><b>Maleficent</b></span>
+          <span class="mark mark--up mark--end" style="left:97%"><i></i><b>Dead Poets Society</b></span>
+        </div>
+      </div></div>
+      <p class="spec__tell"><strong>Where a story locates moral authority</strong> &mdash; in what is inherited, revealed, or written into the world; or in what the self and the excluded can rightfully claim.</p>
+    </div>
+
+    <div class="poles2">
+      <div class="pcard pcard--a">
+        <h3>Given Order</h3>
+        <p>A right order precedes the protagonist. It is not chosen &mdash; it is inherited, revealed, or woven into the world: a Circle of Life, a rightful line, a natural law. Wrongdoing is <em>deviation</em>. The hero's flaw is refusal or exile, and the arc is submission. Simba does not invent a self; he remembers one. <em>"Remember who you are"</em> is the entire thesis in four words. Evil arrives as a usurper, and the ending is a restoration &mdash; the last shot is the first shot.</p>
+      </div>
+      <div class="pcard pcard--b">
+        <h3>Self-Authorship</h3>
+        <p>The inherited order <em>is</em> the problem: built by someone's ambition, kept at someone's expense. Authority sits with the self's own truth and with whoever the order excluded. <em>Maleficent</em> takes a story whose architecture was pure Given Order &mdash; christening, curse, prince, restoration &mdash; and re-reads every beam: the king is the violator, the witch is the wounded party, the prince's kiss simply fails. Aurora becomes whole by leaving her place. Nothing is restored.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">02 &middot; The method change</span>
+    <h2>Discover the factors, don't declare them</h2>
+  </div>
+  <div class="prose stack-sm">
+    <p>You're right to refuse the hand-labelling, and not only because it's laborious. Scoring 60 films on eight axes I invented would have measured <em>my</em> ontology with your labour. If the eight axes are real, they should fall out of the films rather than be imposed on them.</p>
+    <p>There is a well-trodden path for exactly this. The Big Five personality factors were not designed by anyone &mdash; they fell out of factor analysis over thousands of trait adjectives people actually use. Nobody decided "openness" should exist; it was what remained standing when the correlations were rotated. The same move works here, with <strong>films as respondents</strong> and <strong>moral propositions as items</strong>.</p>
+  </div>
+
+  <div class="note note--a" style="margin:26px 0">
+    <span class="eyebrow">First, what will not work</span>
+    <p><strong>Embedding plot summaries and running PCA or UMAP on the vectors.</strong> This is the obvious move and it fails in a specific, predictable way: sentence embeddings encode what a film is <em>about</em>, not what it <em>believes</em>. Your PC1 will be period-drama-versus-science-fiction, PC2 will be war-versus-romance, and <em>The Lion King</em> will sit beside <em>Madagascar</em> because both are animated animal pictures. Moral stance is a thin signal riding on top of an enormous topical one, and unsupervised reduction will find the loud thing every time. The propositions below exist to strip the topic out before any geometry happens.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step"><div class="step__n">1</div><div class="step__b">
+      <h3>Extract a moral skeleton per film</h3>
+      <p>Unchanged from v1 and still the substrate. From the plot synopsis: what the film treats as the source of legitimacy; the antagonist's nature and origin; whose interiority is granted; who holds power at open and close; who is punished, who forgiven; what the final image asserts. Verbatim evidence quotes throughout. This is topic-stripped by construction &mdash; it never mentions dragons or spaceships.</p>
+    </div></div>
+    <div class="step"><div class="step__n">2</div><div class="step__b">
+      <h3>Generate the item bank from the films themselves</h3>
+      <p>Take ~300 films spanning era, country and genre. From each skeleton, have the model write 10&ndash;20 <em>moral propositions the film affirms or denies</em> &mdash; free-form, in its own words. That yields ~4,000 raw statements. Cluster by embedding, merge near-duplicates, and cut to a bank of roughly 300. The vocabulary is now the corpus's, not mine.</p>
+    </div></div>
+    <div class="step"><div class="step__n">3</div><div class="step__b">
+      <h3>Score every film against every item</h3>
+      <p>For each film: affirms <span class="v v--y">+</span>, denies <span class="v v--n">&minus;</span>, or doesn't address <span class="v v--o">&middot;</span>. Output sparsely &mdash; only the items the film actually engages, typically 40&ndash;80 of 300 &mdash; which is cheaper, more accurate, and gives you the salience mask for free. The bank is an identical prefix on every call, so cache it and pay ~10% for it.</p>
+    </div></div>
+    <div class="step"><div class="step__n">4</div><div class="step__b">
+      <h3>Factor analyse the film &times; item matrix</h3>
+      <p>Polychoric correlations (the data is ordinal and sparse, so Pearson will mislead), parallel analysis to choose the number of factors, oblimin rotation for interpretability. Unrotated components are almost never legible; rotated factors usually are. Then <strong>name each factor from its top-loading items</strong> &mdash; and because the items are readable English sentences, naming is honest rather than imaginative.</p>
+    </div></div>
+    <div class="step"><div class="step__n">5</div><div class="step__b">
+      <h3>Test the emergent factors against the eight axes</h3>
+      <p>Score the v1 axes too &mdash; they're cheap &mdash; and correlate. If emergent Factor 1 hits 0.8 with <em>Order Verdict</em>, that's convergent validity and you can name it with confidence. If nothing lines up, the eight axes were wrong and the data has told you so. Either result is worth having; only the imposed version couldn't fail.</p>
+    </div></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">03 &middot; What the items look like</span>
+    <h2>Propositions, not scores</h2>
+    <p>Hand-drafted examples of the kind of statement step 2 produces. The real bank is written by the model from the films, but these show the register: specific enough to be gradable, general enough to recur across a thousand pictures.</p>
+  </div>
+  <div class="tscroll">
+    <table>
+      <thead><tr>
+        <th style="width:auto">Proposition</th>
+        <th class="num">Lion King</th><th class="num">Maleficent</th><th class="num">Les Mis&eacute;rables</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="item">Legitimate authority is inherited, and usurpation is the root wrong.</td>
+          <td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--n">&minus;</span></td><td class="num"><span class="v v--o">&middot;</span></td></tr>
+        <tr><td class="item">A person who does harm was first harmed themselves.</td>
+          <td class="num"><span class="v v--n">&minus;</span></td><td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--y">+</span></td></tr>
+        <tr><td class="item">The wicked must be destroyed, not reconciled with.</td>
+          <td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--n">&minus;</span></td><td class="num"><span class="v v--n">&minus;</span></td></tr>
+        <tr><td class="item">There is a moral order that holds whether or not anyone believes in it.</td>
+          <td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--o">&middot;</span></td><td class="num"><span class="v v--y">+</span></td></tr>
+        <tr><td class="item">Becoming yourself means refusing a role that was chosen for you.</td>
+          <td class="num"><span class="v v--n">&minus;</span></td><td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--o">&middot;</span></td></tr>
+        <tr><td class="item">Becoming yourself means accepting a role you did not choose.</td>
+          <td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--n">&minus;</span></td><td class="num"><span class="v v--y">+</span></td></tr>
+        <tr><td class="item">The law, faithfully applied, produces cruelty.</td>
+          <td class="num"><span class="v v--o">&middot;</span></td><td class="num"><span class="v v--o">&middot;</span></td><td class="num"><span class="v v--y">+</span></td></tr>
+        <tr><td class="item">Mercy toward an enemy is the highest act available to a person.</td>
+          <td class="num"><span class="v v--n">&minus;</span></td><td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--y">+</span></td></tr>
+        <tr><td class="item">Loyalty to your own people outweighs what you owe to strangers.</td>
+          <td class="num"><span class="v v--y">+</span></td><td class="num"><span class="v v--o">&middot;</span></td><td class="num"><span class="v v--n">&minus;</span></td></tr>
+        <tr><td class="item">Suffering willingly borne redeems something.</td>
+          <td class="num"><span class="v v--o">&middot;</span></td><td class="num"><span class="v v--o">&middot;</span></td><td class="num"><span class="v v--y">+</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose stack-sm" style="padding-top:24px">
+    <p>Two things this small matrix already demonstrates. <em>Les Mis&eacute;rables</em> agrees with <em>Maleficent</em> about mercy and wounded villains, and with <em>The Lion King</em> about a moral order that precedes you &mdash; which is exactly the split a single axis cannot represent, now visible as data rather than as my assertion. And the fifth and sixth rows are a deliberate <strong>reversed pair</strong>: any film scoring <span class="v v--y">+</span> on both is telling you the model is agreeing with whatever it's shown. Seed the bank with a dozen such pairs and you have a permanent acquiescence check.</p>
+    <p>Reading and pruning the 300-item bank is the one manual step I'd still ask for &mdash; roughly ninety minutes, and it's editorial judgement about sentences, not expert judgement about films you haven't seen.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">04 &middot; The labelling you can do</span>
+    <h2>Three hours, no expertise required</h2>
+  </div>
+  <div class="prose" style="margin-bottom:26px">
+    <p>Your instinct &mdash; mark the films you morally agree with and find the pattern &mdash; is the right supervision signal. It just needs a companion task, because agreement alone tells the model where you stand without telling it how the space is shaped.</p>
+  </div>
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>Task</th><th>What you do</th><th>What it buys</th><th class="num">Time</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Prune the bank</strong></td>
+          <td>Read ~300 propositions. Delete the incoherent, merge the redundant, flag any that are really about craft or politics rather than ethics.</td>
+          <td>Keeps the measuring instrument clean. The only place your ontology enters, and it enters as a veto rather than a design.</td><td class="num">~90 min</td></tr>
+        <tr><td><strong>Moral verdicts</strong></td>
+          <td>For 80&ndash;100 films <em>you have actually seen</em>: a five-point scale from "I think this is right about how to live" to "I think this is wrong". Explicitly not whether it's a good film.</td>
+          <td>The supervision that produces your personal axis. Needs both ends &mdash; forty films you object to matter as much as forty you endorse.</td><td class="num">~40 min</td></tr>
+        <tr><td><strong>Similarity triplets</strong></td>
+          <td>150 rounds of "is A morally closer to B, or to C?" Three films you've seen, one click.</td>
+          <td>Validates the <em>geometry</em> without requiring you to name a single axis. This is what replaces the v1 gold set.</td><td class="num">~30 min</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="note" style="margin-top:26px">
+    <span class="eyebrow">The circularity trap</span>
+    <p>It will be tempting to have the system write you a moral brief for a film you haven't seen so you can label more of them. Don't &mdash; you would be labelling the model's reading, the model would then be validated against its own reading, and the agreement would be perfect and meaningless. <strong>Verdicts only on films you've watched.</strong> Eighty is plenty; the item matrix is doing the heavy lifting, and the labels only need to locate you within it.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">05 &middot; The dimension question</span>
+    <h2>Can it be one axis? Yes &mdash; but not the one you'd get from PCA</h2>
+  </div>
+  <div class="prose stack-sm">
+    <p>Straight answer on the unsupervised side: expect four to seven interpretable factors, with the first explaining somewhere around 15&ndash;25% of variance. Moral space is genuinely not one-dimensional, and a plot that pretends otherwise will put films in places you can't defend. If PC1 came back at 60% I'd suspect an artefact rather than celebrate.</p>
+    <p><strong>The supervised axis is one-dimensional by construction, and it's the one you actually want.</strong> Regress your 80 verdicts against the factor scores &mdash; regularised logistic regression, or LDA &mdash; and the resulting discriminant direction <em>is</em> your moral axis. Project all 2,000 films onto it and you have a single ribbon from "aligned with you" to "opposed to you", every position explainable by the items that drove it. That axis is honestly personal rather than falsely universal, which is also a better product: not <em>the</em> moral spectrum, but yours.</p>
+    <p>Then the two-dimensional map worth building is <strong>your alignment axis on x, and the largest factor orthogonal to it on y</strong>. Plotting alignment against something independent of alignment is what reveals <em>variety within agreement</em> &mdash; the difference between five films you'd endorse for five different reasons. Alignment against a correlate would just give you a diagonal smear.</p>
+  </div>
+
+  <div class="tscroll" style="margin-top:28px">
+    <table>
+      <thead><tr><th>Confound</th><th>The failure it causes</th><th>The check</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Moral density</strong></td><td>The strongest first factor in any such matrix is usually just <em>how many propositions a film engages at all</em> &mdash; an artefact separating earnest drama from light comedy, and nothing to do with stance.</td><td>Model salience and valence separately; normalise per film before rotation. Fix this before reading any factor.</td></tr>
+        <tr><td><strong>Genre</strong></td><td>A factor that is really "is this a war film". The topic leaking back in despite the skeleton.</td><td>Regress each factor on genre, and report residual variance. Above ~50% explained by genre, it isn't a moral factor.</td></tr>
+        <tr><td><strong>Era</strong></td><td>If a factor correlates 0.7 with release year you've discovered chronology, not ethics &mdash; and given how the canon has moved, this is a live risk on precisely the axis you care about.</td><td>Same regression against year. And plot it anyway: the drift is interesting in its own right.</td></tr>
+        <tr><td><strong>Model prior</strong></td><td>The scorer has views about these propositions. Systematic tilt looks exactly like signal.</td><td>Re-score a 200-film sample with a second model. Divergence that is systematic rather than noisy means you're measuring the scorer.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">06 &middot; Validation without a gold set</span>
+    <h2>Four ways to know it's real</h2>
+  </div>
+  <div class="views">
+    <div class="view"><span class="eyebrow">Against you</span><h3>Triplet satisfaction</h3><p>What fraction of your 150 similarity judgements does the space reproduce? Above ~75% it has captured your moral perception; near 50% it has captured nothing. The headline number, and it needed no axis definitions from you.</p></div>
+    <div class="view"><span class="eyebrow">Against itself</span><h3>Split-half reliability</h3><p>Split the item bank in two at random, factor each half separately, correlate the film scores. Unstable factors are noise wearing a name.</p></div>
+    <div class="view"><span class="eyebrow">Against theory</span><h3>Convergence with the eight</h3><p>Do the emergent factors recover Order Verdict, Locus of Evil, Circle of Concern? Recovering some and refusing others is the most informative outcome available.</p></div>
+    <div class="view"><span class="eyebrow">Against cases</span><h3>The split-case battery</h3><p>A fixed list of films that must not collapse together &mdash; <em>Les Mis&eacute;rables</em> apart from <em>Maleficent</em>, <em>Joker</em> apart from both, <em>Hacksaw Ridge</em> apart from <em>Dead Poets Society</em>. A regression test for the ontology; run it after every re-fit.</p></div>
+  </div>
+  <div class="splits" style="margin-top:30px">
+    <div class="split">
+      <div class="split__film">Les Misérables<span>must not sit with Maleficent</span></div>
+      <div class="split__body"><span class="chip chip--b">order indicted</span><span class="chip chip--b">mercy over punishment</span><span class="chip chip--a">transcendent source</span> Indicts the law root and branch, spares Javert &mdash; and grounds all of it in the Bishop's candlesticks. Grace, given from outside, unearned.</div>
+    </div>
+    <div class="split">
+      <div class="split__film">Hacksaw Ridge<span>must not sit with Dead Poets Society</span></div>
+      <div class="split__body"><span class="chip chip--b">defies authority</span><span class="chip chip--a">sacred conviction</span> Doss stands alone against every institution around him out of obedience to a commandment. Kills the shortcut that reads "individual against the system" as self-authored ethics.</div>
+    </div>
+    <div class="split">
+      <div class="split__film">Frozen<span>must not sit with Maleficent</span></div>
+      <div class="split__body"><span class="chip chip--b">sheds the imposed role</span><span class="chip chip--a">order restored</span> Emancipation, total and then entirely reabsorbed: she returns, is crowned, the kingdom holds. Emancipatory affect with a restorationist plot &mdash; there are hundreds of these and they are their own cluster.</div>
+    </div>
+    <div class="split">
+      <div class="split__film">Joker (2019)<span>must not sit with Maleficent</span></div>
+      <div class="split__body"><span class="chip chip--b">structural evil</span><span class="chip chip--b">sympathy at the margin</span><span class="chip chip--a">no legitimate successor</span> Every item reads Maleficent-pole, but nothing replaces what it tears down. If the space can't separate these two, any recommendation built on it will misfire badly.</div>
+    </div>
+    <div class="split">
+      <div class="split__film">Starship Troopers<span>must not sit with Lion King</span></div>
+      <div class="split__body"><span class="chip chip--a">duty, corps, sacrifice</span><span class="chip chip--b">satirical frame</span> The endorsement problem in one title: read as synopsis it scores at the far Given Order pole; read as film it is a satire of exactly that. See below.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">07 &middot; Evidence</span>
+    <h2>What each film needs</h2>
+    <p>Your instinct that summaries aren't enough is right. The reason isn't quite the one you named &mdash; and the difference decides what you reach for instead.</p>
+  </div>
+
+  <div class="note note--a" style="margin-bottom:30px">
+    <span class="eyebrow">The bias is real, but it's the wrong bias</span>
+    <p>Wikipedia's plot guideline demands neutral, in-universe event recounting with interpretation removed, and editors largely comply. So summaries don't editorialise much &mdash; they <strong>strip</strong>. What's gone is tone, point of view, irony, and which moments are given weight. A plot summary will tell you Simba returns and defeats Scar. It will not tell you the film treats that as the restoration of a sacred order rather than as a successful coup.</p>
+    <p>That's a worse problem than editor slant, and it points somewhere different: not at screenplays, but at whatever preserves <strong>framing</strong> &mdash; the film's own dialogue, and other people's readings of it.</p>
+    <p>Where editor bias does bite is narrower and partly measurable: which acts get three sentences and which get one, and causal verbs. <em>"Maleficent, betrayed by Stefan, curses the child"</em> and <em>"the evil fairy curses the child"</em> are different sentences, and only one of them is in the film.</p>
+  </div>
+
+  <div class="tscroll">
+    <table>
+      <thead><tr><th>Layer</th><th>What only it gives you</th><th>Reach</th><th class="num">Tokens</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Event spine</strong><br><span class="mono" style="font-size:.72rem; color:var(--ink3)">Wikipedia plot section</span></td>
+          <td>Who does what. Who holds power at open and at close. Who is punished. The causal chain the propositions hang off.</td>
+          <td>Broad for films with articles, thin in the long tail</td><td class="num">~1.2k</td></tr>
+        <tr><td><strong>Reception &amp; themes</strong><br><span class="mono" style="font-size:.72rem; color:var(--ink3)">Wikipedia Themes / Analysis, critics</span></td>
+          <td>Whether the film is ironic. How the moral was actually received. The single best defence against the endorsement problem.</td>
+          <td>Good for notable films, sparse below</td><td class="num">~2k</td></tr>
+        <tr><td><strong>Primary text</strong><br><span class="mono" style="font-size:.72rem; color:var(--ink3)">SDH subtitles</span></td>
+          <td>The film's own words. Act position via timestamps. The final spoken line. Whose voice carries the thesis.</td>
+          <td>Very broad &mdash; all eras, all languages</td><td class="num">~10k</td></tr>
+        <tr><td><strong>Scene description</strong><br><span class="mono" style="font-size:.72rem; color:var(--ink3)">Screenplay</span></td>
+          <td>Authorial framing in the action lines &mdash; what the page tells you to look at.</td>
+          <td>Narrow: prestige, English, post-1990 &mdash; and often a draft</td><td class="num">~25k</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="prose stack-sm" style="padding-top:30px">
+    <h3>Why subtitles rather than screenplays</h3>
+    <p><strong>The version problem settles it.</strong> Most circulating screenplays are shooting drafts or earlier &mdash; endings get rewritten, characters cut, the last scene replaced in the edit. Our propositions are settled disproportionately <em>at the ending</em>. A draft script is therefore wrong in precisely the place we care about most, and confidently so. Subtitles are transcribed from the finished film.</p>
+    <p>Coverage compounds it. Script archives skew hard toward prestige, English-language, post-1990 titles &mdash; the opposite of the spread factor analysis needs, and a corpus that shape will hand you factors that are really about era and prestige. Subtitle archives run to hundreds of thousands of titles across every decade and language.</p>
+    <p>And subtitles carry two things nothing else does. Timestamps give you <strong>act position for free</strong> &mdash; slice the closing 15% and extract the ending state with real confidence. And they give you the <strong>last line of spoken dialogue</strong>, which in a startling number of films is the thesis stated outright.</p>
+    <p>Two practical notes. Prefer <strong>SDH / closed-caption</strong> tracks: they carry speaker labels and non-dialogue cues that plain SRTs drop, and speaker attribution matters a great deal for whose interiority the film grants. And a subtitle track is ~10k tokens against a screenplay's ~25k, with far more of it load-bearing rather than slug lines and transitions.</p>
+    <p>Keep screenplays as an opportunistic fourth layer where they exist. Never as the backbone.</p>
+  </div>
+
+  <div class="views" style="margin-top:32px">
+    <div class="view">
+      <span class="eyebrow">Packet &middot; identity</span>
+      <h3>Metadata</h3>
+      <p>TMDB and IMDb ids, title, year, runtime, country, original language. Genres and keywords. Director, writers, and <em>billed cast in order</em> &mdash; billing position is a weak but free point-of-view signal. Franchise, collection, and every "based on" link. Budget and revenue.</p>
+      <p style="color:var(--ink3)">These are also the covariates every confound check in section 05 regresses against, so none of it is optional.</p>
+    </div>
+    <div class="view">
+      <span class="eyebrow">Packet &middot; text</span>
+      <h3>Raw sources</h3>
+      <p>Wikipedia plot section with its word count kept as a flag. Themes, Analysis and Reception sections. Three to five critic reviews. The SDH subtitle track, plus pre-cut opening-10% and closing-15% slices. Screenplay where one exists.</p>
+      <p style="color:var(--ink3)">Not the TMDB overview. That is marketing copy, written specifically to conceal the ending &mdash; the worst possible input here, and a tempting fallback because it's always present.</p>
+    </div>
+    <div class="view">
+      <span class="eyebrow">Packet &middot; derived</span>
+      <h3>The skeleton</h3>
+      <p>Power state at open and at close. Antagonist: is an origin given, and is their fate destruction, reconciliation, or escape. The protagonist's flaw and what replaces it. Whose interiority is granted. Who is punished, who forgiven, who dies. Final image and final spoken line. Tonal register with an irony flag. Source text and what it inverts.</p>
+    </div>
+    <div class="view">
+      <span class="eyebrow">Packet &middot; audit</span>
+      <h3>Provenance</h3>
+      <p>Every proposition score records which layers supported it, and an evidence-completeness score rides on each film. This is what turns "are summaries good enough" from an argument into a query you can run &mdash; and stops thin-evidence films quietly distorting the factors.</p>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:32px">
+    <span class="eyebrow">Settle it with $10 rather than a week of arguing</span>
+    <p>Take forty films where all four layers exist. Score them three ways &mdash; spine only, subtitles only, everything &mdash; and measure per-proposition disagreement.</p>
+    <p><strong>Under ~10%:</strong> summaries are sufficient, you skip 20M tokens of subtitle processing, and you bought that decision with evidence rather than assumption. <strong>Over ~25%:</strong> your concern was right, and you now know <em>which</em> propositions are summary-resistant &mdash; so you fetch subtitles for those rather than for everything.</p>
+    <p>Add one targeted probe for the bias you actually asked about: measure the <em>Sleeping Beauty</em> &rarr; <em>Maleficent</em> displacement vector from summaries and from subtitles separately. Those two summaries are written by different fandoms, so if editor slant is large anywhere it is largest there &mdash; and an inflated displacement is exactly what it would look like.</p>
+  </div>
+
+  <div class="prose stack-sm" style="padding-top:30px">
+    <h3>Let availability define the corpus</h3>
+    <p>Your other agent finding full plots for only a modest subset is corpus design, not an obstacle. Don't choose 2,000 films and then hunt for their data &mdash; <strong>choose the 2,000 films that already have all four layers.</strong> Complete-evidence films are the well-documented, widely-seen ones, which is the same population your verdict labels can cover anyway. The constraint and the requirement point the same direction.</p>
+    <p>On posture: Wikipedia is CC BY-SA and the TMDB API is free with attribution &mdash; both clean. Subtitles and screenplays are not yours to redistribute. Store the derived skeleton and the item scores durably; treat raw subtitle and script text as a cache you can delete without losing work. That keeps the project clean if it ever leaves your machine.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">08 &middot; Views</span>
+    <h2>Visualising it</h2>
+  </div>
+  <div class="views">
+    <div class="view"><span class="eyebrow">Primary</span><h3>Your ribbon</h3><p>Every film on the single supervised axis, aligned to opposed. The one-dimensional view you asked for, and the honest version of it &mdash; personal rather than universal.</p></div>
+    <div class="view"><span class="eyebrow">Primary</span><h3>Alignment &times; orthogonal</h3><p>x = your axis, y = the largest factor independent of it. Shows variety within agreement, which is where the interesting recommendations live.</p></div>
+    <div class="view"><span class="eyebrow">Explain</span><h3>Why here</h3><p>Any film's position broken into the items that produced it. "Ranked high because it affirms these four propositions and denies these two." Legibility is what rescues a low-variance projection.</p></div>
+    <div class="view"><span class="eyebrow">Discovery</span><h3>Factor loadings</h3><p>The emergent factors with their top-loading sentences. This is the screen where you find out what the corpus thinks the dimensions of moral difference are &mdash; the actual research output.</p></div>
+    <div class="view"><span class="eyebrow">Signature</span><h3>Displacement lines</h3><p><em>Sleeping Beauty</em> &rarr; <em>Maleficent</em>, <em>The Wizard of Oz</em> &rarr; <em>Wicked</em>. Draw the vector between source and revision; render four decades of remakes as a field of arrows, mostly pointing one way. Your founding example, generalised.</p></div>
+    <div class="view"><span class="eyebrow">Honesty</span><h3>Contested shelf</h3><p>High-variance films plotted apart. Where the model wobbled is usually where the film is genuinely arguable.</p></div>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">09 &middot; Sequence</span>
+    <h2>Build order</h2>
+  </div>
+  <div>
+    <div class="phase"><div class="phase__t">0 &middot; Probe</div><div class="phase__d">40 films with all four evidence layers. Skeletons and free-form propositions only, scored three ways for the source A/B in section 07. <strong>Look at the raw statements before building anything.</strong> If they read as genre summary rather than moral claim, the method is wrong and you've spent ten dollars finding out.</div><div class="phase__c">~$10</div></div>
+    <div class="phase"><div class="phase__t">1 &middot; Bank</div><div class="phase__d">300 films &rarr; ~4,000 propositions &rarr; cluster, merge, cut to ~300. You prune. Reversed pairs seeded in.</div><div class="phase__c">~$14</div></div>
+    <div class="phase"><div class="phase__t">2 &middot; Matrix</div><div class="phase__d">Score 2,000 films against the bank via the Batch API, sparse output, cached prefix. Three runs with shuffled item order; keep the spread.</div><div class="phase__c">~$70</div></div>
+    <div class="phase"><div class="phase__t">3 &middot; Structure</div><div class="phase__d">Confound corrections, parallel analysis, oblimin rotation, factor naming. Split-half and cross-model checks. The v1 axes scored alongside for convergence.</div><div class="phase__c">~$8</div></div>
+    <div class="phase"><div class="phase__t">4 &middot; You</div><div class="phase__d">Verdict and triplet interfaces, your ~3 hours, discriminant fit, triplet satisfaction score. First time the axis exists.</div><div class="phase__c">&mdash;</div></div>
+    <div class="phase"><div class="phase__t">5 &middot; Atlas</div><div class="phase__d">The six views. 2,000 films &times; 300 items is a few megabytes of JSON &mdash; no backend needed.</div><div class="phase__c">&mdash;</div></div>
+  </div>
+  <div class="prose stack-sm" style="padding-top:26px">
+    <h3>Stack &amp; costs</h3>
+    <ul>
+      <li><strong>Model:</strong> <span class="mono">claude-opus-5</span> for skeletons and item generation &mdash; the judgement is the product. Item scoring against a fixed bank is a more mechanical task; benchmark <span class="mono">claude-haiku-4-5</span> against Opus on a 200-film overlap in phase 2 and drop down if agreement holds.</li>
+      <li><strong>Batch API</strong> for both sweeps: half price, nothing latency-sensitive. <strong>Prompt caching</strong> on the item bank &mdash; a 300-sentence prefix identical across 2,000 calls is close to the ideal case, and it's most of the saving above.</li>
+      <li><strong>Analysis:</strong> Python. <span class="mono">factor_analyzer</span> for polychoric FA and rotation, <span class="mono">scikit-learn</span> for the discriminant, DuckDB for the matrix. Version every score row with <span class="mono">item_bank_version</span> and <span class="mono">run_id</span> &mdash; you'll re-cut the bank at least twice.</li>
+      <li><strong>Total ~$95</strong> for the full instrument, and a re-sweep after changing the bank is ~$70. Cheap enough that the bank is a decision you can revisit rather than defend.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="shead">
+    <span class="eyebrow">10 &middot; Open</span>
+    <h2>Three decisions</h2>
+  </div>
+  <div class="prose">
+    <ul>
+      <li><strong>Corpus.</strong> TMDB top 2,000 by popularity, or seeded from your Letterboxd / IMDb history? Strong case for the second now: your verdict labels can only cover films you've seen, so a corpus weighted toward your viewing gives the discriminant far more to work with.</li>
+      <li><strong>Language.</strong> Python throughout is the obvious call &mdash; the factor analysis has no real equivalent elsewhere. Front end can be a static page with Observable Plot unless you'd rather it were TypeScript end to end.</li>
+      <li><strong>Phase 0 now?</strong> Forty films, about two dollars, and it answers the only question that matters before any of this is worth building: do the raw propositions read as moral claims or as plot paraphrase? Say the word and I'll build it.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <p>Design document &middot; v2 &middot; Supersedes the hand-labelled gold-set approach. No implementation yet.</p>
+</footer>
+
+</div>

@@ -191,8 +191,10 @@ Resources:
   RunnerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
+      # ASCII only: EC2 rejects a GroupDescription containing anything else,
+      # and the error arrives at create time rather than from validate-template.
       GroupDescription: >
-        Outbound only. There is deliberately no ingress rule and no SSH — shell
+        Outbound only. There is deliberately no ingress rule and no SSH - shell
         access is via SSM Session Manager, which dials out.
       VpcId: !Ref Vpc
       SecurityGroupEgress:
@@ -336,7 +338,7 @@ Resources:
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: !Sub "${ProjectName} ${EnvironmentName} — interface and demo"
+        Comment: !Sub "${ProjectName} ${EnvironmentName} - interface and demo"
         DefaultRootObject: index.html
         HttpVersion: http2and3
         PriceClass: PriceClass_100
@@ -769,7 +771,7 @@ Resources:
             [ -d "$ATLAS_HOME/.venv" ] && export PATH="$ATLAS_HOME/.venv/bin:$PATH"
             cd "$ATLAS_HOME" 2>/dev/null || true
           else
-            echo "moral-atlas runner — run: sudo su - ec2-user"
+            echo "moral-atlas runner - run: sudo su - ec2-user"
           fi
           PROFILE
 

@@ -9,6 +9,19 @@
 # you do not pass keeps the value the stack already has.
 set -euo pipefail
 
+# Pinned to the project's account, deliberately overriding whatever AWS_PROFILE
+# the shell already carries — `${AWS_PROFILE:-...}` would inherit a `prod` left
+# exported by an earlier command, which is the one mistake worth engineering
+# out. Override consciously with ATLAS_AWS_PROFILE, never by accident.
+#
+# Not in CI: GitHub Actions has no profiles at all — it receives temporary
+# credentials in the environment from OIDC, and naming a profile there would
+# send the SDK looking for a config file that does not exist.
+if [ -z "${CI:-}" ]; then
+  export AWS_PROFILE="${ATLAS_AWS_PROFILE:-ai-sandbox}"
+fi
+EXPECTED_ACCOUNT="${ATLAS_AWS_ACCOUNT:-615854521724}"
+
 PROJECT="${PROJECT:-moral-atlas}"
 ENVIRONMENT="${ENVIRONMENT:-dev}"
 REGION="${AWS_REGION:-ap-southeast-2}"
@@ -45,6 +58,15 @@ elif [ "$SITE_AUTH" = "true" ]; then
     echo "  SITE_AUTH=false $0        # to publish the demo openly instead" >&2
     exit 1
   fi
+fi
+
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+IDENTITY=$(aws sts get-caller-identity --query Arn --output text)
+echo "→ profile ${AWS_PROFILE:-<none: environment credentials>} — account $ACCOUNT — $IDENTITY"
+if [ "$ACCOUNT" != "$EXPECTED_ACCOUNT" ]; then
+  echo "refusing: expected account $EXPECTED_ACCOUNT, got $ACCOUNT." >&2
+  echo "  Set ATLAS_AWS_ACCOUNT if this stack really belongs somewhere else." >&2
+  exit 1
 fi
 
 echo "→ validating"

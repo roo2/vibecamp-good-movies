@@ -1,0 +1,945 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: >
+  Moral Atlas / Parable — shared infrastructure for collaboration and demos.
+  Two halves, matching the repository: a private static site behind CloudFront
+  for the interface, and one long-lived EC2 runner (reachable only through SSM
+  Session Manager) for the atlas pipeline, whose DuckDB file lives on a
+  retained EBS volume. No SSH keys, no NAT gateway, no inbound ports.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: { default: Naming }
+        Parameters: [ProjectName, EnvironmentName]
+      - Label: { default: Pipeline runner }
+        Parameters: [InstanceType, DataVolumeSizeGb, IdleShutdownHours, RepoUrl, LatestAl2023AmiArm64]
+      - Label: { default: Demo site }
+        Parameters: [EnableSiteAuth, SiteUsername, SitePassword]
+      - Label: { default: Deploy from GitHub }
+        Parameters: [GitHubRepo, GitHubBranch, CreateGitHubOidcProvider]
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: moral-atlas
+    AllowedPattern: "^[a-z0-9-]{3,24}$"
+    Description: Lowercase name used as a prefix for every resource.
+
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Lets you stand up a second, independent copy of the stack.
+
+  InstanceType:
+    Type: String
+    Default: t4g.small
+    AllowedValues: [t4g.small, t4g.medium, t4g.large, t4g.xlarge]
+    Description: >
+      Graviton (arm64). The pipeline is I/O- and API-bound rather than
+      CPU-bound — concurrency is capped by ATLAS_CONCURRENCY and by Anthropic
+      rate limits — so a small instance is usually right. Go to t4g.medium if
+      you raise concurrency well past 6, or once factor analysis lands.
+
+  DataVolumeSizeGb:
+    Type: Number
+    Default: 20
+    MinValue: 8
+    MaxValue: 500
+    Description: >
+      Separate encrypted gp3 volume for data/ — the DuckDB file, the HTTP
+      cache and any hand-supplied subtitles. Retained when the stack or the
+      instance is replaced.
+
+  IdleShutdownHours:
+    Type: Number
+    Default: 4
+    MinValue: 0
+    MaxValue: 24
+    Description: >
+      Stop the runner after this many consecutive hours below 3% CPU, so a
+      forgotten instance costs nothing. 0 disables it. Restart with
+      `aws ec2 start-instances`; the data volume survives either way.
+
+  RepoUrl:
+    Type: String
+    Default: https://github.com/roo2/vibecamp-good-movies.git
+    Description: >
+      Cloned on first boot if a github_token is present in the stack secret.
+      Left alone otherwise — the machine is still fully prepared and you can
+      clone by hand inside the SSM session.
+
+  EnableSiteAuth:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Put HTTP basic auth in front of the demo site. Read the caveat in
+      infra/README.md — this keeps unfinished work off search engines and out
+      of casual reach, and is not a security boundary.
+
+  SiteUsername:
+    Type: String
+    Default: parable
+    Description: Basic-auth username, when EnableSiteAuth is true.
+
+  SitePassword:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: >
+      Basic-auth password, when EnableSiteAuth is true. Not a secret in any
+      strong sense — it ends up embedded in the CloudFront function source.
+
+  GitHubRepo:
+    Type: String
+    Default: roo2/vibecamp-good-movies
+    Description: >
+      owner/repo allowed to deploy this stack from GitHub Actions, over OIDC —
+      so there is no AWS access key anywhere in the repository or its settings.
+      Empty disables the deploy role entirely.
+
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: >
+      The only branch whose workflow runs may assume the deploy role. A push to
+      any other branch, and a pull request from a fork, cannot reach AWS.
+
+  CreateGitHubOidcProvider:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: >
+      The GitHub OIDC provider is account-wide and can only exist once. Set
+      false if another stack in this account already created it.
+
+  LatestAl2023AmiArm64:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+    Description: Resolved at deploy time. Leave as-is.
+
+Conditions:
+  SiteAuth: !Equals [!Ref EnableSiteAuth, "true"]
+  IdleShutdown: !Not [!Equals [!Ref IdleShutdownHours, 0]]
+  GitHubDeploy: !Not [!Equals [!Ref GitHubRepo, ""]]
+  CreateOidc: !And
+    - !Condition GitHubDeploy
+    - !Equals [!Ref CreateGitHubOidcProvider, "true"]
+
+Resources:
+
+  # ----------------------------------------------------------------- network
+  # One public subnet and no NAT gateway. The runner accepts nothing inbound;
+  # it reaches Anthropic, TMDB, Wikipedia, OpenSubtitles and SSM outbound over
+  # its own public IP. That is ~$32/month cheaper than private-subnet-plus-NAT
+  # and no less closed, because the security group has no ingress rules at all.
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.20.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}" }
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}" }
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.20.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-public" }
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-public" }
+
+  DefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  RunnerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: >
+        Outbound only. There is deliberately no ingress rule and no SSH — shell
+        access is via SSM Session Manager, which dials out.
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Anthropic, TMDB, Wikipedia, OpenSubtitles, SSM, S3, PyPI.
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-runner" }
+
+  # ----------------------------------------------------------------- secrets
+  # One JSON secret, filled in after deploy. Deliberately not template
+  # parameters: parameter values persist in stack history and are readable by
+  # anyone who can call describe-stacks.
+
+  Secret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ProjectName}/${EnvironmentName}/config"
+      Description: >
+        API credentials for the atlas pipeline. Keys mirror .env.example:
+        ANTHROPIC_API_KEY, TMDB_READ_TOKEN, TMDB_API_KEY, OPENSUBTITLES_API_KEY,
+        OPENSUBTITLES_USERNAME, OPENSUBTITLES_PASSWORD, plus an optional
+        github_token used only to clone a private repository on first boot.
+      SecretString: |
+        {
+          "ANTHROPIC_API_KEY": "",
+          "TMDB_READ_TOKEN": "",
+          "TMDB_API_KEY": "",
+          "OPENSUBTITLES_API_KEY": "",
+          "OPENSUBTITLES_USERNAME": "",
+          "OPENSUBTITLES_PASSWORD": "",
+          "github_token": ""
+        }
+
+  # ----------------------------------------------------------------- storage
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${ProjectName}-${EnvironmentName}-data-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-old-snapshot-versions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 60
+          - Id: abort-incomplete-uploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 }
+      Tags:
+        - { Key: Project, Value: !Ref ProjectName }
+
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-${EnvironmentName}-site-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - { Key: Project, Value: !Ref ProjectName }
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal: { Service: cloudfront.amazonaws.com }
+            Action: s3:GetObject
+            Resource: !Sub "arn:${AWS::Partition}:s3:::${SiteBucket}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+  # --------------------------------------------------------------- demo site
+
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${ProjectName}-${EnvironmentName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Basic auth at the edge. The credential is compiled into the function, so
+  # treat it as a doormat rather than a lock: it stops crawlers and casual
+  # visitors, and anyone with CloudFront read access in this account can read it.
+  AuthFunction:
+    Type: AWS::CloudFront::Function
+    Condition: SiteAuth
+    Properties:
+      Name: !Sub "${ProjectName}-${EnvironmentName}-basic-auth"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: HTTP basic auth for the private demo site.
+        Runtime: cloudfront-js-2.0
+      FunctionCode: !Sub
+        - |
+          var EXPECTED = "Basic ${Token}";
+
+          function handler(event) {
+            var headers = event.request.headers;
+            if (headers.authorization && headers.authorization.value === EXPECTED) {
+              return event.request;
+            }
+            return {
+              statusCode: 401,
+              statusDescription: "Unauthorized",
+              headers: {
+                "www-authenticate": { value: 'Basic realm="parable"' },
+                "cache-control": { value: "no-store" }
+              }
+            };
+          }
+        - Token:
+            Fn::Base64: !Sub "${SiteUsername}:${SitePassword}"
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "${ProjectName} ${EnvironmentName} — interface and demo"
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: site
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            S3OriginConfig: { OriginAccessIdentity: "" }
+        DefaultCacheBehavior:
+          TargetOriginId: site
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          # Managed-CachingOptimized
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          FunctionAssociations: !If
+            - SiteAuth
+            - - EventType: viewer-request
+                FunctionARN: !GetAtt AuthFunction.FunctionMetadata.FunctionARN
+            - !Ref AWS::NoValue
+        CacheBehaviors:
+          # The session payload the interface reads. Never cached at the edge,
+          # so a fresh `atlas-publish` shows up on the next reload rather than
+          # after someone remembers to invalidate.
+          - PathPattern: /api/*
+            TargetOriginId: site
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            # Managed-CachingDisabled
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            FunctionAssociations: !If
+              - SiteAuth
+              - - EventType: viewer-request
+                  FunctionARN: !GetAtt AuthFunction.FunctionMetadata.FunctionARN
+              - !Ref AWS::NoValue
+        CustomErrorResponses:
+          # S3 returns 403 for a missing key under OAC; show the index instead.
+          - ErrorCode: 403
+            ResponseCode: 404
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 10
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  # ------------------------------------------------------------------ runner
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      Policies:
+        - PolicyName: atlas-runtime
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadStackSecret
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !Ref Secret
+
+              - Sid: DataBucketReadWrite
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:ListBucket]
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub "${DataBucket.Arn}/*"
+
+              # Publishing the session payload the interface reads — and
+              # nothing else on the site. The pipeline cannot rewrite the
+              # front end, only the data underneath it.
+              - Sid: PublishSessionPayload
+                Effect: Allow
+                Action: [s3:PutObject]
+                Resource: !Sub "${SiteBucket.Arn}/api/*"
+
+              - Sid: InvalidateSessionPayload
+                Effect: Allow
+                Action: [cloudfront:CreateInvalidation]
+                Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+              # The instance attaches its own data volume — see the note on
+              # the Runner resource for why CloudFormation cannot.
+              - Sid: AttachOwnDataVolume
+                Effect: Allow
+                Action: [ec2:AttachVolume]
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/${DataVolume}"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+
+              - Sid: DescribeVolumes
+                Effect: Allow
+                Action: [ec2:DescribeVolumes]
+                Resource: "*"
+
+              - Sid: SignalBootstrapResult
+                Effect: Allow
+                Action: cloudformation:SignalResource
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
+
+              - Sid: WriteOwnLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !Sub "${LogGroup.Arn}:*"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/${ProjectName}/${EnvironmentName}/runner"
+      RetentionInDays: 30
+
+  # Retained on purpose. Any change to UserData or InstanceType replaces the
+  # instance; the DuckDB file and the HTTP cache cost real money to rebuild and
+  # must not go with it.
+  DataVolume:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Size: !Ref DataVolumeSizeGb
+      VolumeType: gp3
+      Encrypted: true
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-data" }
+
+  # Note on the missing AWS::EC2::VolumeAttachment: the instance carries a
+  # CreationPolicy, so CloudFormation does not consider it created until the
+  # bootstrap signals, and an attachment resource would not run until then —
+  # while the bootstrap is waiting for the very volume it would attach. The
+  # instance therefore attaches the volume itself, which breaks the cycle.
+  Runner:
+    Type: AWS::EC2::Instance
+    DependsOn: [DefaultRoute, DataVolume]
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT20M
+        Count: 1
+    Properties:
+      ImageId: !Ref LatestAl2023AmiArm64
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SubnetId: !Ref PublicSubnet
+      SecurityGroupIds: [!Ref RunnerSecurityGroup]
+      Monitoring: true
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-runner" }
+        - { Key: Project, Value: !Ref ProjectName }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          exec > >(tee /var/log/atlas-bootstrap.log | logger -t atlas) 2>&1
+
+          TOKEN=$(curl -sf -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 300' \
+                    http://169.254.169.254/latest/api/token)
+          IID=$(curl -sf -H "X-aws-ec2-metadata-token: $TOKEN" \
+                    http://169.254.169.254/latest/meta-data/instance-id)
+          export AWS_DEFAULT_REGION=${AWS::Region}
+
+          signal() {
+            aws cloudformation signal-resource \
+              --stack-name ${AWS::StackName} \
+              --logical-resource-id Runner \
+              --unique-id "$IID" --status "$1" || true
+          }
+          trap 'signal FAILURE' ERR
+
+          dnf -y update
+          dnf -y install git jq python3.11 python3.11-pip python3.11-devel \
+                         gcc amazon-cloudwatch-agent
+
+          # ---- data volume: attach, format once, then mount by UUID forever --
+          for i in $(seq 1 60); do
+            state=$(aws ec2 describe-volumes --volume-ids ${DataVolume} \
+                      --query 'Volumes[0].State' --output text)
+            [ "$state" = "available" ] && break
+            [ "$state" = "in-use" ] && \
+              attached=$(aws ec2 describe-volumes --volume-ids ${DataVolume} \
+                --query 'Volumes[0].Attachments[0].InstanceId' --output text) && \
+              [ "$attached" = "$IID" ] && break
+            sleep 5
+          done
+          aws ec2 attach-volume --volume-id ${DataVolume} \
+            --instance-id "$IID" --device /dev/sdf || true
+
+          DEV=""
+          for i in $(seq 1 60); do
+            for cand in /dev/sdf /dev/xvdf /dev/nvme1n1; do
+              if [ -b "$cand" ]; then DEV="$cand"; break 2; fi
+            done
+            sleep 2
+          done
+          test -n "$DEV"
+
+          # blkid succeeding means this volume already carries a filesystem and
+          # a database. Formatting it would be the one unrecoverable mistake
+          # this script could make, so the test guards it rather than a flag.
+          if ! blkid "$DEV" >/dev/null 2>&1; then
+            mkfs -t xfs "$DEV"
+          fi
+          mkdir -p /opt/atlas/data
+          UUID=$(blkid -s UUID -o value "$DEV")
+          grep -q "$UUID" /etc/fstab || \
+            echo "UUID=$UUID /opt/atlas/data xfs defaults,nofail 0 2" >> /etc/fstab
+          mount -a
+
+          mkdir -p /opt/atlas/app /opt/atlas/data/cache /opt/atlas/data/subtitles
+          chown -R ec2-user:ec2-user /opt/atlas
+
+          # ---- .env, materialised from Secrets Manager on demand -------------
+          cat > /usr/local/bin/atlas-refresh-env <<'SCRIPT'
+          #!/bin/bash
+          # Rewrite /opt/atlas/app/.env from the stack secret. Safe to re-run;
+          # run it after rotating a key.
+          set -euo pipefail
+          SECRET_ID="__SECRET_ID__"
+          export AWS_DEFAULT_REGION="__REGION__"
+          ENV_FILE=/opt/atlas/app/.env
+          json=$(aws secretsmanager get-secret-value --secret-id "$SECRET_ID" \
+                   --query SecretString --output text)
+          umask 077
+          {
+            echo "# Generated by atlas-refresh-env from $SECRET_ID. Do not edit."
+            for k in ANTHROPIC_API_KEY TMDB_READ_TOKEN TMDB_API_KEY \
+                     OPENSUBTITLES_API_KEY OPENSUBTITLES_USERNAME \
+                     OPENSUBTITLES_PASSWORD; do
+              printf '%s=%s\n' "$k" "$(echo "$json" | jq -r --arg k "$k" '.[$k] // ""')"
+            done
+            echo "SUBTITLES_DIR=/opt/atlas/data/subtitles"
+            echo "ATLAS_MODEL=claude-opus-5"
+            echo "ATLAS_EFFORT=high"
+            echo "ATLAS_CONCURRENCY=6"
+          } > "$ENV_FILE"
+          chown ec2-user:ec2-user "$ENV_FILE"
+          chmod 600 "$ENV_FILE"
+          echo "wrote $ENV_FILE"
+          SCRIPT
+          sed -i "s|__SECRET_ID__|${Secret}|; s|__REGION__|${AWS::Region}|" \
+            /usr/local/bin/atlas-refresh-env
+          chmod 755 /usr/local/bin/atlas-refresh-env
+
+          # ---- snapshot the database file to S3 ------------------------------
+          cat > /usr/local/bin/atlas-snapshot <<'SCRIPT'
+          #!/bin/bash
+          # DuckDB is a single file, so a backup is a copy — and a colleague
+          # gets real scores to build against by pulling that file down and
+          # pointing their own checkout at it:
+          #
+          #   aws s3 cp s3://<bucket>/latest/atlas.duckdb data/atlas.duckdb
+          #
+          # No API key and no sweep of their own required.
+          #
+          # Run this when no sweep is in progress. DuckDB holds a write lock
+          # for the length of a run, and copying a file mid-write gives you a
+          # torn snapshot that looks fine until the day you need it.
+          set -euo pipefail
+          BUCKET="__DATA_BUCKET__"
+          export AWS_DEFAULT_REGION="__REGION__"
+          STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+          cd /opt/atlas/app
+          for f in data/atlas.duckdb data/bank.jsonl; do
+            [ -f "$f" ] || continue
+            base=$(basename "$f")
+            aws s3 cp "$f" "s3://$BUCKET/snapshots/$STAMP/$base"
+            aws s3 cp "$f" "s3://$BUCKET/latest/$base"
+          done
+          echo "snapshot $STAMP -> s3://$BUCKET/"
+          SCRIPT
+          sed -i "s|__DATA_BUCKET__|${DataBucket}|; s|__REGION__|${AWS::Region}|" \
+            /usr/local/bin/atlas-snapshot
+          chmod 755 /usr/local/bin/atlas-snapshot
+
+          # ---- publish the payload the interface reads -----------------------
+          cat > /usr/local/bin/atlas-publish <<'SCRIPT'
+          #!/bin/bash
+          # Push a session payload to /api/session.json on the demo site and
+          # drop the edge cache. Argument: path to the JSON file.
+          set -euo pipefail
+          SRC="$1"
+          BUCKET="__SITE_BUCKET__"
+          DIST="__DIST_ID__"
+          export AWS_DEFAULT_REGION="__REGION__"
+          test -f "$SRC"
+          jq empty "$SRC"
+          aws s3 cp "$SRC" "s3://$BUCKET/api/session.json" \
+            --content-type application/json --cache-control "no-cache"
+          aws cloudfront create-invalidation --distribution-id "$DIST" \
+            --paths '/api/*' >/dev/null
+          echo "published $SRC -> /api/session.json"
+          SCRIPT
+          sed -i "s|__SITE_BUCKET__|${SiteBucket}|; s|__DIST_ID__|${Distribution}|; s|__REGION__|${AWS::Region}|" \
+            /usr/local/bin/atlas-publish
+          chmod 755 /usr/local/bin/atlas-publish
+
+          # ---- pull the latest code and reinstall -----------------------------
+          cat > /usr/local/bin/atlas-update <<'SCRIPT'
+          #!/bin/bash
+          # What CI runs on the runner after a push, and what you run by hand
+          # to catch up. Lives here rather than in the workflow so that the
+          # update procedure is the same whoever invokes it.
+          #
+          # Discards local changes on the runner — it is a deployment target,
+          # not somewhere to edit code.
+          set -euxo pipefail
+          BRANCH="${!1:-main}"
+          cd /opt/atlas/app
+          sudo -u ec2-user git fetch --all --prune
+          sudo -u ec2-user git reset --hard "origin/$BRANCH"
+          sudo -u ec2-user /opt/atlas/app/.venv/bin/pip install -q -e '/opt/atlas/app[analysis]'
+          /usr/local/bin/atlas-refresh-env
+          sudo -u ec2-user /opt/atlas/app/.venv/bin/atlas init
+          echo "updated to $(git rev-parse --short HEAD)"
+          SCRIPT
+          chmod 755 /usr/local/bin/atlas-update
+
+          cat > /etc/cron.d/atlas-snapshot <<'CRON'
+          0 3 * * * ec2-user /usr/local/bin/atlas-snapshot >> /var/log/atlas-snapshot.log 2>&1
+          CRON
+
+          # ---- ship the bootstrap and snapshot logs to CloudWatch -------------
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/atlas.json <<'CWA'
+          {
+            "agent": { "run_as_user": "root" },
+            "logs": {
+              "logs_collected": {
+                "files": {
+                  "collect_list": [
+                    { "file_path": "/var/log/atlas-bootstrap.log",
+                      "log_group_name": "__LOG_GROUP__",
+                      "log_stream_name": "{instance_id}/bootstrap" },
+                    { "file_path": "/var/log/atlas-snapshot.log",
+                      "log_group_name": "__LOG_GROUP__",
+                      "log_stream_name": "{instance_id}/snapshot" }
+                  ]
+                }
+              }
+            }
+          }
+          CWA
+          sed -i "s|__LOG_GROUP__|${LogGroup}|g" \
+            /opt/aws/amazon-cloudwatch-agent/etc/atlas.json
+          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+            -a fetch-config -m ec2 -s \
+            -c file:/opt/aws/amazon-cloudwatch-agent/etc/atlas.json || true
+
+          # ---- clone and install, if we were given a token --------------------
+          GH=$(aws secretsmanager get-secret-value --secret-id ${Secret} \
+                 --query SecretString --output text | jq -r '.github_token // ""')
+          if [ -n "$GH" ] && [ ! -d /opt/atlas/app/.git ]; then
+            URL=$(echo '${RepoUrl}' | sed "s|https://|https://x-access-token:$GH@|")
+            sudo -u ec2-user git clone "$URL" /opt/atlas/app
+            # Put the clean URL back so the token is not sitting in .git/config,
+            # and let a credential helper fetch it from Secrets Manager when a
+            # pull actually needs it. Rotating the token then needs no change
+            # here, and CI's `git fetch` keeps working on a private repo.
+            sudo -u ec2-user git -C /opt/atlas/app remote set-url origin '${RepoUrl}'
+          fi
+
+          cat > /usr/local/bin/atlas-git-credential <<'SCRIPT'
+          #!/bin/bash
+          # git credential helper: answers only the "get" request, with a token
+          # read fresh each time and never written to disk.
+          [ "$1" = "get" ] || exit 0
+          echo username=x-access-token
+          printf 'password=%s\n' "$(aws secretsmanager get-secret-value \
+            --region __REGION__ --secret-id __SECRET_ID__ \
+            --query SecretString --output text | jq -r '.github_token // ""')"
+          SCRIPT
+          sed -i "s|__SECRET_ID__|${Secret}|; s|__REGION__|${AWS::Region}|" \
+            /usr/local/bin/atlas-git-credential
+          chmod 755 /usr/local/bin/atlas-git-credential
+          sudo -u ec2-user git config --global credential.helper \
+            /usr/local/bin/atlas-git-credential
+
+          # data/ on the repo side is a symlink to the mounted volume, so the
+          # CLI's ROOT-relative paths land on durable storage unchanged.
+          if [ ! -L /opt/atlas/app/data ]; then
+            rm -rf /opt/atlas/app/data
+            sudo -u ec2-user ln -s /opt/atlas/data /opt/atlas/app/data
+          fi
+
+          if [ -f /opt/atlas/app/pyproject.toml ]; then
+            sudo -u ec2-user python3.11 -m venv /opt/atlas/app/.venv
+            sudo -u ec2-user /opt/atlas/app/.venv/bin/pip install --upgrade pip
+            sudo -u ec2-user /opt/atlas/app/.venv/bin/pip install \
+              -e '/opt/atlas/app[analysis]'
+            /usr/local/bin/atlas-refresh-env
+            # Create the database file so the machine is usable the moment
+            # someone connects. `atlas init` is idempotent.
+            sudo -u ec2-user /opt/atlas/app/.venv/bin/atlas init \
+              || echo "atlas init failed; run it again inside the session"
+          fi
+          chown -R ec2-user:ec2-user /opt/atlas/data
+
+          cat > /etc/profile.d/atlas.sh <<'PROFILE'
+          # Session Manager drops you in as ssm-user; the project lives under
+          # ec2-user. `sudo su - ec2-user` puts you where the work is.
+          if [ "$(id -un)" = "ec2-user" ]; then
+            export ATLAS_HOME=/opt/atlas/app
+            [ -d "$ATLAS_HOME/.venv" ] && export PATH="$ATLAS_HOME/.venv/bin:$PATH"
+            cd "$ATLAS_HOME" 2>/dev/null || true
+          else
+            echo "moral-atlas runner — run: sudo su - ec2-user"
+          fi
+          PROFILE
+
+          signal SUCCESS
+
+  # ----------------------------------------------------- deploy from GitHub
+  # OIDC rather than an access key: GitHub presents a short-lived token that
+  # names the repository, the branch and the workflow run, and AWS trades it
+  # for temporary credentials. Nothing long-lived exists to leak, and the
+  # trust policy — not a secret — is what decides who may deploy.
+
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidc
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Condition: GitHubDeploy
+    Properties:
+      RoleName: !Sub "${ProjectName}-${EnvironmentName}-github-deploy"
+      Description: Assumed by GitHub Actions to deploy this stack and the site.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateOidc
+                - !Ref GitHubOidcProvider
+                - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                # Pinned to one branch of one repository. `sub` is issued by
+                # GitHub and cannot be forged by workflow code, so a fork's
+                # pull request cannot reach this account.
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
+      Policies:
+        # Publishing the interface: narrow, and the only thing most pushes do.
+        - PolicyName: publish-site
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:ListBucket]
+                Resource:
+                  - !GetAtt SiteBucket.Arn
+                  - !Sub "${SiteBucket.Arn}/*"
+              - Effect: Allow
+                Action: [cloudfront:CreateInvalidation, cloudfront:GetInvalidation]
+                Resource: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+              - Effect: Allow
+                Action: [cloudformation:DescribeStacks]
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
+
+        # Updating the checkout on the runner, in place, without a shell.
+        - PolicyName: update-runner
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}::document/AWS-RunShellScript"
+                  - !Sub "arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/${Runner}"
+              - Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations]
+                Resource: "*"
+
+        # Changing the stack itself. This one is broad and there is no honest
+        # way to make it narrow: the template creates IAM roles, so the role
+        # that deploys it can create IAM roles, which is close to admin. Treat
+        # write access to the deploy branch as write access to this account —
+        # protect the branch accordingly. Drop this policy if you would rather
+        # run ./infra/deploy.sh by hand and let CI publish only the site.
+        - PolicyName: manage-stack
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: cloudformation:*
+                Resource: !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
+              - Effect: Allow
+                Action: [cloudformation:ValidateTemplate, cloudformation:DescribeStacks]
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ec2:*
+                  - s3:*
+                  - cloudfront:*
+                  - iam:*
+                  - secretsmanager:*
+                  - logs:*
+                  - cloudwatch:*
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource: "*"
+
+  IdleStopAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: IdleShutdown
+    Properties:
+      AlarmName: !Sub "${ProjectName}-${EnvironmentName}-runner-idle"
+      AlarmDescription: >
+        Stops the runner after a sustained idle period. A pipeline sweep keeps
+        CPU above the threshold; an abandoned SSM session does not.
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+      Dimensions:
+        - { Name: InstanceId, Value: !Ref Runner }
+      Statistic: Average
+      Period: 3600
+      EvaluationPeriods: !Ref IdleShutdownHours
+      Threshold: 3
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Sub "arn:${AWS::Partition}:automate:${AWS::Region}:ec2:stop"
+
+Outputs:
+  SiteUrl:
+    Description: The demo URL to share with collaborators.
+    Value: !Sub "https://${Distribution.DomainName}"
+    Export: { Name: !Sub "${AWS::StackName}-SiteUrl" }
+
+  SiteBucketName:
+    Description: Where the interface is uploaded (see infra/deploy-site.sh).
+    Value: !Ref SiteBucket
+    Export: { Name: !Sub "${AWS::StackName}-SiteBucket" }
+
+  DistributionId:
+    Description: For cache invalidation after a site deploy.
+    Value: !Ref Distribution
+    Export: { Name: !Sub "${AWS::StackName}-DistributionId" }
+
+  DataBucketName:
+    Description: Versioned bucket holding DuckDB snapshots and bank exports.
+    Value: !Ref DataBucket
+    Export: { Name: !Sub "${AWS::StackName}-DataBucket" }
+
+  SecretName:
+    Description: Fill this in before the pipeline can do anything.
+    Value: !Sub "${ProjectName}/${EnvironmentName}/config"
+    Export: { Name: !Sub "${AWS::StackName}-SecretName" }
+
+  RunnerInstanceId:
+    Description: The pipeline runner.
+    Value: !Ref Runner
+    Export: { Name: !Sub "${AWS::StackName}-RunnerInstanceId" }
+
+  DeployRoleArn:
+    Condition: GitHubDeploy
+    Description: >
+      Set this as the AWS_DEPLOY_ROLE repository variable in GitHub — it is an
+      ARN, not a credential, so a variable is the right place for it.
+    Value: !GetAtt DeployRole.Arn
+    Export: { Name: !Sub "${AWS::StackName}-DeployRoleArn" }
+
+  ConnectCommand:
+    Description: Shell access — no SSH key, no bastion, no open port.
+    Value: !Sub "aws ssm start-session --region ${AWS::Region} --target ${Runner}"
+
+  StartRunnerCommand:
+    Description: After the idle alarm has stopped it.
+    Value: !Sub "aws ec2 start-instances --region ${AWS::Region} --instance-ids ${Runner}"

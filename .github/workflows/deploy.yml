@@ -1,0 +1,177 @@
+name: deploy
+
+# A push to main publishes the interface. It also updates the stack, or the
+# checkout on the runner, but only when those actually changed — most pushes
+# touch neither, and replacing an EC2 instance because someone edited a design
+# file is not a thing anyone wants to explain.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_stack:
+        description: Deploy the CloudFormation stack even if infra/ is unchanged
+        type: boolean
+        default: false
+
+concurrency:
+  # Two deploys racing to the same bucket and stack is how you get a site that
+  # disagrees with itself. Queue instead, and never cancel a half-run deploy.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-2
+  PROJECT: moral-atlas
+  ENVIRONMENT: dev
+
+permissions:
+  id-token: write     # required to request the OIDC token
+  contents: read
+
+jobs:
+  changes:
+    name: what changed
+    runs-on: ubuntu-latest
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        name: Compare against the previous commit
+        run: |
+          set -euo pipefail
+          BEFORE='${{ github.event.before }}'
+          # First push to a branch, a force-push, or a manual run: no usable
+          # base, so treat everything as changed rather than silently skipping.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "no usable base commit — treating everything as changed"
+            echo "infra=true" >> "$GITHUB_OUTPUT"
+            echo "code=true"  >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" '${{ github.sha }}')
+          echo "$CHANGED"
+          grep -qE '^infra/'                        <<<"$CHANGED" && I=true || I=false
+          grep -qE '^(src/|seeds/|pyproject\.toml)' <<<"$CHANGED" && C=true || C=false
+          echo "infra=$I" >> "$GITHUB_OUTPUT"
+          echo "code=$C"  >> "$GITHUB_OUTPUT"
+
+  test:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e . pytest
+      - run: pytest -q
+
+  stack:
+    name: cloudformation
+    needs: [changes, test]
+    if: needs.changes.outputs.infra == 'true' || inputs.deploy_stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # SITE_PASSWORD is left unset on purpose: an omitted parameter keeps the
+      # value the stack already has, so CI never needs to know it.
+      - run: ./infra/deploy.sh
+        env:
+          PROJECT: ${{ env.PROJECT }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+
+  site:
+    name: publish site
+    needs: [changes, test, stack]
+    # `always()` because `stack` is skipped on most pushes, and a skipped
+    # dependency would otherwise skip this too. A *failed* stack deploy still
+    # stops us — publishing against a broken stack helps nobody.
+    if: always() && needs.test.result == 'success' && needs.stack.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: ./infra/deploy-site.sh
+        env:
+          PROJECT: ${{ env.PROJECT }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+
+      - name: Report the URL
+        run: |
+          URL=$(aws cloudformation describe-stacks \
+                  --stack-name "$PROJECT-$ENVIRONMENT" \
+                  --query "Stacks[0].Outputs[?OutputKey=='SiteUrl'].OutputValue" \
+                  --output text)
+          echo "### Demo → $URL" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PROJECT: ${{ env.PROJECT }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+
+  runner:
+    name: update runner
+    needs: [changes, test]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Pull and reinstall on the runner
+        run: |
+          set -euo pipefail
+          STACK="$PROJECT-$ENVIRONMENT"
+          INSTANCE=$(aws cloudformation describe-stacks --stack-name "$STACK" \
+            --query "Stacks[0].Outputs[?OutputKey=='RunnerInstanceId'].OutputValue" \
+            --output text)
+
+          # The idle alarm stops the runner overnight, which is the point of
+          # it. A stopped instance is not a failure — there is simply nothing
+          # to update, and the next boot pulls anyway.
+          STATE=$(aws ec2 describe-instances --instance-ids "$INSTANCE" \
+            --query 'Reservations[0].Instances[0].State.Name' --output text)
+          if [ "$STATE" != "running" ]; then
+            echo "runner is $STATE — skipping" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # One command, so there is no shell quoting to get wrong here. The
+          # update procedure itself lives on the instance as atlas-update.
+          CMD=$(aws ssm send-command \
+            --instance-ids "$INSTANCE" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ${{ github.sha }}" \
+            --parameters 'commands=["/usr/local/bin/atlas-update main"]' \
+            --query 'Command.CommandId' --output text)
+
+          echo "ssm command $CMD"
+          aws ssm wait command-executed --command-id "$CMD" --instance-id "$INSTANCE" \
+            || true
+          STATUS=$(aws ssm get-command-invocation --command-id "$CMD" \
+            --instance-id "$INSTANCE" --query Status --output text)
+          aws ssm get-command-invocation --command-id "$CMD" \
+            --instance-id "$INSTANCE" --query StandardOutputContent --output text
+          echo "runner update: $STATUS" >> "$GITHUB_STEP_SUMMARY"
+          [ "$STATUS" = "Success" ]
+        env:
+          PROJECT: ${{ env.PROJECT }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}

@@ -106,3 +106,75 @@ def test_rendered_form_round_trips_for_slicing():
     assert cues[0].start_ms == 12_000
     assert cues[-1].text == "It is time."
     assert len(sub.slice_by_position(cues, 0.85, 1.0)) == 2
+
+
+# --- OPUS archive access -------------------------------------------------
+
+def test_imdb_key_strips_prefix_and_leading_zeros():
+    """OPUS directory names are the bare integer: tt0110357 -> 110357.
+    Searching for the zero-padded form silently finds nothing."""
+    from moral_atlas.sources import opus
+    assert opus.imdb_key("tt0110357") == "110357"
+    assert opus.imdb_key("tt2321549") == "2321549"
+    assert opus.imdb_key("0042876") == "42876"
+
+
+def test_plausibility_rejects_concatenated_tracks():
+    """The largest Lion King track in OPUS is a concatenated dual-language file:
+    3,132 cues running to 165 minutes for an 88-minute picture. Accepting it
+    would put the 'closing 15%' slice in the wrong place entirely."""
+    from moral_atlas.sources import opus
+
+    good = [(i * 3_500, f"line {i}") for i in range(1_498)]      # ends ~87 min
+    ok, why = opus._plausibility(good, runtime=88)
+    assert ok, why
+
+    concatenated = [(i * 3_170, f"line {i}") for i in range(3_132)]  # ends ~165 min
+    ok, why = opus._plausibility(concatenated, runtime=88)
+    assert not ok and "runtime" in why
+
+    assert not opus._plausibility([], runtime=88)[0]
+    stub = [(i * 1000, "x") for i in range(40)]
+    assert not opus._plausibility(stub, runtime=88)[0]
+
+
+def test_plausibility_without_runtime_uses_absolute_bounds():
+    """Wikidata does not always carry a runtime, so the sanity band still has
+    to catch the worst cases on its own."""
+    from moral_atlas.sources import opus
+    absurd = [(i * 60_000, "x") for i in range(400)]             # 6.6 hours
+    assert not opus._plausibility(absurd, runtime=None)[0]
+    fine = [(i * 3_500, "x") for i in range(1_500)]
+    assert opus._plausibility(fine, runtime=None)[0]
+
+
+def test_parse_opus_xml_carries_timestamps_forward():
+    """Sentences without their own <time> marker inherit the last one, so they
+    stay on the timeline instead of being dropped from act-position slices."""
+    from moral_atlas.sources import opus
+    xml = b"""<?xml version="1.0" encoding="utf-8"?>
+    <document id="1">
+      <s id="1"><time id="T1S" value="00:01:20,720"/>From the day we arrive<time id="T1E" value="00:01:22,995"/></s>
+      <s id="2">On the planet</s>
+      <s id="3"><time id="T3S" value="01:20:04,000"/>Remember who you are<time id="T3E" value="01:20:07,000"/></s>
+    </document>"""
+    cues = opus.parse_opus_xml(xml)
+    assert [t for _, t in cues] == ["From the day we arrive", "On the planet",
+                                    "Remember who you are"]
+    assert cues[0][0] == 80_720
+    assert cues[1][0] == 80_720          # inherited, not dropped
+    assert cues[2][0] == 4_804_000
+
+
+def test_plausibility_scales_density_with_runtime():
+    """The Wolf of Wall Street is 180 minutes with ~4,370 cues — 24 per minute,
+    entirely normal for a dialogue-dense three-hour film. A flat cue ceiling
+    rejects it as corrupt, so density has to be measured per minute."""
+    from moral_atlas.sources import opus
+    wolf = [(int(i * 180 * 60_000 / 4_370), "f-bomb") for i in range(4_370)]
+    ok, why = opus._plausibility(wolf, runtime=180)
+    assert ok, why
+
+    # A dead track that ticks along with almost no dialogue is still wrong.
+    sparse = [(i * 120_000, "…") for i in range(60)]
+    assert not opus._plausibility(sparse, runtime=120)[0]

@@ -166,3 +166,41 @@ def fetch(title: str, year: int | None = None, article: str | None = None) -> di
         "lead": next((b for p, b in sections if p == ("__lead__",)), ""),
         "all_headings": [" > ".join(p) for p, _ in sections if p != ("__lead__",)],
     }
+
+
+WIKIDATA_API = "https://www.wikidata.org/w/api.php"
+
+
+def wikidata_facts(article: str) -> dict[str, Any]:
+    """Get IMDb id (P345) and runtime in minutes (P2047) from Wikidata.
+
+    Needs no credential, which matters more than it looks. The OPUS subtitle
+    archive is keyed by IMDb id, so without this the only route to one is a TMDB
+    account. Runtime matters too: OPUS holds dozens of tracks per film including
+    concatenated dual-language files, and runtime is what tells a plausible
+    track from a corrupt one.
+    """
+    data = cached_get(
+        "wikidata", WIKIDATA_API,
+        {"action": "wbgetentities", "sites": "enwiki", "titles": article,
+         "props": "claims", "format": "json", "formatversion": 2},
+    )
+    out: dict[str, Any] = {"imdb_id": None, "runtime": None}
+    for entity in (data.get("entities") or {}).values():
+        claims = entity.get("claims") or {}
+        for claim in claims.get("P345", []):
+            value = (claim.get("mainsnak", {}).get("datavalue", {}) or {}).get("value")
+            if value and out["imdb_id"] is None:
+                out["imdb_id"] = str(value)
+        for claim in claims.get("P2047", []):
+            value = (claim.get("mainsnak", {}).get("datavalue", {}) or {}).get("value")
+            if isinstance(value, dict) and out["runtime"] is None:
+                try:
+                    out["runtime"] = int(float(value.get("amount", 0)))
+                except (TypeError, ValueError):
+                    pass
+    return out
+
+
+def imdb_id(article: str) -> str | None:
+    return wikidata_facts(article).get("imdb_id")

@@ -10,3 +10,7 @@ build/
 dist/
 .pytest_cache/
 .DS_Store
+
+# Claude Code local worktrees and session scratch
+.claude/
+.pytest_cache/

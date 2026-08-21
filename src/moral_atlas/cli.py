@@ -85,6 +85,22 @@ def ingest(
     console.print(table)
 
 
+@app.command("opus-index")
+def opus_index(
+    version: str = typer.Option("v2024", help="OPUS release: v2018 or v2024."),
+    lang: str = typer.Option("en"),
+    force: bool = typer.Option(False, help="Rebuild even if cached."),
+) -> None:
+    """Index the OPUS subtitle archive (one-off ranged download of its directory).
+
+    After this, individual films cost ~80 KB each with no account and no daily
+    limit — instead of 20 downloads/day from the OpenSubtitles API.
+    """
+    from .sources import opus
+    index = opus.build_index(version, lang, force, progress=console.print)
+    console.print(f"[green]ready[/] {len(index):,} titles indexed")
+
+
 @app.command()
 def status() -> None:
     """Per-film evidence completeness and which variants can run."""

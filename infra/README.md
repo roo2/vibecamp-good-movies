@@ -157,10 +157,28 @@ aws s3 cp data/atlas.sqlite "s3://$BUCKET/latest/atlas.sqlite"
 That is the whole local setup for someone picking up the front end or the
 analysis — real scores, no API key, no sweep of their own.
 
+## Public or private
+
+```bash
+SITE_AUTH=false ./infra/deploy.sh                      # open to anyone
+SITE_PASSWORD='pick-something' ./infra/deploy.sh       # back behind a password
+```
+
+`dev` currently runs with `SITE_AUTH=false`. Two consequences worth stating
+plainly, because neither is obvious from the switch itself:
+
+- **`/admin*` disappears entirely** when auth is off — the origin and the
+  behaviour are both conditional on it. That is deliberate: an unauthenticated
+  CRUD admin on the open internet would be a genuinely bad idea. Use the SSM
+  port-forwarding recipes below instead.
+- **The API is open**, including the endpoints that write. Anyone can create a
+  user, open a session and record ratings against the production database. For a
+  demo that is the point; it is not a state to leave a real dataset in.
+
 ## Administering the database
 
-The admin is public, at `/admin` on the site distribution, behind the same HTTP
-basic auth as the rest of the private site:
+With `SITE_AUTH=true` the admin is at `/admin` on the site distribution, behind
+the same HTTP basic auth as the rest of the private site:
 
 ```
 https://<SiteUrl>/admin/

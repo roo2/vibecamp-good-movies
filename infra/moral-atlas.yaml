@@ -515,10 +515,16 @@ Resources:
 
   # A CloudFront origin must be a stable name. Without an EIP the runner's
   # public IP changes every time the idle alarm stops it and someone starts it
-  # again, and the admin would 502 until the stack was updated.
+  # again, and the origins would 502 until the stack was updated.
+  #
+  # Deliberately NOT conditional on SiteAuth, though it used to be, back when the
+  # admin was the only thing behind a stable name. The API origin needs one too
+  # and is not conditional — so tying the address to the auth switch means that
+  # turning auth off deletes the EIP and leaves both origins pointed at a DNS
+  # name that no longer resolves to this instance. Turning off a password should
+  # not change where the site is.
   RunnerEip:
     Type: AWS::EC2::EIP
-    Condition: SiteAuth
     Properties:
       Domain: vpc
       Tags:
@@ -526,7 +532,6 @@ Resources:
 
   RunnerEipAssociation:
     Type: AWS::EC2::EIPAssociation
-    Condition: SiteAuth
     Properties:
       AllocationId: !GetAtt RunnerEip.AllocationId
       InstanceId: !Ref Runner

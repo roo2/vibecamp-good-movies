@@ -42,6 +42,14 @@ class Settings:
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 
+    # Where the landing page at `/` sends people. The defaults are the local dev
+    # ports. On the deployed box the admin UIs are bound to 127.0.0.1 and reached
+    # over an SSM tunnel, so the operator sets these rather than the page
+    # guessing at a hostname it cannot know.
+    frontend_url: str = os.environ.get("ATLAS_FRONTEND_URL", "http://localhost:5173")
+    datasette_url: str = os.environ.get("ATLAS_DATASETTE_URL", "http://localhost:8001")
+    sqliteweb_url: str = os.environ.get("ATLAS_SQLITEWEB_URL", "http://localhost:8002")
+
     @property
     def has_tmdb(self) -> bool:
         return bool(self.tmdb_read_token or self.tmdb_api_key)

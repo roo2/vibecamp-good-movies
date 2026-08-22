@@ -26,6 +26,7 @@ def isolated_web_database(monkeypatch, tmp_path):
         db.upsert_film({
             "film_id": f"film-{index}", "title": f"Film {index}", "year": 2000 + index,
             "description": f"A spoiler-free story prompt number {index}.",
+            "artwork_url": f"https://example.test/posters/film-{index}.jpg",
         })
     return db
 
@@ -80,6 +81,7 @@ def test_movie_reaction_is_captured_for_the_active_user():
     films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=headers)
     assert films.status_code == 200
     assert len(films.json()["films"]) == 5
+    assert all(film["artwork_url"] for film in films.json()["films"])
     film_id = films.json()["films"][0]["id"]
 
     rating = client.post(
@@ -93,6 +95,24 @@ def test_movie_reaction_is_captured_for_the_active_user():
     saved = client.get("/api/onboarding/ratings", headers=headers)
     assert saved.status_code == 200
     assert saved.json()[0]["film_id"] == film_id
+
+
+def test_session_direct_deck_uses_only_films_with_artwork(isolated_web_database):
+    from moral_atlas.web.film_service import build_session_deck
+
+    films = isolated_web_database.list_films()
+    with isolated_web_database.connect() as con:
+        con.execute("UPDATE films SET artwork_url=NULL")
+        for film in films[:5]:
+            con.execute(
+                "UPDATE films SET artwork_url=? WHERE film_id=?",
+                [f"https://example.test/posters/{film['film_id']}.jpg", film["film_id"]],
+            )
+
+    deck = build_session_deck()
+    assert len(deck["direct"]) == 5
+    assert set(deck["direct"]) == {film["film_id"] for film in films[:5]}
+    assert set(deck["direct"]).isdisjoint({film_id for pair in deck["pairs"] for film_id in pair})
 
 
 def test_session_members_receive_the_same_named_and_blind_film_deck(isolated_web_database):

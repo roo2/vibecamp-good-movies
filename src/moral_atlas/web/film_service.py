@@ -42,12 +42,20 @@ def build_session_deck() -> dict[str, list[Any]]:
     """Create one shared, non-overlapping deck for a group session."""
     db.init_db()
     films = deck_eligible_films()
-    if len(films) < 15:
+    films_with_artwork = [film for film in films if (film.get("artwork_url") or "").strip()]
+    if len(films) < 15 or len(films_with_artwork) < 5:
         return {"direct": [], "pairs": []}
-    selected = random.SystemRandom().sample(films, k=15)
+
+    # The first five cards are named films, so they should always have their
+    # poster available. The later blind-story cards deliberately conceal their
+    # titles and can use the wider eligible corpus.
+    chooser = random.SystemRandom()
+    direct = chooser.sample(films_with_artwork, k=5)
+    direct_ids = {film["film_id"] for film in direct}
+    blind = chooser.sample([film for film in films if film["film_id"] not in direct_ids], k=10)
     return {
-        "direct": [film["film_id"] for film in selected[:5]],
-        "pairs": [[selected[index]["film_id"], selected[index + 1]["film_id"]] for index in range(5, 15, 2)],
+        "direct": [film["film_id"] for film in direct],
+        "pairs": [[blind[index]["film_id"], blind[index + 1]["film_id"]] for index in range(0, 10, 2)],
     }
 
 

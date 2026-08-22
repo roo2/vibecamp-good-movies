@@ -27,7 +27,7 @@ def save_test_result(
     for question_id, choice_id in request.answers.items():
         if choice_id not in VALID_ANSWERS.get(question_id, set()):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown question or answer.")
-    return persist_test_result(session.user.id, request.answers)
+    return persist_test_result(session.user.id, request.answers, request.session_share_token)
 
 
 @router.get("/results", response_model=list[TestResult])

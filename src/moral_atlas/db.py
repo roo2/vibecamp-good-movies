@@ -172,6 +172,27 @@ CREATE TABLE IF NOT EXISTS test_results (
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_movie_ratings_user ON movie_ratings (user_id, submitted_at);
 CREATE INDEX IF NOT EXISTS idx_test_results_user ON test_results (user_id, submitted_at);
+
+CREATE TABLE IF NOT EXISTS group_sessions (
+    session_id         TEXT PRIMARY KEY,
+    share_token        TEXT NOT NULL UNIQUE,
+    host_user_id       TEXT NOT NULL REFERENCES users(user_id),
+    status             TEXT NOT NULL DEFAULT 'lobby',
+    created_at         TEXT NOT NULL,
+    started_at         TEXT,
+    waiting_started_at TEXT,
+    continued_at       TEXT
+);
+
+CREATE TABLE IF NOT EXISTS session_members (
+    session_id   TEXT NOT NULL REFERENCES group_sessions(session_id),
+    user_id      TEXT NOT NULL REFERENCES users(user_id),
+    joined_at    TEXT NOT NULL,
+    completed_at TEXT,
+    PRIMARY KEY (session_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_members_user ON session_members (user_id);
 """
 
 

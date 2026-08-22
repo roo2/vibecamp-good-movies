@@ -20,6 +20,7 @@ class AccessResponse(BaseModel):
 
 class TestResultRequest(BaseModel):
     answers: dict[str, str] = Field(default_factory=dict)
+    session_share_token: str | None = Field(default=None, min_length=1, max_length=120)
 
 
 class TestResult(BaseModel):
@@ -41,3 +42,25 @@ class MovieRating(BaseModel):
     film_id: str
     reaction: str
     submitted_at: datetime
+
+
+class GroupSession(BaseModel):
+    id: str
+    share_token: str
+    host_user_id: str
+    status: str
+    created_at: datetime
+    started_at: datetime | None = None
+    waiting_started_at: datetime | None = None
+    continued_at: datetime | None = None
+
+
+class SessionMember(BaseModel):
+    user: User
+    joined_at: datetime
+    completed_at: datetime | None = None
+
+
+class GroupSessionStatus(GroupSession):
+    members: list[SessionMember]
+    can_continue_without_members: bool

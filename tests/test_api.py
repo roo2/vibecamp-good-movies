@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -81,3 +82,51 @@ def test_movie_reaction_is_captured_for_the_active_user(monkeypatch):
     saved = client.get("/api/onboarding/ratings", headers={"X-Session-Token": access["token"]})
     assert saved.status_code == 200
     assert saved.json()[0]["film_id"] == "the-lion-king-1994"
+
+
+def test_group_session_tracks_members_and_unlocks_when_everyone_completes():
+    host = client.post("/api/access", json={"name": "Ada"}).json()
+    guest = client.post("/api/access", json={"name": "Sam"}).json()
+    host_headers = {"X-Session-Token": host["token"]}
+    guest_headers = {"X-Session-Token": guest["token"]}
+
+    created = client.post("/api/sessions", headers=host_headers)
+    assert created.status_code == 201
+    share_token = created.json()["share_token"]
+    assert client.post(f"/api/sessions/{share_token}/join", headers=guest_headers).status_code == 200
+    assert client.post(f"/api/sessions/{share_token}/start", headers=host_headers).status_code == 200
+
+    for headers in (host_headers, guest_headers):
+        response = client.post("/api/test/results", headers=headers, json={
+            "answers": {"responsibility": "a"}, "session_share_token": share_token,
+        })
+        assert response.status_code == 201
+
+    assert client.post(f"/api/sessions/{share_token}/wait", headers=host_headers).status_code == 200
+    session_status = client.get(f"/api/sessions/{share_token}", headers=host_headers).json()
+    assert [member["user"]["name"] for member in session_status["members"]] == ["Ada", "Sam"]
+    assert all(member["completed_at"] for member in session_status["members"])
+    continued = client.post(f"/api/sessions/{share_token}/continue", headers=host_headers)
+    assert continued.status_code == 200
+    assert continued.json()["status"] == "results_started"
+
+
+def test_host_can_continue_after_waiting_ten_minutes_with_incomplete_members(isolated_web_database):
+    host = client.post("/api/access", json={"name": "Ada"}).json()
+    guest = client.post("/api/access", json={"name": "Sam"}).json()
+    host_headers = {"X-Session-Token": host["token"]}
+    group_session = client.post("/api/sessions", headers=host_headers).json()
+    share_token = group_session["share_token"]
+    client.post(f"/api/sessions/{share_token}/join", headers={"X-Session-Token": guest["token"]})
+    client.post(f"/api/sessions/{share_token}/start", headers=host_headers)
+    client.post(f"/api/sessions/{share_token}/wait", headers=host_headers)
+
+    assert client.post(f"/api/sessions/{share_token}/continue", headers=host_headers).status_code == 403
+    with isolated_web_database.connect() as con:
+        con.execute(
+            "UPDATE group_sessions SET waiting_started_at=? WHERE share_token=?",
+            [(datetime.now(timezone.utc) - timedelta(minutes=11)).isoformat(), share_token],
+        )
+    continued = client.post(f"/api/sessions/{share_token}/continue", headers=host_headers)
+    assert continued.status_code == 200
+    assert continued.json()["status"] == "results_started"

@@ -547,7 +547,7 @@ def migrate_db(
 @app.command("dataset")
 def dataset_cmd(
     out: str = typer.Option(
-        "src/frontend/public/api/atlas.json",
+        "src/frontend/public/data/atlas.json",
         help="Where to write. The default is the path the interface reads, and "
              "is copied into the published site by `vite build`."),
     version: str = typer.Option("d1", help="Dimension version."),
@@ -564,6 +564,15 @@ def dataset_cmd(
     a document that says so rather than one that fails.
     """
     from .analysis import dataset as dataset_mod
+
+    # "Safe to run at any stage" means any stage of the pipeline, not "before
+    # there is a database". Without this the failure is a raw OperationalError
+    # about a missing table, which tells you nothing about what to do next.
+    if not settings().db_path.exists():
+        console.print(f"[red]no store at[/] {settings().db_path}")
+        console.print("[dim]run `atlas init`, then ingest, before building the dataset[/]")
+        raise typer.Exit(1)
+
     path, payload = dataset_mod.write(out, version, bank, evidence)
     totals = payload["totals"]
 
@@ -591,7 +600,7 @@ def dataset_cmd(
             "[yellow]No axes or no placements[/] — the interface will show the "
             "extraction stage only, which is honest but not the whole story. "
             "Run `atlas dimensions` and `atlas score` to fill it in.")
-    console.print("[dim]the interface reads this at /api/atlas.json[/]")
+    console.print("[dim]the interface reads this at /data/atlas.json[/]")
 
 
 @app.command("export")

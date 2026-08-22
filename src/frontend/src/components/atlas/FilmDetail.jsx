@@ -1,5 +1,6 @@
 import React from 'react'
 import { FATE_LABELS, loadFilmEvidence } from '../../services/atlasService.js'
+import FilmAxes from './FilmAxes.jsx'
 
 function Field({ label, value }) {
   if (!value) return null
@@ -24,19 +25,8 @@ function ListField({ label, values }) {
 // The source text every claim about this film was read from. It is the point of
 // the corpus that this is checkable, so it is here rather than described — but
 // it is fetched per film, and only once the panel is open.
-function Evidence({ film }) {
-  const [state, setState] = React.useState({ status: 'idle' })
-
-  React.useEffect(() => {
-    if (!film.evidence_layers?.length) return undefined
-    let live = true
-    setState({ status: 'loading' })
-    loadFilmEvidence(film.id)
-      .then((document) => live && setState({ status: 'ready', document }))
-      .catch((error) => live && setState({ status: 'failed', message: error.message }))
-    return () => { live = false }
-  }, [film.id, film.evidence_layers])
-
+function Evidence({ state }) {
+  const film = state.film
   if (!film.evidence_layers?.length) return null
 
   return (
@@ -64,7 +54,16 @@ function Evidence({ film }) {
 
 function FilmDetail({ film, dimensions, onClose }) {
   const skeleton = film.skeleton
-  const names = new Map((dimensions || []).map((dim) => [dim.dim_id, dim]))
+  const [state, setState] = React.useState({ status: 'loading', film })
+
+  React.useEffect(() => {
+    let live = true
+    setState({ status: 'loading', film })
+    loadFilmEvidence(film.id)
+      .then((document) => live && setState({ status: 'ready', film, document }))
+      .catch((error) => live && setState({ status: 'failed', film, message: error.message }))
+    return () => { live = false }
+  }, [film])
 
   return (
     <aside className="film-detail" aria-label={`${film.title} in full`}>
@@ -83,37 +82,24 @@ function FilmDetail({ film, dimensions, onClose }) {
 
       {film.description && <p className="detail-blurb">{film.description}</p>}
 
+      {/* The axes lead. They are the instrument this project built, and the
+          skeleton below is the reading they were derived from — not the other
+          way round. */}
+      <FilmAxes
+        dimensions={dimensions || []}
+        axes={state.document?.axes}
+        profile={film.profile}
+      />
+      {state.status === 'loading' && (
+        <p className="detail-muted">Fetching the verdicts behind these positions…</p>
+      )}
+      {state.status === 'failed' && <p className="detail-muted">{state.message}</p>}
+
       {!skeleton && <p className="detail-empty">No skeleton has been extracted for this film yet.</p>}
 
       {skeleton && (
         <>
-          {film.profile?.length > 0 && (
-            <div className="detail-field">
-              <span>Strongest axes</span>
-              <ul className="detail-axes">
-                {[...film.profile]
-                  .sort((a, b) => Math.abs(b.net) * b.n_items - Math.abs(a.net) * a.n_items)
-                  .slice(0, 4)
-                  .map((row) => {
-                    const dim = names.get(row.dim_id)
-                    if (!dim) return null
-                    return (
-                      <li key={row.dim_id}>
-                        <b>{dim.name}</b>
-                        {/* The pole wears the same colour it wears in the chart,
-                            or the panel and the bars disagree about which end
-                            of the axis this film is on. */}
-                        <em className={row.net > 0 ? 'high' : 'low'}>
-                          {row.net > 0 ? dim.pole_high : dim.pole_low}
-                        </em>
-                        <span>{row.net > 0 ? '+' : ''}{row.net.toFixed(2)} over {row.n_items} items</span>
-                      </li>
-                    )
-                  })}
-              </ul>
-            </div>
-          )}
-
+          <h4 className="detail-section">What the film was read as saying</h4>
           <Field label="Source of legitimate authority" value={skeleton.legitimacy_source} />
           <Field label="Who holds power at the open" value={skeleton.opening_power} />
           <Field label="Who holds power at the close" value={skeleton.closing_power} />
@@ -161,7 +147,7 @@ function FilmDetail({ film, dimensions, onClose }) {
         </>
       )}
 
-      <Evidence film={film} />
+      <Evidence state={state} />
     </aside>
   )
 }

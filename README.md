@@ -81,10 +81,21 @@ JSON document rather than the store, because the demo site is static S3 behind
 CloudFront and cannot query a database:
 
 ```bash
-atlas dataset                      # -> src/frontend/public/api/atlas.json
-cd src/frontend && npm run build   # copies it into dist/api/atlas.json
+atlas dataset                      # -> src/frontend/public/data/atlas.json
+cd src/frontend && npm run build   # copies it into dist/data/atlas.json
 SITE_DIR=src/frontend/dist ./infra/deploy-site.sh
 ```
+
+The page is built around the reduction the project claims — 696 harvested
+propositions down to 8 axes — and around the evidence that the reduction is
+real rather than imposed. `atlas dataset` runs the same battery
+`atlas dimensions-validate` prints (blind re-assignment, and two permutation
+tests against verdicts recorded before the axes existed) and publishes the
+numbers with the seed that produced them, so a figure on the page can be
+reproduced from the command line. It is a few seconds of arithmetic with no API
+call. Each film is then presented axis by axis, and every position expands into
+the propositions it was scored on, the verdict, and the grounding the scorer
+gave — so a number can be read back to the sentences behind it.
 
 Re-run `atlas dataset` after any pipeline stage; the page shows whatever the
 store holds at that moment, and says which evidence condition every film was
@@ -93,7 +104,7 @@ user data.
 
 The source text travels with it, so every claim is checkable against what it was
 read from: plot, themes, reception and the dialogue track. That is 3MB against a
-240KB index, so it is written as one file per film — `api/atlas/<film_id>.json`
+240KB index, so it is written as one file per film — `data/atlas/<film_id>.json`
 — and fetched only when somebody opens that film. `--no-evidence` leaves it out.
 Locally the same page also reads a live `GET /api/atlas`, so a pipeline run shows
 up on reload without a rebuild.

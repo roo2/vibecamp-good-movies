@@ -1,13 +1,18 @@
 // The dataset the explorer reads.
 //
 // Two sources, in this order, because the demo and the dev box are not the same
-// machine. `/api/atlas.json` is a file `atlas dataset` writes into `public/`,
-// which `vite build` copies into the published site — the demo is static S3
-// behind CloudFront and cannot query a database, so on the public URL this is
-// the only thing that answers. `/api/atlas` is the live API, which is what you
-// want locally: it re-reads the store on every request, so a pipeline run shows
-// up on reload without a rebuild.
-const STATIC_PATH = '/api/atlas.json'
+// machine. `/data/atlas.json` is a file `atlas dataset` writes into `public/`,
+// which `vite build` copies into the published site; the demo serves it straight
+// from the bucket, so the page renders whether or not the runner is up.
+//
+// It is deliberately NOT under /api. CloudFront routes /api/* to the runner and
+// everything else to the bucket, so a published file under that prefix would be
+// answered by the API — which has no route for it — rather than by S3.
+//
+// `/api/atlas` is the live API, which is what you want locally and on the
+// runner: it re-reads the store on every request, so a pipeline run shows up on
+// reload without a rebuild.
+const STATIC_PATH = '/data/atlas.json'
 const LIVE_PATH = '/api/atlas'
 
 async function fetchJson(path) {
@@ -41,7 +46,7 @@ export async function loadAtlas() {
 export async function loadFilmEvidence(filmId) {
   const id = encodeURIComponent(filmId)
   try {
-    const body = await fetch(`/api/atlas/${id}.json`, { headers: { Accept: 'application/json' } })
+    const body = await fetch(`/data/atlas/${id}.json`, { headers: { Accept: 'application/json' } })
       .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
     if (!Array.isArray(body?.layers)) throw new Error('not an evidence document')
     return body

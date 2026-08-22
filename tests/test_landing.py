@@ -33,6 +33,7 @@ def test_root_serves_html_with_both_doors(client, monkeypatch):
     assert "localhost:8001" in body          # the data door
     assert "Payback or Mercy" in body
     assert "696" in body                     # counts are formatted with separators
+    assert "localhost:5173/#/atlas" in body  # the dataset explorer, inside the app
 
 
 def test_root_renders_on_an_empty_store(client, monkeypatch):

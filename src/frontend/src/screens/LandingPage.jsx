@@ -33,7 +33,11 @@ function LandingPage({ onSignIn, joining = false }) {
           {error && <p className="message" role="alert">{error}</p>}
           <button className="peach-button" type="submit" disabled={submitting}>{submitting ? 'Joining…' : <>{joining ? 'Join session' : 'Continue'} <span aria-hidden="true">→</span></>}</button>
         </form>
-        <p className="login-footer">For now this is a simple name-only session.</p>
+        <p className="login-footer">
+          For now this is a simple name-only session.
+          <br />
+          <a className="quiet-link" href="#/atlas">See the dataset behind it →</a>
+        </p>
       </section>
     </main>
   )

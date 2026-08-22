@@ -190,13 +190,19 @@ against a fixed bank of propositions under four different evidence conditions.
 This page is the way in.</p>
 
 <section>
-  <h2>Two doors</h2>
+  <h2>Three doors</h2>
   <div class="doors">
     <a class="door" href="{frontend_url}">
       <strong>The app</strong>
       <p>The matching flow — answer the questions, then find a film two people
       can agree on.</p>
       <u>{frontend_label}</u>
+    </a>
+    <a class="door" href="{explorer_url}">
+      <strong>The dataset</strong>
+      <p>The explorer, inside the interface: the derived axes, where every film
+      sits on them, and each film's full moral skeleton. Public, no sign-in.</p>
+      <u>{explorer_label}</u>
     </a>
     <a class="door" href="{datasette_url}">
       <strong>The data</strong>
@@ -255,9 +261,15 @@ def landing() -> HTMLResponse:
         _stat("scores", snap["scores"], "film x item x condition"),
     ])
 
+    # The explorer is a route inside the interface rather than a service of its
+    # own, so it is wherever the front end is, plus a hash.
+    explorer_url = f"{s.frontend_url.rstrip('/')}/#/atlas"
+
     return HTMLResponse(PAGE.format(
         frontend_url=escape(s.frontend_url, quote=True),
         frontend_label=escape(_label(s.frontend_url)),
+        explorer_url=escape(explorer_url, quote=True),
+        explorer_label=escape(_label(explorer_url)),
         datasette_url=escape(s.datasette_url, quote=True),
         datasette_label=escape(_label(s.datasette_url)),
         sqliteweb_url=escape(s.sqliteweb_url, quote=True),

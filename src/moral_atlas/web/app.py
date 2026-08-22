@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import access, landing, onboarding, profile, sessions, shortlist, test
+from .routes import access, atlas, landing, onboarding, profile, sessions, shortlist, test
 
 app = FastAPI(title="Moral Atlas API", version="0.1.0")
 app.add_middleware(
@@ -25,3 +25,4 @@ app.include_router(test.router)
 app.include_router(profile.router)
 app.include_router(sessions.router)
 app.include_router(shortlist.router)
+app.include_router(atlas.router)

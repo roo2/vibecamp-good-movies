@@ -7,15 +7,23 @@ import SessionWaitingPage from './screens/SessionWaitingPage.jsx'
 import SeenItPage from './screens/SeenItPage.jsx'
 import ShortlistPage from './screens/ShortlistPage.jsx'
 import MatchPage from './screens/MatchPage.jsx'
+import AtlasPage from './screens/AtlasPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
 import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/waiting'])
+const routes = new Set(['/', '/atlas', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/waiting'])
+
+// The dataset explorer is the public face of the work: it reads a published
+// file, holds nothing about anyone, and is the thing you show someone before
+// they have any reason to sign in. So it sits outside the session guard.
+const PUBLIC_ROUTES = new Set(['/atlas'])
 
 function currentRoute() {
-  const route = window.location.hash.slice(1) || '/'
+  // A route may carry a query — `#/atlas?film=parasite-2019` — so that a view
+  // inside a page is linkable. Only the path decides which screen renders.
+  const route = (window.location.hash.slice(1) || '/').split('?')[0]
   return routes.has(route) || route.startsWith('/join/') ? route : '/'
 }
 
@@ -101,7 +109,11 @@ function App() {
     navigate('/complete')
   }, [access, groupSession, navigate])
 
-  if (!access && route !== '/' && !route.startsWith('/join/')) {
+  if (route === '/atlas') {
+    return <AtlasPage onBack={() => navigate('/')} />
+  }
+
+  if (!access && route !== '/' && !PUBLIC_ROUTES.has(route) && !route.startsWith('/join/')) {
     return <LandingPage onSignIn={handleSignIn} />
   }
 

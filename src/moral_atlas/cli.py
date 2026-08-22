@@ -544,6 +544,56 @@ def migrate_db(
     console.print(f"\n[green]migrated {report['total_rows']} rows[/]")
 
 
+@app.command("dataset")
+def dataset_cmd(
+    out: str = typer.Option(
+        "src/frontend/public/api/atlas.json",
+        help="Where to write. The default is the path the interface reads, and "
+             "is copied into the published site by `vite build`."),
+    version: str = typer.Option("d1", help="Dimension version."),
+    bank: str = typer.Option("b1", help="Item bank version."),
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence",
+        help="Write each film's source text — plot, themes, reception, dialogue "
+             "— as its own file beside the index, so the explorer can show what "
+             "every claim was read from."),
+) -> None:
+    """Build the JSON the interface visualises, from what the store holds now.
+
+    Safe to run at any stage: a pipeline that has not reached scoring produces
+    a document that says so rather than one that fails.
+    """
+    from .analysis import dataset as dataset_mod
+    path, payload = dataset_mod.write(out, version, bank, evidence)
+    totals = payload["totals"]
+
+    table = Table("in the bundle", "n", box=None)
+    table.add_row("films", str(totals["films"]))
+    table.add_row("with a skeleton", f"{totals['films_with_skeleton']}/{totals['films']}")
+    table.add_row("read under 'full'", f"{totals['films_with_full_skeleton']}/{totals['films']}")
+    table.add_row("placed on the axes", f"{totals['films_profiled']}/{totals['films']}")
+    table.add_row("named dimensions", str(totals["dimensions"]))
+    table.add_row("active bank items", str(totals["bank_items"]))
+    table.add_row("scores", str(totals["scores"]))
+    console.print(table)
+
+    written = payload["_written"]
+    console.print(f"\n[green]wrote[/] {path} "
+                  f"[dim]({written['index_bytes'] / 1024:.0f} KB index)[/]")
+    if written["evidence_files"]:
+        console.print(
+            f"[green]wrote[/] {path.with_suffix('')}/ [dim]"
+            f"({written['evidence_files']} films, "
+            f"{written['evidence_bytes'] / 1024 / 1024:.1f} MB of source text, "
+            f"fetched only when a film is opened)[/]")
+    if not totals["dimensions"] or not totals["films_profiled"]:
+        console.print(
+            "[yellow]No axes or no placements[/] — the interface will show the "
+            "extraction stage only, which is honest but not the whole story. "
+            "Run `atlas dimensions` and `atlas score` to fill it in.")
+    console.print("[dim]the interface reads this at /api/atlas.json[/]")
+
+
 @app.command("export")
 def export_cmd(
     out: str = typer.Option("dist/export", help="Directory to write into."),

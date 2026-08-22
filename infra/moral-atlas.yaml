@@ -228,6 +228,32 @@ Resources:
       Tags:
         - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-runner" }
 
+  # The API port lives in its OWN security group, which looks like duplication
+  # and is not. A rule that references a managed prefix list counts against the
+  # 60-rules-per-group quota as the list's full MaxEntries, not as one rule —
+  # so the CloudFront origin-facing list, at over fifty entries, very nearly
+  # fills a group by itself. Two such rules in one group is a hard failure at
+  # update time. A second group gets its own budget, and an instance may carry
+  # several, so this is the fix that needs no quota increase.
+  ApiSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: >-
+        Inbound 8000 for the API, from CloudFront origin ranges only.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourcePrefixListId: !Ref CloudFrontOriginPrefixList
+          Description: API, reachable only through CloudFront
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Egress is governed by the runner group; this is a no-op.
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-api" }
+
   # ----------------------------------------------------------------- secrets
   # One JSON secret, filled in after deploy. Deliberately not template
   # parameters: parameter values persist in stack history and are readable by
@@ -393,6 +419,19 @@ Resources:
                 OriginReadTimeout: 60
                 OriginKeepaliveTimeout: 5
             - !Ref AWS::NoValue
+          # The live API, on the same runner. Without this the built interface
+          # loads and then 404s on its first call, because /api/* was being
+          # served by the S3 bucket, which holds one static payload and cannot
+          # answer a POST at all.
+          - Id: api
+            DomainName: !Sub
+              - "ec2-${Dashed}.${AWS::Region}.compute.amazonaws.com"
+              - Dashed: !Join ["-", !Split [".", !Ref RunnerEip]]
+            CustomOriginConfig:
+              HTTPPort: 8000
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 5
         DefaultCacheBehavior:
           TargetOriginId: site
           ViewerProtocolPolicy: redirect-to-https
@@ -427,17 +466,39 @@ Resources:
                 - EventType: viewer-request
                   FunctionARN: !GetAtt AuthFunction.FunctionMetadata.FunctionARN
             - !Ref AWS::NoValue
-          # The session payload the interface reads. Never cached at the edge,
-          # so a fresh `atlas-publish` shows up on the next reload rather than
-          # after someone remembers to invalidate.
-          - PathPattern: /api/*
+          # The published session payload, which is a FILE in the bucket rather
+          # than a route on the API. It must be listed before /api/* — CloudFront
+          # takes the first pattern that matches, so the order here is load-
+          # bearing and not merely tidy.
+          - PathPattern: /api/session.json
             TargetOriginId: site
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS]
             CachedMethods: [GET, HEAD]
             Compress: true
+            # Managed-CachingDisabled — so a fresh `atlas-publish` shows up on
+            # the next reload rather than after someone remembers to invalidate.
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            FunctionAssociations: !If
+              - SiteAuth
+              - - EventType: viewer-request
+                  FunctionARN: !GetAtt AuthFunction.FunctionMetadata.FunctionARN
+              - !Ref AWS::NoValue
+          # Everything else under /api goes to the live application. Every method
+          # is allowed because the interface POSTs on nearly every screen, and
+          # AllViewerExceptHostHeader is what carries the X-Session-Token header
+          # the API authenticates with — a policy that dropped it would leave the
+          # site looking logged out on every request.
+          - PathPattern: /api/*
+            TargetOriginId: api
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
             # Managed-CachingDisabled
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            # Managed-AllViewerExceptHostHeader
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
             FunctionAssociations: !If
               - SiteAuth
               - - EventType: viewer-request
@@ -585,7 +646,7 @@ Resources:
       InstanceType: !Ref InstanceType
       IamInstanceProfile: !Ref InstanceProfile
       SubnetId: !Ref PublicSubnet
-      SecurityGroupIds: [!Ref RunnerSecurityGroup]
+      SecurityGroupIds: [!Ref RunnerSecurityGroup, !Ref ApiSecurityGroup]
       Monitoring: true
       BlockDeviceMappings:
         - DeviceName: /dev/xvda

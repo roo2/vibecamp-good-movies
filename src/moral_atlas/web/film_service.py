@@ -9,7 +9,7 @@ from .. import db
 
 def random_onboarding_films(limit: int = 5) -> list[dict[str, Any]]:
     db.init_db()
-    films = db.list_films()
+    films = deck_eligible_films()
     if not films:
         return []
     selected = random.SystemRandom().sample(films, k=min(limit, len(films)))
@@ -25,10 +25,22 @@ def random_onboarding_films(limit: int = 5) -> list[dict[str, Any]]:
     ]
 
 
+def deck_eligible_films() -> list[dict[str, Any]]:
+    """Films the product may show a person.
+
+    The research corpus is far larger than the curated one and grows by
+    enumeration, so its films have no hand-written blind-story description. The
+    blind pairs are nothing BUT that description — without one every pair would
+    read "A story about the choices people make", which is not a choice between
+    two stories. Having a description is therefore the eligibility test.
+    """
+    return [film for film in db.list_films() if (film.get("description") or "").strip()]
+
+
 def build_session_deck() -> dict[str, list[Any]]:
     """Create one shared, non-overlapping deck for a group session."""
     db.init_db()
-    films = db.list_films()
+    films = deck_eligible_films()
     if len(films) < 15:
         return {"direct": [], "pairs": []}
     selected = random.SystemRandom().sample(films, k=15)

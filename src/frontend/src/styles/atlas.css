@@ -382,3 +382,32 @@
   .axis-summary { grid-template-columns: minmax(0, 1fr) 70px; }
   .axis-meter { display: none; }
 }
+
+/* --- How many dimensions are there, really? ------------------------------ */
+/* The scree is the one chart on this page whose bars are compared against a
+   threshold rather than against each other, so the null is drawn as a line to
+   clear and the margin is printed rather than left to the eye. */
+.dimensionality-card { margin: 18px 0; padding: 16px 18px; border: 1px solid #2d251f; border-radius: 12px; background: #1c1713; }
+.dimensionality-card header { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.dimensionality-card header strong { color: #f5efe6; font-size: 14px; }
+.dimensionality-card header span { color: #7e766c; font-size: 12px; }
+.dimensionality-headline { margin: 0 0 14px; color: #b3aa9e; font-size: 14px; }
+.dimensionality-headline b { color: #eda36b; font-size: 19px; font-weight: 700; }
+.count-chip { margin-right: 16px; }
+
+.scree { display: flex; flex-direction: column; gap: 4px; }
+.scree-row { display: grid; grid-template-columns: 22px 1fr 66px; gap: 10px; align-items: center; }
+.scree-index { color: #574f47; font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.scree-track { position: relative; height: 13px; border-radius: 3px; background: #171310; }
+.scree-bar { display: block; height: 13px; border-radius: 3px; background: #3a312a; }
+.scree-row.clear .scree-bar { background: #eda36b; }
+.scree-row.marginal .scree-bar { background: #7a6047; }
+.scree-null { position: absolute; inset-block: -2px; inline-size: 2px; background: #5cc3c0; text-decoration: none; }
+.scree-margin { color: #574f47; font-size: 11px; font-variant-numeric: tabular-nums; }
+.scree-row.clear .scree-margin { color: #eda36b; }
+.scree-row.marginal .scree-margin { color: #b3aa9e; }
+
+.atlas-table { width: 100%; margin-top: 10px; border-collapse: collapse; font-size: 12px; }
+.atlas-table th { color: #7e766c; font-weight: 650; text-align: left; padding: 4px 8px 6px 0; border-bottom: 1px solid #2d251f; }
+.atlas-table td { padding: 6px 8px 6px 0; color: #b3aa9e; border-bottom: 1px solid #241e19; font-variant-numeric: tabular-nums; }
+.atlas-table td b { color: #f5efe6; }

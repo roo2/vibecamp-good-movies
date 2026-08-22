@@ -413,7 +413,10 @@ def test_default_profile_falls_back_when_the_shared_map_has_not_been_derived(mon
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
     for index in range(15):
-        db.upsert_film({"film_id": f"film-{index}", "title": f"Film {index}"})
+        # A description is what makes a film deck-eligible now that the research
+        # corpus is far larger than the curated one, and this test needs a session.
+        db.upsert_film({"film_id": f"film-{index}", "title": f"Film {index}",
+                        "description": f"A spoiler-free story prompt number {index}."})
     headers, _ = _start_session()
     response = client.get("/api/profile/moral", headers=headers)
     assert response.status_code == 200

@@ -575,6 +575,60 @@ def _reliability(dim_version: str, bank_version: str,
     }
 
 
+def _dimensionality(bank_version: str, scorers: tuple[str, ...] = ("deepseek", "grok")) -> dict[str, Any]:
+    """How many moral dimensions the FILMS support, and whether scorers agree.
+
+    Every other number about the axes in this document assumes eight, because
+    eight is what `derive_system` was asked for. This is the one section where
+    the count is a result rather than a setting: parallel analysis against a
+    null that permutes each item's own column, so a factor has to beat the
+    structure the margins give away for free.
+
+    Reported per scorer rather than once, because a single estimate on a corpus
+    this shape is fragile and the question worth answering is whether
+    independent scorers land in the same place.
+    """
+    from . import latent
+
+    reports, failures = [], {}
+    for scorer in (None, *scorers):
+        name = scorer or "opus"
+        try:
+            reports.append(latent.analyse(scorer, bank_version, n_iter=200))
+        except Exception as error:  # noqa: BLE001 — a scorer with no verdicts is normal
+            failures[name] = str(error)
+    if not reports:
+        return {"available": False, "failures": failures}
+
+    found = latent.convergence(reports) if len(reports) > 1 else None
+    return {
+        "available": True,
+        "failures": failures,
+        "scorers": [
+            {
+                "scorer": r["scorer"], "films": r["films"], "items": r["items"],
+                "density": r["density"], "dropped_items": r["dropped_items"],
+                "n_factors": r["n_factors"], "n_clear_factors": r["n_clear_factors"],
+                "max_recoverable": r["max_recoverable"],
+                "margins": r["margins"],
+                "eigenvalues": r["eigenvalues"][:16],
+                "null_threshold": r["null_threshold"][:16],
+                "group_sizes": r["group_sizes"],
+            } for r in reports
+        ],
+        "convergence": None if not found else {
+            "counts": found["counts"],
+            "same_count": found["same_count"],
+            "spread": found["spread"],
+            "grouping_agreement": {
+                pair: {"n_items": row["n_items"], "ari": row["ari"],
+                       "nmi": row["nmi"], "chance": row["null_ari_mean"]}
+                for pair, row in found["grouping_agreement"].items()
+            },
+        },
+    }
+
+
 def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
     """The whole document. Never raises on a half-run pipeline — it reports it."""
     with db.connect(read_only=True) as con:
@@ -662,6 +716,7 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
         "variant_order": list(VARIANT_ORDER),
         "variant_labels": dict(VARIANT_LABELS),
         "reduction": reduction,
+        "dimensionality": _dimensionality(bank_version),
         "reliability": _reliability(dim_version, bank_version),
         "split_half": _split_half(),
         "dimensions": dimensions,

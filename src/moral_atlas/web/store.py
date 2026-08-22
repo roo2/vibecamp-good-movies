@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import json
+import random
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from secrets import token_urlsafe
+from typing import Any
 from uuid import uuid4
 
 from .. import db
@@ -181,10 +183,75 @@ def list_movie_ratings(user_id: str) -> list[MovieRating]:
     ) for row in rows]
 
 
-def save_shortlist_reaction(user_id: str, film_id: str, reaction: str) -> None:
+def _ensure_shortlist(con, session_id: str) -> None:
+    if con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=?", [session_id]).fetchone():
+        return
+    member_ids = [row["user_id"] for row in con.execute(
+        "SELECT user_id FROM session_members WHERE session_id=? ORDER BY joined_at", [session_id]
+    ).fetchall()]
+    # Import here because the ranking service reads preference helpers from this
+    # module. A session keeps the resulting order forever, even as later votes
+    # change a person's profile.
+    from .shortlist_service import ranked_shortlist
+    film_ids = [film["id"] for film in ranked_shortlist(member_ids, limit=None)]
+    if not film_ids:
+        film_ids = [row["film_id"] for row in con.execute("SELECT film_id FROM films").fetchall()]
+        random.SystemRandom().shuffle(film_ids)
+    con.executemany("INSERT INTO session_shortlist_films (session_id, film_id, position) VALUES (?,?,?)", [(session_id, film_id, position) for position, film_id in enumerate(film_ids)])
+
+
+def next_shortlist_film(share_token: str, user_id: str) -> dict[str, Any] | None:
     _ensure_db()
     with db.connect() as con:
-        con.execute("INSERT INTO shortlist_reactions (reaction_id, user_id, film_id, reaction, submitted_at) VALUES (?,?,?,?,?)", [f"short_{uuid4().hex[:12]}", user_id, film_id, reaction, db.now()])
+        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
+            return None
+        if session["selected_film_id"]:
+            return {"state": "selected", "film": film_card(session["selected_film_id"])}
+        _ensure_shortlist(con, session["session_id"])
+        row = con.execute(
+            "SELECT q.film_id FROM session_shortlist_films q WHERE q.session_id=? "
+            "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions n WHERE n.session_id=q.session_id AND n.film_id=q.film_id AND n.reaction='no') "
+            "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions mine WHERE mine.session_id=q.session_id AND mine.film_id=q.film_id AND mine.user_id=?) "
+            "ORDER BY q.position LIMIT 1", [session["session_id"], user_id],
+        ).fetchone()
+    return {"state": "exhausted"} if row is None else {"state": "card", "film": film_card(row["film_id"])}
+
+
+def shortlist_selection(share_token: str, user_id: str) -> dict[str, Any] | None:
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
+            return None
+    if session["selected_film_id"]:
+        return {"state": "selected", "film": film_card(session["selected_film_id"])}
+    return {"state": "pending"}
+
+
+def save_shortlist_reaction(share_token: str, user_id: str, film_id: str, reaction: str) -> dict[str, Any] | None:
+    _ensure_db()
+    with db.connect() as con:
+        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        if session is None or session["selected_film_id"]:
+            return None
+        _ensure_shortlist(con, session["session_id"])
+        if not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone() or not con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=? AND film_id=?", [session["session_id"], film_id]).fetchone():
+            return None
+        if con.execute(
+            "SELECT 1 FROM shortlist_reactions WHERE session_id=? AND user_id=? AND film_id=?",
+            [session["session_id"], user_id, film_id],
+        ).fetchone():
+            return {"state": "continue"}
+        con.execute("INSERT INTO shortlist_reactions (reaction_id, session_id, user_id, film_id, reaction, submitted_at) VALUES (?,?,?,?,?,?)", [f"short_{uuid4().hex[:12]}", session["session_id"], user_id, film_id, reaction, db.now()])
+        if reaction == "yes":
+            members = con.execute("SELECT count(*) FROM session_members WHERE session_id=?", [session["session_id"]]).fetchone()[0]
+            yes_votes = con.execute("SELECT count(DISTINCT user_id) FROM shortlist_reactions WHERE session_id=? AND film_id=? AND reaction='yes'", [session["session_id"], film_id]).fetchone()[0]
+            no_votes = con.execute("SELECT count(*) FROM shortlist_reactions WHERE session_id=? AND film_id=? AND reaction='no'", [session["session_id"], film_id]).fetchone()[0]
+            if yes_votes == members and not no_votes:
+                con.execute("UPDATE group_sessions SET selected_film_id=? WHERE session_id=?", [film_id, session["session_id"]])
+                return {"state": "selected", "film": film_card(film_id)}
+    return {"state": "continue"}
 
 
 def create_group_session(host_user_id: str) -> GroupSession:

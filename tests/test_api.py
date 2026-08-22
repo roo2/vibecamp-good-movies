@@ -160,3 +160,40 @@ def test_host_can_continue_after_waiting_ten_minutes_with_incomplete_members(iso
     continued = client.post(f"/api/sessions/{share_token}/continue", headers=host_headers)
     assert continued.status_code == 200
     assert continued.json()["status"] == "results_started"
+
+
+def test_shortlist_no_hides_a_film_from_other_members_and_unanimous_yes_selects_it():
+    host = client.post("/api/access", json={"name": "Ada"}).json()
+    guest = client.post("/api/access", json={"name": "Sam"}).json()
+    host_headers = {"X-Session-Token": host["token"]}
+    guest_headers = {"X-Session-Token": guest["token"]}
+    share_token = client.post("/api/sessions", headers=host_headers).json()["share_token"]
+    assert client.post(f"/api/sessions/{share_token}/join", headers=guest_headers).status_code == 200
+
+    first = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers)
+    assert first.status_code == 200
+    assert "artwork_url" in first.json()["film"]
+    rejected_id = first.json()["film"]["id"]
+    assert client.post("/api/shortlist/reactions", headers=host_headers, json={
+        "share_token": share_token, "film_id": rejected_id, "reaction": "no",
+    }).json()["state"] == "continue"
+
+    guest_next = client.get(f"/api/shortlist/next?share_token={share_token}", headers=guest_headers).json()
+    assert guest_next["state"] == "card"
+    assert guest_next["film"]["id"] != rejected_id
+    selected_id = guest_next["film"]["id"]
+    host_next = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers).json()
+    assert host_next["film"]["id"] == selected_id
+
+    host_vote = client.post("/api/shortlist/reactions", headers=host_headers, json={
+        "share_token": share_token, "film_id": selected_id, "reaction": "yes",
+    })
+    assert host_vote.json()["state"] == "continue"
+    guest_vote = client.post("/api/shortlist/reactions", headers=guest_headers, json={
+        "share_token": share_token, "film_id": selected_id, "reaction": "yes",
+    })
+    assert guest_vote.json()["state"] == "selected"
+    assert guest_vote.json()["film"]["id"] == selected_id
+
+    persisted_selection = client.get(f"/api/shortlist/selection?share_token={share_token}", headers=host_headers)
+    assert persisted_selection.json() == guest_vote.json()

@@ -97,7 +97,7 @@ def session_member_ids(share_token: str, viewer_user_id: str) -> list[str] | Non
 
 
 def ranked_shortlist(
-    user_ids: list[str], limit: int = 6,
+    user_ids: list[str], limit: int | None = 6,
     dim_version: str = user_scores.DEFAULT_DIM_VERSION,
     bank_version: str = user_scores.DEFAULT_BANK_VERSION,
 ) -> list[dict[str, Any]]:
@@ -130,7 +130,7 @@ def ranked_shortlist(
         })
 
     ranked.sort(key=lambda row: (-row["agreement"], -row["mean_alignment"], row["id"]))
-    return ranked[:limit]
+    return ranked[:limit] if limit is not None else ranked
 
 
 def _note(per_member, names: dict[int, str], n_members: int) -> str | None:

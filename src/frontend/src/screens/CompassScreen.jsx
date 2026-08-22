@@ -35,7 +35,7 @@ function CompassScreen({ access, onContinue }) {
 
         <h1>Where the films put you.</h1>
         <p className="compass-lede">
-          These axes came out of the films themselves — nobody chose them.{' '}
+          This compass reads your choices against the values films explore.{' '}
           {reading ? (
             <>
               We read <strong>{reading}</strong> against the moral propositions each

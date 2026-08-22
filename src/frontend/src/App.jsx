@@ -7,13 +7,12 @@ import SessionWaitingPage from './screens/SessionWaitingPage.jsx'
 import SeenItPage from './screens/SeenItPage.jsx'
 import ShortlistPage from './screens/ShortlistPage.jsx'
 import MatchPage from './screens/MatchPage.jsx'
-import TiebreakPage from './screens/TiebreakPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
 import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/tiebreak', '/waiting'])
+const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/waiting'])
 
 function currentRoute() {
   const route = window.location.hash.slice(1) || '/'
@@ -25,6 +24,7 @@ function App() {
   const [access, setAccess] = useState(loadAccess)
   const [groupSession, setGroupSession] = useState(loadGroupSession)
   const [sessionStatus, setSessionStatus] = useState(null)
+  const [selectedFilm, setSelectedFilm] = useState(null)
 
   const navigate = useCallback((nextRoute) => {
     window.location.hash = nextRoute
@@ -125,13 +125,10 @@ function App() {
     return <TestCompletePage access={access} onContinue={() => navigate('/shortlist')} />
   }
   if (route === '/shortlist') {
-    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} onDone={() => navigate('/match')} />
+    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} onDone={(film) => { setSelectedFilm(film); navigate('/match') }} />
   }
   if (route === '/match') {
-    return <MatchPage onContinue={() => navigate('/tiebreak')} />
-  }
-  if (route === '/tiebreak') {
-    return <TiebreakPage onDone={() => navigate('/')} />
+    return <MatchPage access={access} shareToken={groupSession?.shareToken} film={selectedFilm} onContinue={() => navigate('/')} />
   }
 
   return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />

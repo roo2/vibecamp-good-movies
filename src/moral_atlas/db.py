@@ -228,7 +228,7 @@ CREATE TABLE IF NOT EXISTS group_sessions (
     created_at         TEXT NOT NULL,
     started_at         TEXT,
     waiting_started_at TEXT,
-    continued_at       TEXT
+    continued_at       TEXT,
     deck_json          TEXT
 );
 
@@ -248,6 +248,13 @@ CREATE TABLE IF NOT EXISTS shortlist_reactions (
     film_id      TEXT NOT NULL REFERENCES films(film_id),
     reaction     TEXT NOT NULL,
     submitted_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session_shortlist_films (
+    session_id TEXT NOT NULL REFERENCES group_sessions(session_id),
+    film_id    TEXT NOT NULL REFERENCES films(film_id),
+    position   INTEGER NOT NULL,
+    PRIMARY KEY (session_id, film_id)
 );
 """
 
@@ -289,6 +296,8 @@ def init_db() -> None:
         _add_column_if_missing(con, "films", "description", "TEXT")
         _add_column_if_missing(con, "films", "artwork_url", "TEXT")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
+        _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
+        _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")
         _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
 
 

@@ -224,10 +224,13 @@ def test_parse_raises_instead_of_returning_none(monkeypatch):
     assert "Thinking tokens" in str(e.value)
 
 
-def test_bank_survives_a_failing_reversal_pass(monkeypatch, tmp_path):
-    """Canonicalisation costs dozens of LLM calls; reversal detection is a cheap
-    check on top. Writing the bank only after reversals meant one failed call
-    discarded everything already paid for."""
+def test_the_bank_records_the_model_that_wrote_it(monkeypatch, tmp_path):
+    """Canonicalisation rewrites most of the harvest, so its author is provenance.
+
+    Before this the bank was the only derived layer with no model on it, which
+    made the step most able to inject phrasing bias the one step you could not
+    attribute.
+    """
     from moral_atlas.analysis import bank as bank_mod
     db_mod = _tmp_db(monkeypatch, tmp_path)
     monkeypatch.setattr(bank_mod, "db", db_mod)
@@ -238,25 +241,85 @@ def test_bank_survives_a_failing_reversal_pass(monkeypatch, tmp_path):
         for i in range(5)
     ]
 
-    class ExplodingReversals:
+    class Canonicaliser:
+        model = "some-other-model-9"
         def parse(self, **kw):
-            if kw["output_model"] is bank_mod.CanonicalSet:
-                return bank_mod.CanonicalSet(items=[
-                    bank_mod.CanonicalItem(cluster_id=c["cluster_id"],
-                                           text=f"Canonical {c['cluster_id']}.",
-                                           drop=False, drop_reason="")
-                    for c in clusters])
-            raise RuntimeError("budget exhausted before the answer was emitted")
+            return bank_mod.CanonicalSet(items=[
+                bank_mod.CanonicalItem(cluster_id=c["cluster_id"],
+                                       text=f"Canonical {c['cluster_id']}.",
+                                       drop=False, drop_reason="")
+                for c in clusters])
 
-    result = bank_mod.build_bank("btest", clusters, ExplodingReversals())
+    result = bank_mod.build_bank("btest", clusters, Canonicaliser())
 
     assert result["n_items"] == 5
-    assert "budget exhausted" in result["reversal_error"]
+    assert result["model"] == "some-other-model-9"
     with db_mod.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT text FROM item_bank WHERE bank_version='btest'").fetchall()
-    assert len(rows) == 5, "canonicalised bank must survive a reversal failure"
-    assert rows[0][0].startswith("Canonical")
+            "SELECT text, model, prompt_version, run_id FROM item_bank "
+            "WHERE bank_version='btest'").fetchall()
+        run = con.execute(
+            "SELECT stage, model FROM runs WHERE run_id=?", [result["run_id"]]).fetchone()
+    assert len(rows) == 5
+    assert rows[0]["text"].startswith("Canonical")
+    assert {r["model"] for r in rows} == {"some-other-model-9"}
+    assert all(r["run_id"] == result["run_id"] and r["prompt_version"] for r in rows)
+    assert (run["stage"], run["model"]) == ("bank", "some-other-model-9")
+
+
+def test_a_bank_cut_without_a_model_says_so_rather_than_going_blank(monkeypatch, tmp_path):
+    """`--no-llm` is a real provenance answer: nothing rewrote these sentences."""
+    from moral_atlas.analysis import bank as bank_mod
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    monkeypatch.setattr(bank_mod, "db", db_mod)
+
+    clusters = [{"cluster_id": 0, "representative": "A proposition.",
+                 "support": 2, "n_statements": 2, "members": []}]
+    result = bank_mod.build_bank("btest", clusters, client=None)
+
+    assert result["model"] is None
+    with db_mod.connect(read_only=True) as con:
+        run = con.execute("SELECT stage, params FROM runs WHERE run_id=?",
+                          [result["run_id"]]).fetchone()
+    assert run["stage"] == "bank"
+    assert '"canonicalised": false' in run["params"]
+
+
+def test_backfill_reads_the_model_off_the_run_that_produced_the_row(monkeypatch, tmp_path):
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    with db_mod.connect() as con:
+        con.execute("INSERT INTO runs (run_id, stage, model, prompt_version) "
+                    "VALUES ('run-1','scoring','claude-opus-5','p1')")
+        con.execute("INSERT INTO scores (film_id, item_id, bank_version, variant, run_id, "
+                    "value) VALUES ('f','I1','b1','spine','run-1',1)")
+        # The bank never opened a run, which is exactly why --model exists.
+        con.execute("INSERT INTO item_bank (item_id, bank_version, text, active) "
+                    "VALUES ('I1','b1','A proposition.',1)")
+
+    filled = db_mod.backfill_provenance()
+    assert filled["scores"]["from_runs"] == 1
+    assert filled["item_bank"]["still_null"] == 1, "no run to read from, nothing invented"
+
+    filled = db_mod.backfill_provenance("claude-opus-5")
+    assert filled["item_bank"]["asserted"] == 1
+
+    with db_mod.connect(read_only=True) as con:
+        assert con.execute("SELECT model FROM scores").fetchone()["model"] == "claude-opus-5"
+        assert con.execute("SELECT prompt_version FROM scores").fetchone()["prompt_version"] == "p1"
+        assert con.execute("SELECT model FROM item_bank").fetchone()["model"] == "claude-opus-5"
+
+
+def test_provenance_reports_a_layer_built_by_two_models(monkeypatch, tmp_path):
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    with db_mod.connect() as con:
+        for index, model in enumerate(("claude-opus-5", "claude-sonnet-5")):
+            con.execute("INSERT INTO scores (film_id, item_id, bank_version, variant, "
+                        "run_id, value, model, prompt_version) "
+                        "VALUES (?,?,'b1','spine',?,1,?,'p1')",
+                        [f"f{index}", "I1", f"run-{index}", model])
+    rows = db_mod.provenance()
+    scoring = {row["model"] for row in rows if row["table"] == "scores"}
+    assert scoring == {"claude-opus-5", "claude-sonnet-5"}
 
 
 def test_list_columns_round_trip_through_json(monkeypatch, tmp_path):

@@ -269,6 +269,35 @@ so it goes in the system block behind a cache breakpoint with the film's evidenc
 after it. That is most of the reason a full sweep costs tens rather than
 hundreds.
 
+## Which model produced this?
+
+Every derived row records the model and prompt version that made it, so the
+question can be asked of any layer:
+
+```bash
+atlas provenance                 # model per layer, and a warning if a layer is mixed
+atlas backfill-provenance --model claude-opus-5   # for rows written before this existed
+```
+
+```
+layer         table             model          prompt  rows
+skeleton      skeletons         claude-opus-5   p1       284
+propositions  propositions_raw  claude-opus-5   p1       696
+bank          item_bank         claude-opus-5   -        694
+scoring       scores            claude-opus-5   p1     3,629
+```
+
+The bank line is the one that changed. `build_bank` never opened a run, so the
+step that **rewrote the majority of the harvested propositions** — the wording
+every film is scored against — was the only step you could not attribute. It now
+opens a run like any other stage.
+
+Rows carrying a `run_id` are backfilled losslessly from `runs`. The bank cannot
+be: its model was never recorded anywhere, so it has to be asserted by whoever
+remembers the run, which is what `--model` is for. `atlas provenance` flags a
+layer built by more than one model — fine deliberately, misleading by accident,
+since a layer built by two models is not one instrument.
+
 ## Whose morals are in the scores?
 
 Every number in the atlas came from one model reading a film and voting on 694

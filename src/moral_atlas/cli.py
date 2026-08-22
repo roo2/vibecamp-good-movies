@@ -391,6 +391,63 @@ def profile(
         console.print(t)
 
 
+@app.command()
+def provenance(
+    bank: Optional[str] = typer.Option(None, help="Restrict to one bank version."),
+) -> None:
+    """Which model produced each layer of the atlas.
+
+    The question this answers is "whose judgement am I looking at?", and until
+    the bank step was stamped it could not be answered for the one layer whose
+    wording every score depends on.
+    """
+    rows = db.provenance(bank)
+    if not rows:
+        console.print("[yellow]nothing derived yet[/]")
+        raise typer.Exit()
+
+    table = Table("layer", "table", "model", "prompt", "rows", box=None)
+    for row in rows:
+        model = row["model"] or "[red]unrecorded[/]"
+        table.add_row(row["layer"], row["table"], model,
+                      row["prompt_version"] or "-", f"{row['rows']:,}")
+    console.print(table)
+
+    layers = {row["layer"] for row in rows}
+    mixed = {layer for layer in layers
+             if len({row["model"] for row in rows if row["layer"] == layer}) > 1}
+    if mixed:
+        console.print(f"\n[yellow]more than one model in:[/] {', '.join(sorted(mixed))}")
+        console.print("[dim]Fine deliberately, misleading by accident — a layer built "
+                      "by two models is not one instrument.[/]")
+    if any(row["model"] is None for row in rows):
+        console.print("\n[yellow]some rows predate provenance[/] — "
+                      "`atlas backfill-provenance --model <the model that ran>`")
+
+
+@app.command("backfill-provenance")
+def backfill_provenance(
+    model: Optional[str] = typer.Option(
+        None, help="Model to assert for rows whose run was never recorded."),
+) -> None:
+    """Stamp older rows with the model that produced them.
+
+    Rows carrying a run_id are filled from `runs`, which is lossless. The bank
+    is the exception: `build_bank` never opened a run, so the model that wrote
+    those canonical sentences was never recorded and must be asserted by
+    whoever remembers running it.
+    """
+    filled = db.backfill_provenance(model)
+    table = Table("table", "was blank", "from runs", "asserted", "still blank", box=None)
+    for name, row in filled.items():
+        table.add_row(name, str(row["was_null"]), str(row["from_runs"]),
+                      f"[yellow]{row['asserted']}[/]" if row["asserted"] else "0",
+                      f"[red]{row['still_null']}[/]" if row["still_null"] else "0")
+    console.print(table)
+    if any(row["still_null"] for row in filled.values()) and not model:
+        console.print("\n[dim]Rows with no run to read from need --model.[/]")
+
+
 @app.command("models")
 def models_cmd() -> None:
     """The scorers available for the bias study, and which have credentials."""
@@ -416,8 +473,14 @@ def model_scan(
     bank: str = typer.Option("b1"),
     variant: str = typer.Option("spine", help="Evidence condition; the same one for every scorer."),
     limit: Optional[int] = typer.Option(None, help="Score only the first N films."),
+    films: str = typer.Option("", help="Only these films (ids or title fragments, comma-separated)."),
 ) -> None:
-    """Score the corpus again with other models, to see whose morals the scores are.
+    """Score films again with other models, to see whose morals the scores are.
+
+    `--films` is how a newly added film joins the comparison: it is scored by
+    every scorer against the EXISTING bank, so no new propositions are harvested
+    and the instrument the earlier films were measured with does not change
+    underneath them. Adding to the bank instead would silently re-cut the ruler.
 
     Writes to `model_verdicts`, never to `scores` — the product's film positions
     must not move because an audit ran.
@@ -434,7 +497,10 @@ def model_scan(
         console.print("[red]no scorers with credentials[/] — see `atlas models`")
         raise typer.Exit(1)
 
-    film_ids = _film_ids(limit)
+    film_ids = _match_films(films) if films.strip() else _film_ids(limit)
+    if not film_ids:
+        console.print("[red]no films matched[/]")
+        raise typer.Exit(1)
     for alias in aliases:
         console.print(f"\n[bold]{alias}[/] over {len(film_ids)} films ({variant})")
         stats = model_bias.scan(alias, film_ids, bank, variant, progress=console.print)

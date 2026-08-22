@@ -101,38 +101,49 @@ CREATE TABLE IF NOT EXISTS skeletons (
 );
 
 CREATE TABLE IF NOT EXISTS propositions_raw (
-    prop_id    TEXT PRIMARY KEY,
-    film_id    TEXT,
-    variant    TEXT,
-    run_id     TEXT,
-    text       TEXT,
-    stance     TEXT,
-    evidence   TEXT,
-    created_at TEXT
+    prop_id        TEXT PRIMARY KEY,
+    film_id        TEXT,
+    variant        TEXT,
+    run_id         TEXT,
+    text           TEXT,
+    stance         TEXT,
+    evidence       TEXT,
+    model          TEXT,
+    prompt_version TEXT,
+    created_at     TEXT
 );
 
+-- The wording of these items is an LLM judgement — canonicalisation rewrote the
+-- majority of the harvested propositions — so the model that wrote them belongs
+-- here as plainly as it does on a score. Without it the one step most able to
+-- inject phrasing bias is the one step with no provenance.
 CREATE TABLE IF NOT EXISTS item_bank (
-    item_id      TEXT,
-    bank_version TEXT,
-    text         TEXT,
-    cluster_id   INTEGER,
-    support      INTEGER,
-    reversed_of  TEXT,
-    active       INTEGER,
-    note         TEXT,
+    item_id        TEXT,
+    bank_version   TEXT,
+    text           TEXT,
+    cluster_id     INTEGER,
+    support        INTEGER,
+    active         INTEGER,
+    note           TEXT,
+    model          TEXT,
+    prompt_version TEXT,
+    run_id         TEXT,
+    created_at     TEXT,
     PRIMARY KEY (item_id, bank_version)
 );
 
 -- value: +1 affirms, -1 denies, 0 does not address.
 CREATE TABLE IF NOT EXISTS scores (
-    film_id      TEXT,
-    item_id      TEXT,
-    bank_version TEXT,
-    variant      TEXT,
-    run_id       TEXT,
-    value        INTEGER,
-    confidence   REAL,
-    evidence     TEXT,
+    film_id        TEXT,
+    item_id        TEXT,
+    bank_version   TEXT,
+    variant        TEXT,
+    run_id         TEXT,
+    value          INTEGER,
+    confidence     REAL,
+    evidence       TEXT,
+    model          TEXT,
+    prompt_version TEXT,
     PRIMARY KEY (film_id, item_id, bank_version, variant, run_id)
 );
 
@@ -334,12 +345,93 @@ def init_db() -> None:
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
         _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")
         _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
+        # Which model produced each derived row. Older databases carry the model
+        # only on `runs`, reachable through a join that most callers never made;
+        # these columns put it where the row is.
+        for table in ("propositions_raw", "scores", "item_bank"):
+            _add_column_if_missing(con, table, "model", "TEXT")
+            _add_column_if_missing(con, table, "prompt_version", "TEXT")
+        _add_column_if_missing(con, "item_bank", "run_id", "TEXT")
+        _add_column_if_missing(con, "item_bank", "created_at", "TEXT")
+        # The reversed-pair check never populated a single row, so the column
+        # only ever recorded that a check had not run. Dropped rather than left
+        # to read as "no reversals found".
+        _drop_column_if_present(con, "item_bank", "reversed_of")
 
 
 def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:
     columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
     if column not in columns:
         con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def _drop_column_if_present(con: sqlite3.Connection, table: str, column: str) -> None:
+    columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+    if column in columns:
+        con.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+
+
+# Where each derived layer records the model that produced it. One place, so a
+# table added later cannot quietly go unstamped.
+PROVENANCE_TABLES = {
+    "skeletons": "skeleton",
+    "propositions_raw": "propositions",
+    "item_bank": "bank",
+    "scores": "scoring",
+}
+
+
+def backfill_provenance(default_model: str | None = None) -> dict[str, dict[str, int]]:
+    """Stamp `model` and `prompt_version` on rows written before they existed.
+
+    Wherever a row carries a run_id the answer is recorded and is simply copied
+    across from `runs`. The bank is the exception and the reason this takes a
+    `default_model` at all: `build_bank` never opened a run, so the model that
+    wrote those 694 canonical sentences was never recorded anywhere and cannot
+    be recovered — it has to be asserted by whoever remembers the run.
+    """
+    filled: dict[str, dict[str, int]] = {}
+    with connect() as con:
+        for table in PROVENANCE_TABLES:
+            columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+            if "model" not in columns:
+                continue
+            before = con.execute(f"SELECT COUNT(*) FROM {table} WHERE model IS NULL").fetchone()[0]
+            if "run_id" in columns:
+                con.execute(
+                    f"UPDATE {table} SET model = (SELECT r.model FROM runs r WHERE r.run_id = {table}.run_id), "
+                    f"prompt_version = COALESCE(prompt_version, "
+                    f"(SELECT r.prompt_version FROM runs r WHERE r.run_id = {table}.run_id)) "
+                    f"WHERE model IS NULL AND run_id IS NOT NULL"
+                )
+            asserted = 0
+            if default_model:
+                cur = con.execute(f"UPDATE {table} SET model=? WHERE model IS NULL", [default_model])
+                asserted = cur.rowcount
+            after = con.execute(f"SELECT COUNT(*) FROM {table} WHERE model IS NULL").fetchone()[0]
+            filled[table] = {"was_null": before, "from_runs": before - after - asserted,
+                             "asserted": asserted, "still_null": after}
+    return filled
+
+
+def provenance(bank_version: str | None = None) -> list[dict[str, Any]]:
+    """Which model produced what, per layer — the answer to 'whose judgement is this?'"""
+    out: list[dict[str, Any]] = []
+    with connect(read_only=True) as con:
+        for table, stage in PROVENANCE_TABLES.items():
+            columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+            if "model" not in columns:
+                continue
+            where, args = "", []
+            if bank_version and "bank_version" in columns:
+                where, args = " WHERE bank_version=?", [bank_version]
+            for row in con.execute(
+                f"SELECT model, prompt_version, COUNT(*) n FROM {table}{where} "
+                f"GROUP BY model, prompt_version ORDER BY n DESC", args,
+            ):
+                out.append({"layer": stage, "table": table, "model": row["model"],
+                            "prompt_version": row["prompt_version"], "rows": row["n"]})
+    return out
 
 
 def _encode(column: str, value: Any) -> Any:

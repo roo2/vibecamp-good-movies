@@ -30,8 +30,20 @@ LIVE="${ATLAS_DB:-/opt/atlas/data/atlas.sqlite}"
 PYTHON="${ATLAS_PYTHON:-/opt/atlas/app/.venv/bin/python}"
 SERVICE="${ATLAS_SERVICE:-atlas-api}"
 
+# Where the bucket name comes from, in order. The instance role can read and
+# write the data bucket but cannot call cloudformation:DescribeStacks — asking
+# the stack is what a laptop does, and it fails with AccessDenied here. The
+# runner already knows the answer: the template bakes it into atlas-snapshot at
+# boot. Read it from there, and only fall back to the stack.
+if [ -z "${DATA_BUCKET:-}" ] && [ -r /usr/local/bin/atlas-snapshot ]; then
+  DATA_BUCKET=$(sed -n 's/^BUCKET="\(.*\)"$/\1/p' /usr/local/bin/atlas-snapshot | head -1)
+fi
 BUCKET="${DATA_BUCKET:-$(aws cloudformation describe-stacks --stack-name "$STACK" \
   --query "Stacks[0].Outputs[?OutputKey=='DataBucketName'].OutputValue" --output text)}"
+if [ -z "$BUCKET" ] || [ "$BUCKET" = "None" ]; then
+  echo "could not work out the data bucket; pass DATA_BUCKET=..." >&2
+  exit 1
+fi
 KEY="${CORPUS_KEY:-latest/atlas-corpus.sqlite}"
 INCOMING=/opt/atlas/data/incoming-corpus.sqlite
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)

@@ -178,3 +178,82 @@ def test_plausibility_scales_density_with_runtime():
     # A dead track that ticks along with almost no dialogue is still wrong.
     sparse = [(i * 120_000, "…") for i in range(60)]
     assert not opus._plausibility(sparse, runtime=120)[0]
+
+
+# --- bank construction robustness -----------------------------------------
+
+def _tmp_db(monkeypatch, tmp_path):
+    """Point the store at a throwaway database."""
+    from dataclasses import replace
+    from moral_atlas import db as db_mod
+    from moral_atlas.config import settings as real_settings
+    s = replace(real_settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+                db_path=tmp_path / "t.duckdb")
+    monkeypatch.setattr(db_mod, "settings", lambda: s)
+    db_mod.init_db()
+    return db_mod
+
+
+def test_parse_raises_instead_of_returning_none(monkeypatch):
+    """The SDK reports a truncated structured response as parsed_output=None
+    rather than raising. Returning that silently surfaced later as
+    'NoneType has no attribute pairs', pointing at the wrong line entirely."""
+    from moral_atlas.llm.client import LLMClient, LLMParseError
+    import pytest
+
+    client = LLMClient.__new__(LLMClient)
+    client.model, client.effort, client.concurrency = "claude-opus-5", "high", 1
+    client._effort_supported = True
+    client.adaptive = True
+    from moral_atlas.llm.client import Usage
+    client.usage = Usage()
+
+    class Truncated:
+        stop_reason = "max_tokens"
+        parsed_output = None
+        class usage:  # noqa: N801
+            input_tokens, output_tokens = 500, 8000
+            cache_read_input_tokens = cache_creation_input_tokens = 0
+
+    monkeypatch.setattr(client, "_with_retry", lambda fn, kw, **k: Truncated())
+    from moral_atlas.llm.schemas import PropositionSet
+    with pytest.raises(LLMParseError) as e:
+        client.parse(system="s", user="u", output_model=PropositionSet, max_tokens=8000)
+    # The message has to name the real cause, not the symptom.
+    assert "max_tokens" in str(e.value)
+    assert "Thinking tokens" in str(e.value)
+
+
+def test_bank_survives_a_failing_reversal_pass(monkeypatch, tmp_path):
+    """Canonicalisation costs dozens of LLM calls; reversal detection is a cheap
+    check on top. Writing the bank only after reversals meant one failed call
+    discarded everything already paid for."""
+    from moral_atlas.analysis import bank as bank_mod
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    monkeypatch.setattr(bank_mod, "db", db_mod)
+
+    clusters = [
+        {"cluster_id": i, "representative": f"Proposition number {i}.",
+         "support": 3, "n_statements": 4, "members": []}
+        for i in range(5)
+    ]
+
+    class ExplodingReversals:
+        def parse(self, **kw):
+            if kw["output_model"] is bank_mod.CanonicalSet:
+                return bank_mod.CanonicalSet(items=[
+                    bank_mod.CanonicalItem(cluster_id=c["cluster_id"],
+                                           text=f"Canonical {c['cluster_id']}.",
+                                           drop=False, drop_reason="")
+                    for c in clusters])
+            raise RuntimeError("budget exhausted before the answer was emitted")
+
+    result = bank_mod.build_bank("btest", clusters, ExplodingReversals())
+
+    assert result["n_items"] == 5
+    assert "budget exhausted" in result["reversal_error"]
+    with db_mod.connect(read_only=True) as con:
+        rows = con.execute(
+            "SELECT text FROM item_bank WHERE bank_version='btest'").fetchall()
+    assert len(rows) == 5, "canonicalised bank must survive a reversal failure"
+    assert rows[0][0].startswith("Canonical")

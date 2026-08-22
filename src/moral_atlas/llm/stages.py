@@ -51,7 +51,7 @@ def extract_skeletons(
             system=prompts.SKELETON_SYSTEM,
             user=_user_block(p),
             output_model=MoralSkeleton,
-            max_tokens=12000,
+            max_tokens=16000,
         )
         return p, sk
 
@@ -113,7 +113,7 @@ def generate_propositions(
             system=prompts.PROPOSITIONS_SYSTEM,
             user=_user_block(p, extra),
             output_model=PropositionSet,
-            max_tokens=8000,
+            max_tokens=16000,
         )
         return p, ps
 

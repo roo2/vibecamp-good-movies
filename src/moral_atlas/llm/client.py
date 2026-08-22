@@ -16,6 +16,35 @@ from ..config import estimate_cost, settings
 T = TypeVar("T", bound=BaseModel)
 
 
+# Not every model takes the same request shape. Adaptive thinking and
+# output_config.effort are 4.6-and-later features; Haiku 4.5 and earlier use the
+# older budget_tokens form and reject both with a 400. Sending the wrong shape
+# fails the whole run, so capability is looked up rather than assumed.
+ADAPTIVE_THINKING = (
+    "claude-fable-5", "claude-mythos-5", "claude-opus-5", "claude-opus-4-8",
+    "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-5", "claude-sonnet-4-6",
+)
+
+
+def supports_adaptive(model: str) -> bool:
+    return model in ADAPTIVE_THINKING
+
+
+def supports_effort(model: str) -> bool:
+    return model in ADAPTIVE_THINKING or model.startswith("claude-opus-4-5")
+
+
+class LLMParseError(RuntimeError):
+    """A call returned no usable structured output.
+
+    Almost always a token budget problem: with adaptive thinking, reasoning
+    tokens are drawn from the same max_tokens pool as the answer, so a heavy
+    reasoning task can consume the whole budget and truncate before the JSON is
+    emitted. The SDK reports that as parsed_output=None rather than raising,
+    which is why this has to be checked explicitly.
+    """
+
+
 @dataclass
 class Usage:
     n_calls: int = 0
@@ -63,9 +92,10 @@ class LLMClient:
         self.concurrency = s.concurrency
         self.client = anthropic.Anthropic(api_key=s.anthropic_api_key)
         self.usage = Usage()
+        self.adaptive = supports_adaptive(self.model)
         # Whether output_config.effort can ride alongside output_format is
         # resolved once, on the first call, rather than assumed.
-        self._effort_supported: bool | None = None
+        self._effort_supported: bool | None = None if supports_effort(self.model) else False
 
     # -- single call ------------------------------------------------------
 
@@ -75,7 +105,7 @@ class LLMClient:
         system: str,
         user: str,
         output_model: type[T],
-        max_tokens: int = 12000,
+        max_tokens: int = 16000,
         cache_system: bool = True,
     ) -> T:
         """One structured call.
@@ -95,14 +125,32 @@ class LLMClient:
             "system": system_blocks,
             "messages": [{"role": "user", "content": user}],
             "output_format": output_model,
-            "thinking": {"type": "adaptive"},
         }
+        if self.adaptive:
+            kwargs["thinking"] = {"type": "adaptive"}
         if self._effort_supported is not False:
             kwargs["output_config"] = {"effort": self.effort}
 
         resp = self._with_retry(lambda: self.client.messages.parse(**kwargs), kwargs)
         self.usage.add(self.model, resp.usage)
-        return resp.parsed_output
+
+        parsed = getattr(resp, "parsed_output", None)
+        if parsed is None:
+            stop = getattr(resp, "stop_reason", "unknown")
+            out = getattr(resp.usage, "output_tokens", 0)
+            hint = ""
+            if stop == "max_tokens":
+                hint = (f" The budget was exhausted before the answer was emitted "
+                        f"(max_tokens={max_tokens}, output_tokens={out}). Thinking "
+                        f"tokens come out of the same pool — raise max_tokens or "
+                        f"split the work into smaller batches.")
+            elif stop == "refusal":
+                hint = " The request was declined by a safety classifier."
+            raise LLMParseError(
+                f"{output_model.__name__}: no structured output "
+                f"(stop_reason={stop}, output_tokens={out}).{hint}"
+            )
+        return parsed
 
     def _with_retry(self, fn: Callable[[], Any], kwargs: dict[str, Any], tries: int = 5) -> Any:
         last: Exception | None = None

@@ -124,7 +124,12 @@ def status() -> None:
 
 @app.command()
 def skeleton(
-    variants: str = typer.Option(DEFAULT_VARIANTS),
+    variants: str = typer.Option(
+        "full",
+        help="Evidence conditions to extract for. Only `full` is read back "
+             "(by `propose`) — the source A/B is measured at `score`, not here, "
+             "so extracting all four costs ~4x for rows nothing consumes.",
+    ),
     limit: Optional[int] = typer.Option(None),
 ) -> None:
     """Stage 1 — extract the moral skeleton under each evidence condition."""
@@ -249,6 +254,35 @@ def displacement(
 ) -> None:
     """Editor-bias probe: measure a revision's moral displacement per condition."""
     console.print(json.dumps(ab_mod.displacement(version, parent, child), indent=2))
+
+
+@app.command("export")
+def export_cmd(
+    out: str = typer.Option("dist/export", help="Directory to write into."),
+    include_evidence: bool = typer.Option(
+        False, help="Include raw plot/subtitle text. Large, and fully "
+                    "reproducible from public sources without it."),
+    no_db: bool = typer.Option(False, help="Skip copying the .duckdb file."),
+) -> None:
+    """Export everything derived so far, for transfer to another machine."""
+    from .analysis import export as export_mod
+    console.print(f"exporting to [bold]{out}[/]")
+    manifest = export_mod.export(out, include_evidence, not no_db,
+                                 progress=console.print)
+
+    sc = manifest["stage_completeness"]
+    console.print(f"\n[bold]total spend so far:[/] ${manifest['total_cost_usd']}")
+    table = Table("stage", "coverage", box=None)
+    table.add_row("films ingested", str(sc["films_ingested"]))
+    table.add_row("full skeletons", f"{sc['films_with_full_skeleton']}/{sc['films_ingested']}")
+    table.add_row("propositions", f"{sc['films_with_propositions']}/{sc['films_ingested']}")
+    table.add_row("scored", f"{sc['films_scored']}/{sc['films_ingested']}")
+    console.print(table)
+    if not sc["has_analysis_results"]:
+        console.print(
+            "\n[yellow]No analysis results yet.[/] This bundle holds extracted "
+            "intermediates only — no item bank, no scores, no factors. Useful for "
+            "moving work between machines, not for reading conclusions off.")
 
 
 @app.command()

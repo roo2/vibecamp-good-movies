@@ -170,30 +170,44 @@ def build_bank(
             "note": "",
         })
 
-    reversals: list[ReversalPair] = []
-    if client is not None and items:
-        listing = "\n".join(f"{it['item_id']}. {it['text']}" for it in items)
-        res = client.parse(
-            system=(
-                "You are auditing a bank of moral propositions for REVERSED PAIRS: "
-                "two items that are near-inversions of each other, such that no "
-                "single work could sincerely affirm both.\n\n"
-                "These pairs are valuable — they are kept deliberately, as a check "
-                "on whether a scorer is reading the work or simply agreeing with "
-                "whatever it is shown. Report every pair you find. Report nothing "
-                "that is merely related or adjacent; only true inversions."
-            ),
-            user=f"Bank:\n\n{listing}",
-            output_model=ReversalSet,
-            max_tokens=8000,
-        )
-        reversals = res.pairs
-        index = {it["item_id"]: it for it in items}
-        for pair in reversals:
-            if pair.item_a in index and pair.item_b in index:
-                index[pair.item_b]["reversed_of"] = pair.item_a
-                index[pair.item_b]["note"] = pair.note
+    # Write the bank BEFORE the reversal pass. Canonicalisation is the expensive
+    # part — dozens of LLM calls — and reversal detection is a cheap nice-to-have
+    # on top. Doing the risky thing first and persisting afterwards meant one
+    # failed call discarded everything that had already been paid for.
+    _write_items(bank_version, items)
 
+    reversals: list[ReversalPair] = []
+    reversal_error: str | None = None
+    if client is not None and len(items) > 1:
+        try:
+            reversals = detect_reversals(items, client, batch_size=120,
+                                         progress=progress)
+            index = {it["item_id"]: it for it in items}
+            for pair in reversals:
+                if pair.item_a in index and pair.item_b in index:
+                    index[pair.item_b]["reversed_of"] = pair.item_a
+                    index[pair.item_b]["note"] = pair.note
+            _write_items(bank_version, items)
+        except Exception as e:  # noqa: BLE001
+            # The bank is already saved and usable; reversed pairs are an
+            # acquiescence check, not a prerequisite for scoring.
+            reversal_error = str(e)
+            if progress:
+                progress(f"[yellow]reversal detection failed, bank kept:[/] {e}")
+
+    return {
+        "reversal_error": reversal_error,
+        "bank_version": bank_version,
+        "prompt_version": PROMPT_VERSION,
+        "n_clusters": len(clusters),
+        "n_items": len(items),
+        "n_dropped": len(dropped),
+        "n_reversed_pairs": len(reversals),
+        "dropped": dropped,
+    }
+
+
+def _write_items(bank_version: str, items: list[dict[str, Any]]) -> None:
     with db.connect() as con:
         con.execute("DELETE FROM item_bank WHERE bank_version=?", [bank_version])
         for it in items:
@@ -204,15 +218,50 @@ def build_bank(
                  it["support"], it["reversed_of"], it["active"], it["note"]],
             )
 
-    return {
-        "bank_version": bank_version,
-        "prompt_version": PROMPT_VERSION,
-        "n_clusters": len(clusters),
-        "n_items": len(items),
-        "n_dropped": len(dropped),
-        "n_reversed_pairs": len(reversals),
-        "dropped": dropped,
-    }
+
+def detect_reversals(
+    items: list[dict[str, Any]], client, batch_size: int = 120, progress=None,
+) -> list[ReversalPair]:
+    """Find near-inverted pairs in the bank.
+
+    The whole bank goes in the system block on every call so cross-batch pairs
+    are still visible, while the user turn names only the slice to report on.
+    That keeps the OUTPUT bounded — which is what actually ran out last time —
+    without giving up the global view an inversion check needs.
+    """
+    listing = "\n".join(f"{it['item_id']}. {it['text']}" for it in items)
+    system = (
+        "You are auditing a bank of moral propositions for REVERSED PAIRS: two "
+        "items that are near-inversions of each other, such that no single work "
+        "could sincerely affirm both.\n\n"
+        "These pairs are valuable — they are kept deliberately, as a check on "
+        "whether a scorer is reading the work or simply agreeing with whatever it "
+        "is shown. Report nothing that is merely related or adjacent; only true "
+        "inversions.\n\n"
+        f"THE COMPLETE BANK\n\n{listing}"
+    )
+
+    found: list[ReversalPair] = []
+    seen: set[tuple[str, str]] = set()
+    for i in range(0, len(items), batch_size):
+        batch = items[i:i + batch_size]
+        ids = ", ".join(it["item_id"] for it in batch)
+        res = client.parse(
+            system=system,
+            user=(f"Report reversed pairs where at least one member is in this "
+                  f"slice: {ids}\n\nThe other member may be anywhere in the bank."),
+            output_model=ReversalSet,
+            max_tokens=16000,
+        )
+        for pair in res.pairs:
+            key = tuple(sorted((pair.item_a, pair.item_b)))
+            if key not in seen:
+                seen.add(key)
+                found.append(pair)
+        if progress:
+            progress(f"reversals     items {i}-{i + len(batch) - 1}: "
+                     f"{len(found)} pairs so far")
+    return found
 
 
 def export_bank(bank_version: str, path: str) -> int:

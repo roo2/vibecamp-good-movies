@@ -68,7 +68,12 @@ jobs:
           CHANGED=$(git diff --name-only "$BEFORE" '${{ github.sha }}')
           echo "$CHANGED"
           grep -qE '^infra/'                        <<<"$CHANGED" && I=true || I=false
-          grep -qE '^(src/|seeds/|pyproject\.toml)' <<<"$CHANGED" && C=true || C=false
+          # infra/ counts as code for the runner's sake: the runner has this
+          # repository checked out, and the scripts it runs — load-corpus.sh
+          # and its loader — live there. Without it they land in main and never
+          # reach the machine that is supposed to run them, which is exactly
+          # what happened the first time they shipped.
+          grep -qE '^(src/|seeds/|infra/|pyproject\.toml)' <<<"$CHANGED" && C=true || C=false
           echo "infra=$I" >> "$GITHUB_OUTPUT"
           echo "code=$C"  >> "$GITHUB_OUTPUT"
 

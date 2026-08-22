@@ -1,22 +1,40 @@
 // The dataset the explorer reads.
 //
-// Two sources, in this order, because the demo and the dev box are not the same
-// machine. `/data/atlas.json` is a file `atlas dataset` writes into `public/`,
-// which `vite build` copies into the published site; the demo serves it straight
-// from the bucket, so the page renders whether or not the runner is up.
+// Two sources, and the ORDER is the whole of whether this page can be trusted.
+//
+// `/api/atlas` re-reads the store on every request and caches against its mtime,
+// so it is fresh by construction: a pipeline run shows up on reload. It is tried
+// first for exactly that reason. It used not to be, and the consequence was not
+// theoretical — a new section was added to this page, the store had the data,
+// and the page rendered nothing, because a committed snapshot from an earlier
+// state answered first and won.
+//
+// `/data/atlas.json` is that snapshot: a file `atlas dataset` writes into
+// `public/`, which `vite build` copies into the published site. The demo is a
+// bucket with no store behind it, so the snapshot is the only thing it can
+// serve — but it is only ever as fresh as the last time somebody rebuilt it,
+// which is why `atlas dataset --check` exists and why the page says which of
+// the two it is showing.
 //
 // It is deliberately NOT under /api. CloudFront routes /api/* to the runner and
 // everything else to the bucket, so a published file under that prefix would be
 // answered by the API — which has no route for it — rather than by S3.
-//
-// `/api/atlas` is the live API, which is what you want locally and on the
-// runner: it re-reads the store on every request, so a pipeline run shows up on
-// reload without a rebuild.
+
 const STATIC_PATH = '/data/atlas.json'
 const LIVE_PATH = '/api/atlas'
 
-async function fetchJson(path) {
-  const response = await fetch(path, { headers: { Accept: 'application/json' } })
+async function fetchJson(path, timeoutMs) {
+  const controller = timeoutMs ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
+  let response
+  try {
+    response = await fetch(path, {
+      headers: { Accept: 'application/json' },
+      signal: controller?.signal,
+    })
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
   if (!response.ok) throw new Error(`${path} responded ${response.status}`)
   // A static host answers a missing path with index.html and a 200, so the
   // status alone does not prove this is the dataset. Parsing does.
@@ -25,16 +43,22 @@ async function fetchJson(path) {
   return body
 }
 
+// A static host answers everything, so an absent API is a slow failure rather
+// than a refusal. The timeout keeps the fallback quick on the published demo.
+const LIVE_TIMEOUT_MS = 2500
+
 export async function loadAtlas() {
   try {
-    return await fetchJson(STATIC_PATH)
-  } catch (staticError) {
+    const payload = await fetchJson(LIVE_PATH, LIVE_TIMEOUT_MS)
+    return { ...payload, source: 'live' }
+  } catch (liveError) {
     try {
-      return await fetchJson(LIVE_PATH)
+      const payload = await fetchJson(STATIC_PATH)
+      return { ...payload, source: 'published' }
     } catch {
       throw new Error(
         'No dataset published yet. Run `atlas dataset` to build it, or start the API.',
-        { cause: staticError },
+        { cause: liveError },
       )
     }
   }

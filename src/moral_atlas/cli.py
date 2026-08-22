@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -960,6 +961,10 @@ def dataset_cmd(
         help="Write each film's source text — plot, themes, reception, dialogue "
              "— as its own file beside the index, so the explorer can show what "
              "every claim was read from."),
+    check: bool = typer.Option(
+        False, "--check",
+        help="Write nothing; exit non-zero if the built file is behind the store. "
+             "For CI and pre-commit, so a snapshot cannot be published stale."),
 ) -> None:
     """Build the JSON the interface visualises, from what the store holds now.
 
@@ -975,6 +980,35 @@ def dataset_cmd(
         console.print(f"[red]no store at[/] {settings().db_path}")
         console.print("[dim]run `atlas init`, then ingest, before building the dataset[/]")
         raise typer.Exit(1)
+
+    # The published site serves a committed snapshot, so "somebody forgot to
+    # rebuild it" is a silent, arbitrarily large error. This turns it into a
+    # failing check: the store's mtime against the file's.
+    if check:
+        target = Path(out)
+        if not target.exists():
+            console.print(f"[red]no dataset at[/] {out} — run `atlas dataset`")
+            raise typer.Exit(1)
+
+        # Counts rather than mtimes. The store runs in WAL mode, so writes land
+        # in atlas.sqlite-wal and the main file's timestamp barely moves until a
+        # checkpoint — an mtime comparison reports "current" while a sweep is
+        # actively writing, which is the precise reassurance this must not give.
+        built = json.loads(target.read_text()).get("totals") or {}
+        current = dataset_mod.totals(version, bank)
+        drift = {key: (built.get(key), value) for key, value in current.items()
+                 if built.get(key) != value}
+        if drift:
+            console.print(f"[red]{out} is behind the store[/]")
+            table = Table("layer", "in the file", "in the store", box=None)
+            for key, (was, now) in sorted(drift.items()):
+                table.add_row(key, str(was), f"[bold]{now}[/]")
+            console.print(table)
+            console.print("[dim]run `atlas dataset` and commit the result[/]")
+            raise typer.Exit(1)
+        console.print(f"[green]{out} matches the store[/] ({current.get('films')} films, "
+                      f"{current.get('scores')} scores)")
+        raise typer.Exit()
 
     path, payload = dataset_mod.write(out, version, bank, evidence)
     totals = payload["totals"]

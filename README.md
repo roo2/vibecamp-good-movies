@@ -269,6 +269,41 @@ so it goes in the system block behind a cache breakpoint with the film's evidenc
 after it. That is most of the reason a full sweep costs tens rather than
 hundreds.
 
+## Keeping the atlas page current
+
+The explorer reads from two places, and the order is the whole of whether the
+page can be trusted.
+
+`/api/atlas` re-reads the store on every request and caches against its mtime,
+so it is **fresh by construction** — a pipeline run shows up on reload. It is
+tried first. `/data/atlas.json` is a snapshot `atlas dataset` writes into
+`public/`, and is what the published demo serves, because a bucket has no store
+behind it. The footer says which one answered.
+
+That order used to be the other way round, and the failure was not theoretical:
+a new section was added to the page, the store had the data, and the page
+rendered nothing — because a committed snapshot from an earlier state answered
+first and won.
+
+So:
+
+- **Running the app locally or on the runner** — nothing to do. The API is
+  authoritative and the page follows the store.
+- **Publishing the static demo** — the snapshot is only as current as the last
+  rebuild, so check before committing:
+
+```bash
+atlas dataset            # rebuild the snapshot from the store
+atlas dataset --check    # exit non-zero if it is behind; for a pre-commit hook
+```
+
+`--check` compares **counts, not timestamps**. The store runs in WAL mode, so
+writes land in `atlas.sqlite-wal` and the main file's mtime can sit still
+through an entire sweep — an mtime check reports "current" while the corpus is
+being rewritten underneath it, which is the one moment it must not. CI cannot
+run this: the store is gitignored, so the machine that builds the site has
+nothing to compare against.
+
 ## Which model produced this?
 
 Every derived row records the model and prompt version that made it, so the

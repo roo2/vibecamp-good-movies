@@ -629,6 +629,31 @@ def _dimensionality(bank_version: str, scorers: tuple[str, ...] = ("deepseek", "
     }
 
 
+def totals(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, int]:
+    """The counts a published snapshot can be checked against.
+
+    Cheap on purpose: `build` now runs a parallel analysis with hundreds of
+    permutations, which is far too much work to ask of a staleness check that
+    wants to run in CI on every push. These are the same keys `build` puts in
+    `totals`, so a mismatch on any of them means the snapshot is behind.
+    """
+    with db.connect(read_only=True) as con:
+        return {
+            "films": con.execute("SELECT COUNT(*) n FROM films").fetchone()["n"],
+            "bank_items": con.execute(
+                "SELECT COUNT(*) n FROM item_bank WHERE bank_version=? AND active=1",
+                [bank_version]).fetchone()["n"],
+            "scores": con.execute(
+                "SELECT COUNT(*) n FROM scores WHERE bank_version=?",
+                [bank_version]).fetchone()["n"],
+            "propositions": con.execute(
+                "SELECT COUNT(*) n FROM propositions_raw").fetchone()["n"],
+            "dimensions": con.execute(
+                "SELECT COUNT(*) n FROM dimensions WHERE dim_version=?",
+                [dim_version]).fetchone()["n"],
+        }
+
+
 def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
     """The whole document. Never raises on a half-run pipeline — it reports it."""
     with db.connect(read_only=True) as con:

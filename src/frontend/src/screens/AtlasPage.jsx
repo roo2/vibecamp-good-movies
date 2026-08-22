@@ -343,6 +343,17 @@ function AtlasPage({ onBack }) {
           <p>
             Generated {new Date(atlas.generated_at).toLocaleString()} · prompt {atlas.prompt_version} ·
             bank {atlas.bank_version} · dimensions {atlas.dim_version}
+            {/* Which of the two sources answered. "Live" is read from the store on
+                request and is fresh by construction; "published" is a snapshot and
+                is only as current as the last `atlas dataset`. Saying which is the
+                difference between a stale page and a page that admits it. */}
+            {atlas.source === 'published' ? (
+              <> · <span className="atlas-source published" title="A snapshot built by `atlas dataset`, not read from the store">
+                published snapshot
+              </span></>
+            ) : atlas.source === 'live' ? (
+              <> · <span className="atlas-source live" title="Read from the store on this request">live</span></>
+            ) : null}
           </p>
           <p>
             Skeletons are extracted from Wikipedia plot and reception sections and from

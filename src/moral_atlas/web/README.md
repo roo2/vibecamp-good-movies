@@ -14,6 +14,11 @@ dev`.
 
 Endpoints:
 
+- `GET /` — the landing page: two doors (the React app and Datasette over the
+  store) plus a live read of what the pipeline has produced so far. It renders
+  on an empty store too, so a fresh clone gets told what to run rather than a
+  500. Point the doors somewhere else with `ATLAS_FRONTEND_URL`,
+  `ATLAS_DATASETTE_URL` and `ATLAS_SQLITEWEB_URL`.
 - `POST /api/access` — creates a SQLite-backed name-only user and session.
 - `GET /api/access/me` — returns the current persisted user.
 - `GET /api/test/questions` — serves mock test questions.

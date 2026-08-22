@@ -6,12 +6,15 @@ import TestCompletePage from './screens/TestCompletePage.jsx'
 import SessionLobbyPage from './screens/SessionLobbyPage.jsx'
 import SessionWaitingPage from './screens/SessionWaitingPage.jsx'
 import SeenItPage from './screens/SeenItPage.jsx'
+import ShortlistPage from './screens/ShortlistPage.jsx'
+import MatchPage from './screens/MatchPage.jsx'
+import TiebreakPage from './screens/TiebreakPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
 import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/results-intro', '/complete', '/waiting'])
+const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/results-intro', '/complete', '/shortlist', '/match', '/tiebreak', '/waiting'])
 
 function currentRoute() {
   const route = window.location.hash.slice(1) || '/'
@@ -124,7 +127,16 @@ function App() {
   }
 
   if (route === '/complete') {
-    return <TestCompletePage access={access} onStartOver={() => navigate('/')} />
+    return <TestCompletePage access={access} onStartOver={() => navigate('/shortlist')} />
+  }
+  if (route === '/shortlist') {
+    return <ShortlistPage access={access} onDone={() => navigate('/match')} />
+  }
+  if (route === '/match') {
+    return <MatchPage onContinue={() => navigate('/tiebreak')} />
+  }
+  if (route === '/tiebreak') {
+    return <TiebreakPage onDone={() => navigate('/')} />
   }
 
   return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />

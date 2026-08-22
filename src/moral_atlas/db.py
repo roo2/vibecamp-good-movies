@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS films (
     wikipedia_title   TEXT,
     seed_note         TEXT,
     description       TEXT,
+    artwork_url       TEXT,
     fetched_at        TEXT
 );
 
@@ -240,6 +241,14 @@ CREATE TABLE IF NOT EXISTS session_members (
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_members_user ON session_members (user_id);
+
+CREATE TABLE IF NOT EXISTS shortlist_reactions (
+    reaction_id  TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL REFERENCES users(user_id),
+    film_id      TEXT NOT NULL REFERENCES films(film_id),
+    reaction     TEXT NOT NULL,
+    submitted_at TEXT NOT NULL
+);
 """
 
 
@@ -278,6 +287,7 @@ def init_db() -> None:
     with connect() as con:
         con.executescript(SCHEMA)
         _add_column_if_missing(con, "films", "description", "TEXT")
+        _add_column_if_missing(con, "films", "artwork_url", "TEXT")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
         _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
 
@@ -341,16 +351,20 @@ FILM_COLUMNS = [
     "film_id", "tmdb_id", "imdb_id", "title", "year", "runtime",
     "origin_country", "original_language", "genres", "keywords",
     "directors", "writers", "billed_cast", "collection", "based_on",
-    "budget", "revenue", "wikipedia_title", "seed_note", "description", "fetched_at",
+    "budget", "revenue", "wikipedia_title", "seed_note", "description", "artwork_url", "fetched_at",
 ]
 
 
 def upsert_film(row: dict[str, Any]) -> None:
-    # Metadata refreshes should not erase the curated blind-story description.
-    if row.get("description") is None:
+    # Metadata refreshes should not erase curated product fields.
+    if row.get("description") is None or row.get("artwork_url") is None:
         existing = get_film(row["film_id"])
-        if existing and existing.get("description"):
-            row = {**row, "description": existing["description"]}
+        if existing:
+            row = {
+                **row,
+                "description": row.get("description") or existing.get("description"),
+                "artwork_url": row.get("artwork_url") or existing.get("artwork_url"),
+            }
     values = [_encode(c, row.get(c)) for c in FILM_COLUMNS]
     with connect() as con:
         con.execute(
@@ -363,6 +377,11 @@ def upsert_film(row: dict[str, Any]) -> None:
 def set_film_description(film_id: str, description: str) -> None:
     with connect() as con:
         con.execute("UPDATE films SET description=? WHERE film_id=?", [description, film_id])
+
+
+def set_film_artwork_url(film_id: str, artwork_url: str) -> None:
+    with connect() as con:
+        con.execute("UPDATE films SET artwork_url=? WHERE film_id=?", [artwork_url, film_id])
 
 
 def upsert_evidence(

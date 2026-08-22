@@ -94,6 +94,14 @@ def seed_films(seeds: str = typer.Option("seeds/phase0.yaml", help="Seed YAML fi
     console.print(f"[green]ready[/] inserted {inserted} missing seed films")
 
 
+@app.command("populate-artwork")
+def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that are already present.")) -> None:
+    """Populate remote lead-image URLs from Wikipedia; no API key required."""
+    from .sources import wikipedia as wiki_mod
+    result = wiki_mod.populate_artwork(force=force)
+    console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
+
+
 @app.command("opus-index")
 def opus_index(
     version: str = typer.Option("v2024", help="OPUS release: v2018 or v2024."),

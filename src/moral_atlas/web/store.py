@@ -181,6 +181,12 @@ def list_movie_ratings(user_id: str) -> list[MovieRating]:
     ) for row in rows]
 
 
+def save_shortlist_reaction(user_id: str, film_id: str, reaction: str) -> None:
+    _ensure_db()
+    with db.connect() as con:
+        con.execute("INSERT INTO shortlist_reactions (reaction_id, user_id, film_id, reaction, submitted_at) VALUES (?,?,?,?,?)", [f"short_{uuid4().hex[:12]}", user_id, film_id, reaction, db.now()])
+
+
 def create_group_session(host_user_id: str) -> GroupSession:
     _ensure_db()
     deck = build_session_deck()

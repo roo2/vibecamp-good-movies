@@ -11,10 +11,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from .. import db
 from ..config import settings
 from ._http import cached_get
 
 BASE = "https://api.themoviedb.org/3"
+IMAGE_BASE = "https://image.tmdb.org/t/p/w780"
 
 
 def _auth() -> tuple[dict[str, str], dict[str, Any]]:
@@ -99,4 +101,27 @@ def to_film_row(d: dict[str, Any]) -> dict[str, Any]:
         "based_on": based_on,
         "budget": d.get("budget"),
         "revenue": d.get("revenue"),
+        "artwork_url": poster_url(d),
     }
+
+
+def poster_url(movie: dict[str, Any]) -> str | None:
+    poster_path = movie.get("poster_path")
+    return f"{IMAGE_BASE}{poster_path}" if poster_path else None
+
+
+def populate_artwork(force: bool = False) -> dict[str, int]:
+    """Find and store remote poster URLs for the existing film rows."""
+    stats = {"updated": 0, "missing": 0, "skipped": 0}
+    for film in db.list_films():
+        if film.get("artwork_url") and not force:
+            stats["skipped"] += 1
+            continue
+        hit = search(film["title"], film.get("year"))
+        url = poster_url(hit or {})
+        if not url:
+            stats["missing"] += 1
+            continue
+        db.set_film_artwork_url(film["film_id"], url)
+        stats["updated"] += 1
+    return stats

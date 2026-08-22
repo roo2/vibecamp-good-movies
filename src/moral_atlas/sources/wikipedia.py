@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .. import db
 from ._http import cached_get
 
 API = "https://en.wikipedia.org/w/api.php"
@@ -58,6 +59,33 @@ def search_article(title: str, year: int | None = None) -> str | None:
         if "film" in hit["title"].lower():
             return hit["title"]
     return hits[0]["title"]
+
+
+def populate_artwork(force: bool = False) -> dict[str, int]:
+    """Store Wikipedia lead-image URLs; no API key is required."""
+    db.init_db()
+    stats = {"updated": 0, "missing": 0, "skipped": 0}
+    for film in db.list_films():
+        if film.get("artwork_url") and not force:
+            stats["skipped"] += 1
+            continue
+        article = film.get("wikipedia_title") or search_article(film["title"], film.get("year"))
+        if not article:
+            stats["missing"] += 1
+            continue
+        data = cached_get("wiki", API, {
+            "action": "query", "prop": "pageimages", "piprop": "thumbnail",
+            "pithumbsize": 780, "titles": article, "redirects": 1,
+            "format": "json", "formatversion": 2,
+        })
+        pages = data.get("query", {}).get("pages", [])
+        url = pages[0].get("thumbnail", {}).get("source") if pages else None
+        if not url:
+            stats["missing"] += 1
+            continue
+        db.set_film_artwork_url(film["film_id"], url)
+        stats["updated"] += 1
+    return stats
 
 
 def fetch_extract(article: str) -> tuple[str, str] | None:

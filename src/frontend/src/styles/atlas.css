@@ -411,3 +411,9 @@
 .atlas-table th { color: #7e766c; font-weight: 650; text-align: left; padding: 4px 8px 6px 0; border-bottom: 1px solid #2d251f; }
 .atlas-table td { padding: 6px 8px 6px 0; color: #b3aa9e; border-bottom: 1px solid #241e19; font-variant-numeric: tabular-nums; }
 .atlas-table td b { color: #f5efe6; }
+
+/* Which source answered. Not decoration: a published snapshot can be arbitrarily
+   far behind the store, and the reader has no other way to tell. */
+.atlas-source { padding: 1px 6px; border-radius: 8px; font-size: 11px; }
+.atlas-source.live { color: #171310; background: #5cc3c0; }
+.atlas-source.published { color: #b3aa9e; background: #2d251f; }

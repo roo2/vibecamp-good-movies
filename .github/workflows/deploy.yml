@@ -41,6 +41,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      # configure-aws-credentials reports a missing role as "Could not load
+      # credentials from any providers", which sends you looking for expired
+      # keys that were never there. Say the actual thing instead.
+      - name: Check the deploy role is configured
+        run: |
+          if [ -z "${{ vars.AWS_DEPLOY_ROLE }}" ]; then
+            echo "::error::The AWS_DEPLOY_ROLE repository variable is not set, so nothing can reach AWS. Set it to the stack's DeployRoleArn output: gh variable set AWS_DEPLOY_ROLE --body \"\$(aws cloudformation describe-stacks --stack-name moral-atlas-dev --region ap-southeast-2 --query \"Stacks[0].Outputs[?OutputKey=='DeployRoleArn'].OutputValue\" --output text)\""
+            exit 1
+          fi
+
       - id: filter
         name: Compare against the previous commit
         run: |
@@ -104,6 +114,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      # dist/ is gitignored, so the interface only exists in CI if CI builds
+      # it. Publishing without this step is what put the design screens on the
+      # demo URL in place of the real thing.
+      - name: Build the interface
+        working-directory: src/frontend
+        run: |
+          npm ci
+          npm run build
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
@@ -113,6 +138,7 @@ jobs:
         env:
           PROJECT: ${{ env.PROJECT }}
           ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          SITE_DIR: src/frontend/dist
 
       - name: Report the URL
         run: |

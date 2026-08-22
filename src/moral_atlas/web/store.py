@@ -3,11 +3,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from secrets import token_urlsafe
 from uuid import uuid4
 
 from .. import db
-from .schemas import MovieRating, TestResult, User
+from .schemas import GroupSession, GroupSessionStatus, MovieRating, SessionMember, TestResult, User
+
+WAIT_TO_CONTINUE_SECONDS = 10 * 60
 
 
 @dataclass(frozen=True)
@@ -50,7 +53,7 @@ def get_session(token: str) -> Session | None:
     return Session(token=row["token"], user=User(id=row["user_id"], name=row["name"]))
 
 
-def save_test_result(user_id: str, answers: dict[str, str]) -> TestResult:
+def save_test_result(user_id: str, answers: dict[str, str], session_share_token: str | None = None) -> TestResult:
     _ensure_db()
     result = TestResult(
         id=f"result_{uuid4().hex[:12]}",
@@ -66,6 +69,12 @@ def save_test_result(user_id: str, answers: dict[str, str]) -> TestResult:
             [result.id, result.user_id, json.dumps(result.answers), result.answered_count,
              result.submitted_at.isoformat()],
         )
+        if session_share_token:
+            con.execute(
+                "UPDATE session_members SET completed_at=? WHERE user_id=? AND completed_at IS NULL "
+                "AND session_id=(SELECT session_id FROM group_sessions WHERE share_token=? AND status='in_progress')",
+                [result.submitted_at.isoformat(), user_id, session_share_token],
+            )
     return result
 
 
@@ -111,3 +120,87 @@ def list_movie_ratings(user_id: str) -> list[MovieRating]:
         id=row["rating_id"], user_id=row["user_id"], film_id=row["film_id"],
         reaction=row["reaction"], submitted_at=row["submitted_at"],
     ) for row in rows]
+
+
+def create_group_session(host_user_id: str) -> GroupSession:
+    _ensure_db()
+    group_session = GroupSession(
+        id=f"group_{uuid4().hex[:12]}", share_token=token_urlsafe(12), host_user_id=host_user_id,
+        status="lobby", created_at=db.now(),
+    )
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO group_sessions (session_id, share_token, host_user_id, status, created_at) VALUES (?,?,?,?,?)",
+            [group_session.id, group_session.share_token, host_user_id, group_session.status, group_session.created_at.isoformat()],
+        )
+        con.execute(
+            "INSERT INTO session_members (session_id, user_id, joined_at) VALUES (?,?,?)",
+            [group_session.id, host_user_id, group_session.created_at.isoformat()],
+        )
+    return group_session
+
+
+def join_group_session(share_token: str, user_id: str) -> GroupSession | None:
+    _ensure_db()
+    with db.connect() as con:
+        row = con.execute("SELECT * FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        if row is None or row["status"] != "lobby":
+            return None
+        con.execute(
+            "INSERT OR IGNORE INTO session_members (session_id, user_id, joined_at) VALUES (?,?,?)",
+            [row["session_id"], user_id, db.now()],
+        )
+    return _group_session_from_row(row)
+
+
+def get_group_session_status(share_token: str, user_id: str) -> GroupSessionStatus | None:
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        row = con.execute(
+            "SELECT s.* FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
+            "WHERE s.share_token=? AND m.user_id=?", [share_token, user_id],
+        ).fetchone()
+        if row is None:
+            return None
+        member_rows = con.execute(
+            "SELECT u.user_id, u.name, m.joined_at, m.completed_at FROM session_members m "
+            "JOIN users u ON u.user_id=m.user_id WHERE m.session_id=? ORDER BY m.joined_at", [row["session_id"]],
+        ).fetchall()
+    session = _group_session_from_row(row)
+    can_continue = bool(session.waiting_started_at and not session.continued_at and
+                        (datetime.now(timezone.utc) - session.waiting_started_at).total_seconds() >= WAIT_TO_CONTINUE_SECONDS)
+    return GroupSessionStatus(**session.model_dump(), members=[
+        SessionMember(user=User(id=member["user_id"], name=member["name"]), joined_at=member["joined_at"], completed_at=member["completed_at"])
+        for member in member_rows
+    ], can_continue_without_members=can_continue)
+
+
+def start_group_session(share_token: str, host_user_id: str) -> GroupSession | None:
+    return _update_group_session(share_token, host_user_id, "status='in_progress', started_at=?", [db.now()])
+
+
+def begin_waiting_for_results(share_token: str, host_user_id: str) -> GroupSession | None:
+    return _update_group_session(share_token, host_user_id, "waiting_started_at=COALESCE(waiting_started_at, ?)", [db.now()])
+
+
+def continue_group_session(share_token: str, host_user_id: str) -> GroupSession | None:
+    status = get_group_session_status(share_token, host_user_id)
+    everyone_completed = bool(status and status.members and all(member.completed_at for member in status.members))
+    if status is None or not (status.can_continue_without_members or everyone_completed):
+        return None
+    return _update_group_session(share_token, host_user_id, "status='results_started', continued_at=?", [db.now()])
+
+
+def _update_group_session(share_token: str, host_user_id: str, update: str, values: list[str]) -> GroupSession | None:
+    _ensure_db()
+    with db.connect() as con:
+        con.execute(f"UPDATE group_sessions SET {update} WHERE share_token=? AND host_user_id=?", [*values, share_token, host_user_id])
+        row = con.execute("SELECT * FROM group_sessions WHERE share_token=? AND host_user_id=?", [share_token, host_user_id]).fetchone()
+    return _group_session_from_row(row) if row else None
+
+
+def _group_session_from_row(row) -> GroupSession:
+    return GroupSession(
+        id=row["session_id"], share_token=row["share_token"], host_user_id=row["host_user_id"], status=row["status"],
+        created_at=row["created_at"], started_at=row["started_at"], waiting_started_at=row["waiting_started_at"], continued_at=row["continued_at"],
+    )

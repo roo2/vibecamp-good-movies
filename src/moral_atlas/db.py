@@ -213,6 +213,27 @@ CREATE TABLE IF NOT EXISTS item_dimensions (
 
 CREATE INDEX IF NOT EXISTS idx_item_dimensions_lookup
     ON item_dimensions (dim_version, bank_version, pass_name);
+
+CREATE TABLE IF NOT EXISTS group_sessions (
+    session_id         TEXT PRIMARY KEY,
+    share_token        TEXT NOT NULL UNIQUE,
+    host_user_id       TEXT NOT NULL REFERENCES users(user_id),
+    status             TEXT NOT NULL DEFAULT 'lobby',
+    created_at         TEXT NOT NULL,
+    started_at         TEXT,
+    waiting_started_at TEXT,
+    continued_at       TEXT
+);
+
+CREATE TABLE IF NOT EXISTS session_members (
+    session_id   TEXT NOT NULL REFERENCES group_sessions(session_id),
+    user_id      TEXT NOT NULL REFERENCES users(user_id),
+    joined_at    TEXT NOT NULL,
+    completed_at TEXT,
+    PRIMARY KEY (session_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_members_user ON session_members (user_id);
 """
 
 

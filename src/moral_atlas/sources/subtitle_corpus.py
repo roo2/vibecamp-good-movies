@@ -145,8 +145,12 @@ def ingest_subtitles(
     for film in films:
         film_id = slugify(film["title"], film.get("year"))
         try:
-            from . import opus
-            cues, meta = opus.fetch_cues(film["imdb_id"], version)
+            # `acquire` rather than `opus.fetch_cues` directly: it walks the
+            # source chain, applies the plausibility check that rejects
+            # concatenated dual-language tracks and truncated stubs, and returns
+            # Cue objects — which is what `cues_to_text` renders.
+            cues, meta = subs_mod.acquire(
+                film_id, film["title"], film.get("year"), film["imdb_id"], None)
         except Exception as error:  # noqa: BLE001 — one bad track must not end the sweep
             stats["failed"] += 1
             if progress:
@@ -166,7 +170,8 @@ def ingest_subtitles(
             "seed_note": f"subtitles-only:sitelinks={film['sitelinks']}",
             "fetched_at": db.now(),
         })
-        db.upsert_evidence(film_id, "subtitles", subs_mod.cues_to_text(cues))
+        db.upsert_evidence(film_id, "subtitles", subs_mod.cues_to_text(cues), None,
+                           {**meta, "n_cues": len(cues)})
         stats["ingested"] += 1
         stats["cues"] += len(cues)
         if progress and stats["ingested"] % 25 == 0:

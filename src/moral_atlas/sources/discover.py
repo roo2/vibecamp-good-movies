@@ -111,9 +111,14 @@ def discover(
                 progress(f"[yellow]{year}: {type(error).__name__}: {error}[/]")
             continue
         titles = [m["title"] for m in members if not SKIP_PATTERNS.search(m["title"])]
+        allowed = set(titles)
         lengths = _lengths(titles)
+        # Rank only what survived the filter. Reading straight off `lengths`
+        # would make the exclusions advisory — one lookup returning a key it was
+        # not asked about, and a soundtrack or a video game joins the corpus.
         ranked = sorted(((length, title) for title, length in lengths.items()
-                         if length >= min_bytes), reverse=True)[:per_year]
+                         if title in allowed and length >= min_bytes),
+                        reverse=True)[:per_year]
         for length, article in ranked:
             title, parsed_year = _clean_title(article)
             found.append({

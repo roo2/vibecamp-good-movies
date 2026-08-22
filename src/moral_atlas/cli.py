@@ -508,6 +508,40 @@ def model_scan(
                       f"failed [red]{stats['failed']}[/]  {json.dumps(stats['usage'])}")
 
 
+@app.command()
+def discover(
+    start: int = typer.Option(1970, help="First year to sample."),
+    end: int = typer.Option(2024, help="Last year, inclusive."),
+    per_year: int = typer.Option(10, help="Best-documented films to take from each year."),
+    ingest: bool = typer.Option(True, help="Also fetch their Wikipedia evidence."),
+) -> None:
+    """Enlarge the corpus by enumeration rather than by hand.
+
+    The corpus size is what limits every question about how many moral
+    dimensions there are: with forty films the correlation matrix has rank at
+    most 39 and the marginal factors move when the null is resampled. These
+    films get plot evidence and no blind-story description, which is what keeps
+    them out of the product's pairs while counting as respondents.
+    """
+    from .sources import discover as discover_mod
+
+    existing = {film["film_id"] for film in db.list_films()}
+    found = discover_mod.discover(range(start, end + 1), per_year, progress=console.print)
+    entries = discover_mod.as_seed_entries(found, existing)
+    console.print(f"\n[bold]{len(found)}[/] candidates, [bold]{len(entries)}[/] new to the corpus")
+    if not ingest:
+        raise typer.Exit()
+
+    stats = discover_mod.bulk_ingest(entries, progress=console.print)
+    console.print(f"\n[green]ingested {stats['ingested']}[/], "
+                  f"[yellow]{stats['no_plot']} had no plot section[/], "
+                  f"[red]{stats['failed']} failed[/]")
+    films = db.list_films()
+    eligible = sum(1 for f in films if (f.get("description") or "").strip())
+    console.print(f"corpus now {len(films)} films — {eligible} product-eligible, "
+                  f"{len(films) - eligible} research-only")
+
+
 @app.command("dimension-count")
 def dimension_count(
     scorers: str = typer.Option("", help="Also run per model, e.g. grok,deepseek."),

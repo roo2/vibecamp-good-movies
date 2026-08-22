@@ -5,7 +5,8 @@ and the tokens to build from.
 
 | File | What it is |
 |---|---|
-| `parable-screen-flow.html` | **The canvas.** Open in a browser — all fourteen screens on one pan/zoom surface, with notes. |
+| `parable-screens.html` | **The walkthrough.** A single page: every screen in flow order with the reasoning beside it. Click any screen to enlarge. The one to send someone. |
+| `parable-screen-flow.html` | **The canvas.** All fourteen screens on one pan/zoom surface, with notes. The editing surface. |
 | `*.dc.html` | One artboard each. Plain HTML with inline styles: the source the canvas is built from, and directly liftable as markup. |
 | `canvas.json` | Layout — positions, page split, the sticky notes. |
 | `DESIGN.md` | Why the design is this way, and the open questions. **Read this first.** |

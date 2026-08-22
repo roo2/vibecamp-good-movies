@@ -167,6 +167,64 @@ CREATE TABLE IF NOT EXISTS model_verdicts (
     PRIMARY KEY (scorer, film_id, item_id, bank_version, variant)
 );
 
+-- The same three layers as the main pipeline, cut once per model, so the
+-- question "would another model have written these propositions, and would it
+-- have found these axes in them?" can be asked without disturbing the atlas.
+--
+-- `model_axis_items` is the one that makes the comparison statistical. Each
+-- model derives its OWN axes from its OWN harvest, but then assigns the SHARED
+-- b1 bank to them — so every model ends up partitioning the identical 694 items
+-- and the partitions can be compared directly, by Rand index rather than by
+-- reading two lists of axis names and deciding they feel similar.
+CREATE TABLE IF NOT EXISTS model_propositions (
+    scorer         TEXT,
+    model          TEXT,
+    prop_id        TEXT,
+    film_id        TEXT,
+    variant        TEXT,
+    run_id         TEXT,
+    text           TEXT,
+    stance         TEXT,
+    prompt_version TEXT,
+    created_at     TEXT,
+    PRIMARY KEY (scorer, prop_id)
+);
+
+CREATE TABLE IF NOT EXISTS model_axes (
+    scorer         TEXT,
+    model          TEXT,
+    dim_version    TEXT,   -- 'k8', 'k6' ... so a sweep over k is a set of rows
+    dim_id         INTEGER,
+    name           TEXT,
+    question       TEXT,
+    pole_high      TEXT,
+    pole_low       TEXT,
+    n_dims         INTEGER,
+    source         TEXT,
+    run_id         TEXT,
+    prompt_version TEXT,
+    created_at     TEXT,
+    PRIMARY KEY (scorer, dim_version, dim_id)
+);
+
+CREATE TABLE IF NOT EXISTS model_axis_items (
+    scorer       TEXT,
+    dim_version  TEXT,
+    bank_version TEXT,
+    item_id      TEXT,
+    dim_id       INTEGER,
+    polarity     INTEGER,
+    fit          REAL,
+    run_id       TEXT,
+    created_at   TEXT,
+    PRIMARY KEY (scorer, dim_version, bank_version, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_axis_items_lookup
+    ON model_axis_items (dim_version, bank_version, scorer);
+CREATE INDEX IF NOT EXISTS idx_model_propositions_film
+    ON model_propositions (scorer, film_id);
+
 -- A scorer declining to judge is a finding, so it is recorded rather than lost
 -- in a log: guardrails that fire are exactly what the study is measuring.
 CREATE TABLE IF NOT EXISTS model_refusals (

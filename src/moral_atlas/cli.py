@@ -508,6 +508,159 @@ def model_scan(
                       f"failed [red]{stats['failed']}[/]  {json.dumps(stats['usage'])}")
 
 
+@app.command("model-propose")
+def model_propose(
+    scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases."),
+    variant: str = typer.Option("full", help="Evidence condition, the same for every model."),
+    limit: Optional[int] = typer.Option(None),
+    films: str = typer.Option("", help="Only these films (ids or title fragments)."),
+) -> None:
+    """Harvest moral propositions again, under other models.
+
+    The prompt and the evidence are unchanged: if the propositions differ, the
+    model is the only thing that could have caused it.
+    """
+    from .analysis import model_structure
+    from .llm.providers import missing_credentials
+
+    aliases = _ready_scorers(scorers)
+    film_ids = _match_films(films) if films.strip() else _film_ids(limit)
+    for alias in aliases:
+        console.print(f"\n[bold]{alias}[/] harvesting from {len(film_ids)} films ({variant})")
+        stats = model_structure.harvest(alias, film_ids, variant, progress=console.print)
+        console.print(f"  {stats['propositions']} propositions, "
+                      f"[red]{stats['failed']}[/] failed  {json.dumps(stats['usage'])}")
+
+
+@app.command("model-axes")
+def model_axes(
+    scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases."),
+    k: str = typer.Option("8", help="Axis counts to derive, e.g. 4,6,8,10,12."),
+    bank: str = typer.Option("b1"),
+    assign: bool = typer.Option(True, help="Also sort the shared bank onto each model's axes."),
+) -> None:
+    """Have each model name the axes in its OWN harvest, then sort the shared bank.
+
+    Its own harvest deliberately: asking a model to find axes in Claude's
+    propositions would test reading comprehension, not moral structure. The
+    shared bank is what makes the resulting partitions comparable.
+    """
+    from .analysis import model_structure
+
+    aliases = _ready_scorers(scorers)
+    for n_dims in [int(x) for x in k.split(",") if x.strip()]:
+        dim_version = f"k{n_dims}"
+        for alias in aliases:
+            dims = model_structure.derive_axes(alias, dim_version, n_dims,
+                                               progress=console.print)
+            table = Table("axis", "question", box=None)
+            for d in dims:
+                table.add_row(d["name"], d["question"][:88])
+            console.print(table)
+            if assign:
+                n = model_structure.assign_shared(alias, dim_version, bank,
+                                                  progress=console.print)
+                console.print(f"  [dim]{alias} placed {n} shared items on its {dim_version} axes[/]")
+
+
+@app.command("model-structure")
+def model_structure_cmd(
+    version: str = typer.Option("k8", help="Which axis count to report on."),
+    bank: str = typer.Option("b1"),
+    sweep: str = typer.Option("", help="Compare across counts, e.g. 4,6,8,10,12."),
+    worst: int = typer.Option(0, help="Show the N least stable items."),
+) -> None:
+    """Do different models carve the same moral space, and is eight the joint?"""
+    from .analysis import model_structure, structure_stats
+
+    if sweep.strip():
+        by_k = {}
+        for n in [int(x) for x in sweep.split(",") if x.strip()]:
+            parts = model_structure.partitions(f"k{n}", bank)
+            if len(parts) > 1:
+                by_k[n] = parts
+        rows = structure_stats.k_sweep(by_k)
+        if not rows:
+            console.print("[yellow]need at least two models at two counts[/]")
+            raise typer.Exit(1)
+        table = Table("k", "models", "pairs", "mean ARI", "min", "max", "chance", box=None)
+        for row in rows:
+            table.add_row(str(row["k"]), str(row["models"]), str(row["pairs"]),
+                          f"[bold]{row['mean_ari']:+.3f}[/]", f"{row['min_ari']:+.3f}",
+                          f"{row['max_ari']:+.3f}", f"{row['null']:+.4f}")
+        console.print("\n[bold]how much do independent models agree, at each number of axes?[/]")
+        console.print(table)
+        peak = structure_stats.best_k(rows)
+        if peak:
+            verdict = ("[yellow]flat — the count came from the prompt, not the material[/]"
+                       if peak["flat"] else
+                       f"[green]peaks at k={peak['k']}[/] (margin {peak['margin']:+.3f})")
+            console.print(f"\n{verdict}")
+        raise typer.Exit()
+
+    parts = model_structure.partitions(version, bank)
+    if len(parts) < 2:
+        console.print(f"[yellow]only {len(parts)} model(s) have {version} assignments[/] — "
+                      "run `atlas model-axes` for more")
+        raise typer.Exit(1)
+
+    table = Table("pair", "items", "raw", "ARI", "NMI", "chance ARI", "z", box=None)
+    for pair, row in structure_stats.pairwise(parts).items():
+        colour = ("green" if row["ari"] >= 0.5 else "yellow" if row["ari"] >= 0.25 else "red")
+        table.add_row(pair, str(row["n_items"]), f"{row['raw']:.2f}",
+                      f"[{colour}]{row['ari']:+.3f}[/]", f"{row['nmi']:.3f}",
+                      f"{row['null_ari_mean']:+.4f}",
+                      f"{row['z']:.0f}" if row["z"] is not None else "-")
+    console.print("\n[bold]do the models group the same items together?[/]")
+    console.print(table)
+    console.print("[dim]ARI is chance-corrected: two random partitions of this shape "
+                  "score about zero, while raw agreement does not.[/]")
+
+    aliases = sorted(parts)
+    for i, a in enumerate(aliases):
+        for b in aliases[i + 1:]:
+            names_a = model_structure.axis_names(a, version)
+            names_b = model_structure.axis_names(b, version)
+            matched = structure_stats.match_axes(parts[a], parts[b], names_a, names_b)
+            if not matched:
+                continue
+            table = Table(f"{a} axis", f"{b} axis", "shared", "Jaccard", box=None)
+            for row in matched:
+                colour = ("green" if row["jaccard"] >= 0.5 else
+                          "yellow" if row["jaccard"] >= 0.25 else "red")
+                table.add_row(row["a_name"][:34], row["b_name"][:34],
+                              str(row["shared_items"]), f"[{colour}]{row['jaccard']:.2f}[/]")
+            console.print(f"\n[bold]which axis is which — {a} vs {b}[/] "
+                          f"[dim](matched by item overlap, not by name)[/]")
+            console.print(table)
+
+    if worst:
+        rows = structure_stats.item_stability(parts)
+        console.print(f"\n[bold]least stable items[/] [dim](their neighbours change with "
+                      f"the model — read these before trusting the axis)[/]")
+        items = {it["item_id"]: it["text"] for it in dim_mod.bank_items(bank)}
+        table = Table("item", "stability", "text", box=None)
+        for row in rows[-worst:]:
+            table.add_row(row["item_id"], f"[red]{row['stability']:.2f}[/]",
+                          items.get(row["item_id"], "")[:76])
+        console.print(table)
+
+
+def _ready_scorers(scorers: str) -> list[str]:
+    """Aliases with credentials, having said plainly which were skipped and why."""
+    from .llm.providers import missing_credentials
+
+    aliases = [a.strip() for a in scorers.split(",") if a.strip()]
+    missing = missing_credentials(aliases)
+    for alias, provider in missing.items():
+        console.print(f"[yellow]skipping {alias}[/] — set {provider.env_var} ({provider.console})")
+    aliases = [a for a in aliases if a not in missing]
+    if not aliases:
+        console.print("[red]no scorers with credentials[/] — see `atlas models`")
+        raise typer.Exit(1)
+    return aliases
+
+
 @app.command("model-bias")
 def model_bias_cmd(
     bank: str = typer.Option("b1"),

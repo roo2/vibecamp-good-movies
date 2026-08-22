@@ -275,3 +275,36 @@ def test_usage_is_accounted_in_the_providers_own_field_names(monkeypatch):
     assert usage["output_tokens"] == 200
     assert usage["cache_read_tokens"] == 400
     assert usage["cost_usd"] > 0
+
+
+def test_a_truncated_outer_object_does_not_degrade_into_an_inner_fragment():
+    """The bug a live run found that the mocks had not.
+
+    When the outer object never closes, brace-matching skips it and the next
+    balanced object is a single score. Returning that produced a schema error
+    pointing at the wrong thing entirely; requiring the schema's own root key
+    means a truncated answer reads as absent rather than as one lonely verdict.
+    """
+    truncated = '{"scores": [{"item_id": "I001", "verdict": "affirms"}, {"item_id": "I002"'
+    assert providers._first_json_object(truncated) == {"item_id": "I001", "verdict": "affirms"}
+    assert providers._first_json_object(truncated, "scores") is None
+
+
+def test_the_root_key_still_finds_the_object_in_ordinary_prose():
+    text = 'Here you go:\n{"scores": [{"item_id": "I1", "verdict": "denies"}]}\nDone.'
+    assert providers._first_json_object(text, "scores") == {
+        "scores": [{"item_id": "I1", "verdict": "denies"}]}
+
+
+def test_running_out_of_tokens_is_reported_as_truncation(monkeypatch):
+    """Not as a parse failure: the fix is a shorter answer, not a better parser."""
+    def handler(request):
+        return httpx.Response(200, json={
+            "choices": [{"message": {"content": '{"scores": [{"item_id": "I1"'},
+                        "finish_reason": "length"}],
+            "usage": {"prompt_tokens": 100, "completion_tokens": 16384},
+        })
+
+    client = _client_with(handler, monkeypatch=monkeypatch)
+    with pytest.raises(providers.Truncated, match="output limit"):
+        client.parse(system="s", user="u", output_model=Verdict)

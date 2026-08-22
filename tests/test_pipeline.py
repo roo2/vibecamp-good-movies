@@ -356,3 +356,110 @@ def test_read_only_connect_refuses_writes(monkeypatch, tmp_path):
     with db_mod.connect(read_only=True) as con:
         with pytest.raises(sqlite3.OperationalError):
             con.execute("DELETE FROM films")
+
+
+# --------------------------------------------------------------------------
+# Inverted statements must not merge into one item
+# --------------------------------------------------------------------------
+
+def _member(prop_id, film_id, text, stance="affirms"):
+    return (prop_id, film_id, text, stance)
+
+
+def test_the_real_b1_inversion_would_now_be_split():
+    """The exact pair that produced I001, from Do the Right Thing.
+
+    Both were harvested as `denies` — the film rejects both absolutes — so
+    stance alone could never have caught this. Only the wording can.
+    """
+    from moral_atlas.analysis import bank as bank_mod
+
+    cluster = {
+        "cluster_id": 0,
+        "members": [
+            _member("p1", "do-the-right-thing-1989",
+                    "Violent response to violent injustice is never justified.", "denies"),
+            _member("p2", "do-the-right-thing-1989",
+                    "Violent response to violent injustice is morally required of the wronged.",
+                    "denies"),
+        ],
+        "representative": "Violent response to violent injustice is morally required of the wronged.",
+        "support": 1, "n_statements": 2,
+    }
+    out, splits = bank_mod.split_inverted([cluster])
+
+    assert len(out) == 2, "one item per direction, not one item for both"
+    assert len(splits) == 1
+    assert set(splits[0]["classes"]) == {"negated", "obliged"}
+    texts = {c["representative"] for c in out}
+    assert any("never justified" in t for t in texts), "the direction that was being discarded"
+    assert any("morally required" in t for t in texts)
+    assert {c["cluster_id"] for c in out} == {0, 1}, "original id kept, one new id issued"
+
+
+def test_genuine_near_duplicates_are_left_alone():
+    """The other merged cluster in b1: same claim, two phrasings. Must survive."""
+    from moral_atlas.analysis import bank as bank_mod
+
+    cluster = {
+        "cluster_id": 2,
+        "members": [
+            _member("p1", "film-a", "A person who does great harm was first gravely harmed themselves."),
+            _member("p2", "film-b", "A person who does grave harm was first gravely harmed themselves."),
+        ],
+        "representative": "A person who does great harm was first gravely harmed themselves.",
+        "support": 2, "n_statements": 2,
+    }
+    out, splits = bank_mod.split_inverted([cluster])
+    assert splits == []
+    assert len(out) == 1 and out[0]["n_statements"] == 2
+
+
+def test_two_ways_of_saying_forbidden_are_still_one_item():
+    """`never` and `not` are the same direction; splitting them would be noise."""
+    from moral_atlas.analysis import bank as bank_mod
+
+    cluster = {
+        "cluster_id": 0,
+        "members": [
+            _member("p1", "film-a", "Revenge is never justified."),
+            _member("p2", "film-b", "Revenge is not justified."),
+        ],
+        "representative": "Revenge is never justified.", "support": 2, "n_statements": 2,
+    }
+    _out, splits = bank_mod.split_inverted([cluster])
+    assert splits == []
+
+
+def test_a_prohibition_is_not_filed_with_a_requirement():
+    """"must not" is a prohibition; reading it as a weak "must" recreates the bug."""
+    from moral_atlas.analysis import bank as bank_mod
+
+    assert bank_mod.polarity_class("One must not lie to those one loves.") == "negated"
+    assert bank_mod.polarity_class("One must tell the truth to those one loves.") == "obliged"
+    assert bank_mod.polarity_class("Telling the truth repairs what lying damaged.") == "plain"
+
+
+def test_a_split_cluster_says_why_on_the_item(monkeypatch, tmp_path):
+    from moral_atlas.analysis import bank as bank_mod
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    monkeypatch.setattr(bank_mod, "db", db_mod)
+
+    clusters = [{
+        "cluster_id": 0,
+        "members": [
+            _member("p1", "film-a", "Violence is never justified."),
+            _member("p2", "film-a", "Violence is morally required of the wronged."),
+        ],
+        "representative": "Violence is morally required of the wronged.",
+        "support": 1, "n_statements": 2,
+    }]
+    result = bank_mod.build_bank("btest", clusters, client=None)
+
+    assert result["n_items"] == 2
+    assert result["n_inversions_split"] == 1
+    with db_mod.connect(read_only=True) as con:
+        notes = [r["note"] for r in con.execute(
+            "SELECT note FROM item_bank WHERE bank_version='btest'")]
+    assert any("split from cluster 0" in n for n in notes), \
+        "an item that exists because of a split should say so"

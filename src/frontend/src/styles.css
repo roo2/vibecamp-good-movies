@@ -26,18 +26,6 @@ button { cursor: pointer; }
 .login-footer { margin: 12px 0 0; color: #7e766c; font-size: 12px; text-align: center; }
 .session-screen { gap: 0; }.session-content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center; }.session-content h1 { font-size: 38px; }.session-qr { width: 184px; height: 184px; padding: 10px; border-radius: 14px; background: #f5efe6; }.link-button { min-height: 42px; border: 1px solid #3a312a; border-radius: 21px; padding: 0 18px; color: #b3aa9e; background: transparent; }.lobby-members { width: 100%; display: grid; gap: 7px; padding: 14px; border: 1px solid #2d251f; border-radius: 12px; color: #b3aa9e; background: #1c1713; text-align: left; }.lobby-members strong { color: #f5efe6; font-size: 13px; }.lobby-members span { color: #7e766c; font-size: 12px; }.member-list { width: 100%; display: grid; gap: 8px; text-align: left; }.member-list div { display: grid; grid-template-columns: 24px 1fr auto; align-items: center; padding: 13px; border: 1px solid #2d251f; border-radius: 10px; color: #f5efe6; background: #1c1713; }.member-list span { color: #eda36b; }.member-list small { color: #7e766c; }
 
-.welcome-content { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
-.mini-map { display: flex; flex-direction: column; gap: 18px; padding: 22px 20px; border: 1px solid #2d251f; border-radius: 14px; background: #1c1713; }
-.mini-axis { display: flex; flex-direction: column; gap: 6px; }
-.mini-axis > div { display: flex; justify-content: space-between; gap: 8px; color: #7e766c; font-size: 10px; }
-.mini-axis i { position: relative; display: block; height: 3px; border-radius: 2px; background: #2d251f; }
-.mini-axis u { position: absolute; top: 0; left: 13%; width: 59%; height: 3px; background: #3a312a; text-decoration: none; }
-.mini-axis b { position: absolute; top: -3px; width: 9px; height: 9px; border-radius: 50%; }
-.you-dot { left: 22%; background: #eda36b; }
-.them-dot { left: 32%; background: #5cc3c0; }
-.you-dot.wide { left: 12%; }
-.them-dot.wide { left: 74%; }
-.mini-map p { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; }
 
 .fork-screen { gap: 0; }
 .seen-it-screen { gap: 0; }

@@ -20,6 +20,7 @@ the personal moral axis everything is finally ranked along.
 
 | Stage | State |
 |---|---|
+| Store (SQLite) | migrated from DuckDB, 580 rows verified |
 | Ingestion (Wikipedia / Wikidata / OPUS subtitles) | working — 40/40 plot, 40/40 reception, 39/40 subtitles, no API keys |
 | Evidence packets and A/B variants | working — all four conditions runnable on 39/40 films |
 | Moral skeleton extraction | built, needs `ANTHROPIC_API_KEY` |
@@ -125,20 +126,23 @@ Subtitles*, LREC.
 
 ## Looking at the data
 
+The store is a plain SQLite file, so anything that reads SQLite reads it — the
+`sqlite3` CLI, DB Browser for SQLite, Datasette, DBeaver, TablePlus, pandas.
+
 ```bash
-duckdb data/atlas.duckdb          # opens it
-duckdb -ui data/atlas.duckdb      # local web UI: browse, query, chart
+sqlite3 data/atlas.sqlite                  # CLI
+datasette data/atlas.sqlite                # browsable web UI with charts
+python -c "import sqlite3,pandas as pd; \
+  print(pd.read_sql('SELECT * FROM runs', sqlite3.connect('data/atlas.sqlite')))"
 ```
 
-Note `-f` means *"execute SQL from this file"*, so `duckdb -f data/atlas.duckdb`
-tries to parse the database as a SQL script and fails with a parser error on
-binary content. The database is a positional argument, not a flag.
+In the `sqlite3` CLI, `.headers on` and `.mode box` make output readable.
 
 ```sql
 .tables
 SELECT stage, model, n_calls, cost_usd FROM runs ORDER BY started_at;
 SELECT variant, count(*) FROM skeletons GROUP BY 1;
-SELECT film_id, json_extract_string(data, '$.legitimacy_source')
+SELECT film_id, json_extract(data, '$.legitimacy_source')
 FROM skeletons WHERE variant = 'full' LIMIT 10;
 ```
 
@@ -172,7 +176,7 @@ hundreds.
 ```
 src/moral_atlas/
   config.py            settings, PROMPT_VERSION, cost estimation
-  db.py                DuckDB schema and helpers
+  db.py                SQLite schema and helpers
   cli.py               the atlas command
   sources/
     _http.py           cached HTTP with rate-limit backoff

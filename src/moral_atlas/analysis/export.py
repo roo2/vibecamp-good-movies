@@ -1,12 +1,12 @@
 """Portable export of everything derived so far.
 
-Two shapes, because a staging box may or may not want DuckDB:
+Two shapes, because a staging box may or may not want the database file:
 
-  the .duckdb file itself   Copy it. This is what `infra/README.md` already
-                            documents moving through S3, so a manual transfer
-                            and the eventual automated one land the same object.
+  the .sqlite file itself   Copy it. This is what `infra/README.md` documents
+                            moving through S3, so a manual transfer and the
+                            eventual automated one land the same object.
 
-  a JSONL bundle            Self-describing, no DuckDB dependency, diffable,
+  a JSONL bundle            Self-describing, no database dependency, diffable,
                             and each table is one file so a partial transfer is
                             still useful.
 
@@ -34,9 +34,7 @@ BULKY = {"evidence"}
 
 
 def _rows(con, table: str) -> list[dict[str, Any]]:
-    con.execute(f"SELECT * FROM {table}")
-    cols = [d[0] for d in con.description]
-    return [dict(zip(cols, r)) for r in con.fetchall()]
+    return [dict(r) for r in con.execute(f"SELECT * FROM {table}").fetchall()]
 
 
 def export(out_dir: str, include_evidence: bool = False,
@@ -102,7 +100,7 @@ def export(out_dir: str, include_evidence: bool = False,
     if copy_db:
         src = settings().db_path
         if src.exists():
-            shutil.copy2(src, out / "atlas.duckdb")
-            manifest["duckdb_bytes"] = (out / "atlas.duckdb").stat().st_size
+            shutil.copy2(src, out / "atlas.sqlite")
+            manifest["sqlite_bytes"] = (out / "atlas.sqlite").stat().st_size
 
     return manifest

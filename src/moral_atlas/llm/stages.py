@@ -1,4 +1,4 @@
-"""The three LLM stages, each writing versioned rows into DuckDB."""
+"""The three LLM stages, each writing versioned rows into the store."""
 from __future__ import annotations
 
 import json

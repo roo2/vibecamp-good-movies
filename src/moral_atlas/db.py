@@ -1,125 +1,150 @@
-"""DuckDB store.
+"""SQLite store.
 
 Design rule: nothing derived is ever overwritten in place without a version
 stamp. Every skeleton, proposition and score carries the run_id, model and
 prompt_version that produced it, so re-cutting the item bank or swapping models
 produces a new layer you can diff rather than a silent mutation of the old one.
+
+Two consequences of SQLite worth knowing:
+
+* **No array type.** The list-valued film columns — genres, keywords, directors,
+  writers, cast, origin_country — are stored as JSON text and decoded on read.
+  `LIST_COLUMNS` is the single place that mapping lives, so a column added to
+  the schema must be added there too or it comes back as a raw string.
+
+* **One writer at a time.** WAL mode plus a busy timeout keeps concurrent
+  readers working and makes a brief write collision wait rather than raise.
+  Writes are already serialised — the LLM stages fan out over threads but
+  persist from the collecting thread — so this is belt and braces.
 """
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
-import duckdb
-
 from .config import settings
 
+# Columns held as JSON text because SQLite has no array type.
+LIST_COLUMNS = {
+    "origin_country", "genres", "keywords", "directors", "writers", "billed_cast",
+}
+
 SCHEMA = """
+PRAGMA journal_mode=WAL;
+
 CREATE TABLE IF NOT EXISTS films (
-    film_id           VARCHAR PRIMARY KEY,
+    film_id           TEXT PRIMARY KEY,
     tmdb_id           INTEGER,
-    imdb_id           VARCHAR,
-    title             VARCHAR NOT NULL,
+    imdb_id           TEXT,
+    title             TEXT NOT NULL,
     year              INTEGER,
     runtime           INTEGER,
-    origin_country    VARCHAR[],
-    original_language VARCHAR,
-    genres            VARCHAR[],
-    keywords          VARCHAR[],
-    directors         VARCHAR[],
-    writers           VARCHAR[],
-    billed_cast       VARCHAR[],
-    collection        VARCHAR,
-    based_on          VARCHAR,
-    budget            BIGINT,
-    revenue           BIGINT,
-    wikipedia_title   VARCHAR,
-    seed_note         VARCHAR,
-    fetched_at        TIMESTAMP
+    origin_country    TEXT,   -- JSON array
+    original_language TEXT,
+    genres            TEXT,   -- JSON array
+    keywords          TEXT,   -- JSON array
+    directors         TEXT,   -- JSON array
+    writers           TEXT,   -- JSON array
+    billed_cast       TEXT,   -- JSON array
+    collection        TEXT,
+    based_on          TEXT,
+    budget            INTEGER,
+    revenue           INTEGER,
+    wikipedia_title   TEXT,
+    seed_note         TEXT,
+    fetched_at        TEXT
 );
 
 -- One row per (film, evidence layer). Layers: plot, themes, reception,
--- subtitles, subtitles_open, subtitles_close, script.
+-- subtitles, script.
 CREATE TABLE IF NOT EXISTS evidence (
-    film_id     VARCHAR,
-    layer       VARCHAR,
+    film_id     TEXT,
+    layer       TEXT,
     content     TEXT,
-    source_url  VARCHAR,
+    source_url  TEXT,
     word_count  INTEGER,
-    meta        JSON,
-    fetched_at  TIMESTAMP,
+    meta        TEXT,   -- JSON
+    fetched_at  TEXT,
     PRIMARY KEY (film_id, layer)
 );
 
 CREATE TABLE IF NOT EXISTS runs (
-    run_id            VARCHAR PRIMARY KEY,
-    stage             VARCHAR,
-    model             VARCHAR,
-    prompt_version    VARCHAR,
-    params            JSON,
-    started_at        TIMESTAMP,
-    finished_at       TIMESTAMP,
+    run_id            TEXT PRIMARY KEY,
+    stage             TEXT,
+    model             TEXT,
+    prompt_version    TEXT,
+    params            TEXT,   -- JSON
+    started_at        TEXT,
+    finished_at       TEXT,
     n_calls           INTEGER,
-    input_tokens      BIGINT,
-    output_tokens     BIGINT,
-    cache_read_tokens BIGINT,
-    cost_usd          DOUBLE
+    input_tokens      INTEGER,
+    output_tokens     INTEGER,
+    cache_read_tokens INTEGER,
+    cost_usd          REAL
 );
 
 CREATE TABLE IF NOT EXISTS skeletons (
-    film_id        VARCHAR,
-    variant        VARCHAR,
-    run_id         VARCHAR,
-    data           JSON,
-    model          VARCHAR,
-    prompt_version VARCHAR,
-    created_at     TIMESTAMP,
+    film_id        TEXT,
+    variant        TEXT,
+    run_id         TEXT,
+    data           TEXT,   -- JSON
+    model          TEXT,
+    prompt_version TEXT,
+    created_at     TEXT,
     PRIMARY KEY (film_id, variant, run_id)
 );
 
 CREATE TABLE IF NOT EXISTS propositions_raw (
-    prop_id    VARCHAR PRIMARY KEY,
-    film_id    VARCHAR,
-    variant    VARCHAR,
-    run_id     VARCHAR,
+    prop_id    TEXT PRIMARY KEY,
+    film_id    TEXT,
+    variant    TEXT,
+    run_id     TEXT,
     text       TEXT,
-    stance     VARCHAR,
+    stance     TEXT,
     evidence   TEXT,
-    created_at TIMESTAMP
+    created_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS item_bank (
-    item_id      VARCHAR,
-    bank_version VARCHAR,
+    item_id      TEXT,
+    bank_version TEXT,
     text         TEXT,
     cluster_id   INTEGER,
     support      INTEGER,
-    reversed_of  VARCHAR,
-    active       BOOLEAN,
-    note         VARCHAR,
+    reversed_of  TEXT,
+    active       INTEGER,
+    note         TEXT,
     PRIMARY KEY (item_id, bank_version)
 );
 
 -- value: +1 affirms, -1 denies, 0 does not address.
 CREATE TABLE IF NOT EXISTS scores (
-    film_id      VARCHAR,
-    item_id      VARCHAR,
-    bank_version VARCHAR,
-    variant      VARCHAR,
-    run_id       VARCHAR,
-    value        TINYINT,
-    confidence   DOUBLE,
+    film_id      TEXT,
+    item_id      TEXT,
+    bank_version TEXT,
+    variant      TEXT,
+    run_id       TEXT,
+    value        INTEGER,
+    confidence   REAL,
     evidence     TEXT,
     PRIMARY KEY (film_id, item_id, bank_version, variant, run_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_scores_lookup
+    ON scores (bank_version, variant, film_id);
+CREATE INDEX IF NOT EXISTS idx_skeletons_film ON skeletons (film_id, variant);
+CREATE INDEX IF NOT EXISTS idx_props_film ON propositions_raw (film_id);
 """
 
 
-def now() -> datetime:
-    return datetime.now(timezone.utc)
+def now() -> str:
+    """ISO-8601 UTC. Stored as text: Python 3.12 deprecated the implicit
+    datetime adapters, and an explicit string is unambiguous in every client."""
+    return datetime.now(timezone.utc).isoformat()
 
 
 def new_run_id(stage: str) -> str:
@@ -127,19 +152,49 @@ def new_run_id(stage: str) -> str:
 
 
 @contextmanager
-def connect(read_only: bool = False) -> Iterator[duckdb.DuckDBPyConnection]:
+def connect(read_only: bool = False) -> Iterator[sqlite3.Connection]:
     s = settings()
     s.ensure_dirs()
-    con = duckdb.connect(str(s.db_path), read_only=read_only)
+    if read_only and s.db_path.exists():
+        con = sqlite3.connect(f"file:{s.db_path}?mode=ro", uri=True, timeout=30)
+    else:
+        con = sqlite3.connect(s.db_path, timeout=30)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA busy_timeout=30000")
+    if not read_only:
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA synchronous=NORMAL")
     try:
         yield con
+        if not read_only:
+            con.commit()
     finally:
         con.close()
 
 
 def init_db() -> None:
     with connect() as con:
-        con.execute(SCHEMA)
+        con.executescript(SCHEMA)
+
+
+def _encode(column: str, value: Any) -> Any:
+    if column in LIST_COLUMNS:
+        return json.dumps(list(value)) if value is not None else None
+    return value
+
+
+def _decode_film(row: sqlite3.Row) -> dict[str, Any]:
+    out = dict(row)
+    for column in LIST_COLUMNS:
+        raw = out.get(column)
+        if isinstance(raw, str):
+            try:
+                out[column] = json.loads(raw)
+            except json.JSONDecodeError:
+                out[column] = [raw]
+        elif raw is None:
+            out[column] = []
+    return out
 
 
 def start_run(stage: str, model: str, prompt_version: str, params: dict[str, Any]) -> str:
@@ -171,18 +226,20 @@ def finish_run(run_id: str, usage: dict[str, Any]) -> None:
         )
 
 
+FILM_COLUMNS = [
+    "film_id", "tmdb_id", "imdb_id", "title", "year", "runtime",
+    "origin_country", "original_language", "genres", "keywords",
+    "directors", "writers", "billed_cast", "collection", "based_on",
+    "budget", "revenue", "wikipedia_title", "seed_note", "fetched_at",
+]
+
+
 def upsert_film(row: dict[str, Any]) -> None:
-    cols = [
-        "film_id", "tmdb_id", "imdb_id", "title", "year", "runtime",
-        "origin_country", "original_language", "genres", "keywords",
-        "directors", "writers", "billed_cast", "collection", "based_on",
-        "budget", "revenue", "wikipedia_title", "seed_note", "fetched_at",
-    ]
-    values = [row.get(c) for c in cols]
+    values = [_encode(c, row.get(c)) for c in FILM_COLUMNS]
     with connect() as con:
         con.execute(
-            f"INSERT OR REPLACE INTO films ({','.join(cols)}) "
-            f"VALUES ({','.join('?' * len(cols))})",
+            f"INSERT OR REPLACE INTO films ({','.join(FILM_COLUMNS)}) "
+            f"VALUES ({','.join('?' * len(FILM_COLUMNS))})",
             values,
         )
 
@@ -206,22 +263,16 @@ def get_evidence(film_id: str) -> dict[str, str]:
         rows = con.execute(
             "SELECT layer, content FROM evidence WHERE film_id=?", [film_id]
         ).fetchall()
-    return {layer: content for layer, content in rows}
+    return {r["layer"]: r["content"] for r in rows}
 
 
 def get_film(film_id: str) -> dict[str, Any] | None:
     with connect(read_only=True) as con:
-        con.execute("SELECT * FROM films WHERE film_id=?", [film_id])
-        row = con.fetchone()
-        if row is None:
-            return None
-        cols = [d[0] for d in con.description]
-    return dict(zip(cols, row))
+        row = con.execute("SELECT * FROM films WHERE film_id=?", [film_id]).fetchone()
+    return _decode_film(row) if row is not None else None
 
 
 def list_films() -> list[dict[str, Any]]:
     with connect(read_only=True) as con:
-        con.execute("SELECT * FROM films ORDER BY year, title")
-        rows = con.fetchall()
-        cols = [d[0] for d in con.description]
-    return [dict(zip(cols, r)) for r in rows]
+        rows = con.execute("SELECT * FROM films ORDER BY year, title").fetchall()
+    return [_decode_film(r) for r in rows]

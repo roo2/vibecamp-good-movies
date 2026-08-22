@@ -256,13 +256,24 @@ def displacement(
     console.print(json.dumps(ab_mod.displacement(version, parent, child), indent=2))
 
 
+@app.command("migrate-db")
+def migrate_db(
+    source: str = typer.Option("data/atlas.duckdb", help="Old DuckDB file."),
+) -> None:
+    """Copy an existing DuckDB store into the SQLite store, verifying counts."""
+    from .analysis import migrate as migrate_mod
+    console.print(f"migrating [bold]{source}[/] -> {settings().db_path}\n")
+    report = migrate_mod.migrate(source, progress=console.print)
+    console.print(f"\n[green]migrated {report['total_rows']} rows[/]")
+
+
 @app.command("export")
 def export_cmd(
     out: str = typer.Option("dist/export", help="Directory to write into."),
     include_evidence: bool = typer.Option(
         False, help="Include raw plot/subtitle text. Large, and fully "
                     "reproducible from public sources without it."),
-    no_db: bool = typer.Option(False, help="Skip copying the .duckdb file."),
+    no_db: bool = typer.Option(False, help="Skip copying the .sqlite file."),
 ) -> None:
     """Export everything derived so far, for transfer to another machine."""
     from .analysis import export as export_mod

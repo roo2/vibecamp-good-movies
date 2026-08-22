@@ -4,7 +4,7 @@ Description: >
   Moral Atlas / Parable — shared infrastructure for collaboration and demos.
   Two halves, matching the repository: a private static site behind CloudFront
   for the interface, and one long-lived EC2 runner (reachable only through SSM
-  Session Manager) for the atlas pipeline, whose DuckDB file lives on a
+  Session Manager) for the atlas pipeline, whose SQLite file lives on a
   retained EBS volume. No SSH keys, no NAT gateway, no inbound ports.
 
 Metadata:
@@ -48,7 +48,7 @@ Parameters:
     MinValue: 8
     MaxValue: 500
     Description: >
-      Separate encrypted gp3 volume for data/ — the DuckDB file, the HTTP
+      Separate encrypted gp3 volume for data/ — the SQLite file, the HTTP
       cache and any hand-supplied subtitles. Retained when the stack or the
       instance is replaced.
 
@@ -470,7 +470,7 @@ Resources:
       RetentionInDays: 30
 
   # Retained on purpose. Any change to UserData or InstanceType replaces the
-  # instance; the DuckDB file and the HTTP cache cost real money to rebuild and
+  # instance; the SQLite file and the HTTP cache cost real money to rebuild and
   # must not go with it.
   DataVolume:
     Type: AWS::EC2::Volume
@@ -613,15 +613,15 @@ Resources:
           # ---- snapshot the database file to S3 ------------------------------
           cat > /usr/local/bin/atlas-snapshot <<'SCRIPT'
           #!/bin/bash
-          # DuckDB is a single file, so a backup is a copy — and a colleague
+          # SQLite is a single file, so a backup is a copy — and a colleague
           # gets real scores to build against by pulling that file down and
           # pointing their own checkout at it:
           #
-          #   aws s3 cp s3://<bucket>/latest/atlas.duckdb data/atlas.duckdb
+          #   aws s3 cp s3://<bucket>/latest/atlas.sqlite data/atlas.sqlite
           #
           # No API key and no sweep of their own required.
           #
-          # Run this when no sweep is in progress. DuckDB holds a write lock
+          # Run this when no sweep is in progress. SQLite holds a write lock
           # for the length of a run, and copying a file mid-write gives you a
           # torn snapshot that looks fine until the day you need it.
           set -euo pipefail
@@ -629,7 +629,7 @@ Resources:
           export AWS_DEFAULT_REGION="__REGION__"
           STAMP=$(date -u +%Y%m%dT%H%M%SZ)
           cd /opt/atlas/app
-          for f in data/atlas.duckdb data/bank.jsonl; do
+          for f in data/atlas.sqlite data/bank.jsonl; do
             [ -f "$f" ] || continue
             base=$(basename "$f")
             aws s3 cp "$f" "s3://$BUCKET/snapshots/$STAMP/$base"
@@ -916,7 +916,7 @@ Outputs:
     Export: { Name: !Sub "${AWS::StackName}-DistributionId" }
 
   DataBucketName:
-    Description: Versioned bucket holding DuckDB snapshots and bank exports.
+    Description: Versioned bucket holding SQLite snapshots and bank exports.
     Value: !Ref DataBucket
     Export: { Name: !Sub "${AWS::StackName}-DataBucket" }
 

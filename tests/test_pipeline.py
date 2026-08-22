@@ -188,7 +188,7 @@ def _tmp_db(monkeypatch, tmp_path):
     from moral_atlas import db as db_mod
     from moral_atlas.config import settings as real_settings
     s = replace(real_settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-                db_path=tmp_path / "t.duckdb")
+                db_path=tmp_path / "t.sqlite")
     monkeypatch.setattr(db_mod, "settings", lambda: s)
     db_mod.init_db()
     return db_mod
@@ -257,3 +257,39 @@ def test_bank_survives_a_failing_reversal_pass(monkeypatch, tmp_path):
             "SELECT text FROM item_bank WHERE bank_version='btest'").fetchall()
     assert len(rows) == 5, "canonicalised bank must survive a reversal failure"
     assert rows[0][0].startswith("Canonical")
+
+
+def test_list_columns_round_trip_through_json(monkeypatch, tmp_path):
+    """SQLite has no array type, so the list-valued film columns are stored as
+    JSON text. If a new list column is added to the schema but not to
+    LIST_COLUMNS it comes back as a raw string, which fails somewhere far away."""
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    db_mod.upsert_film({
+        "film_id": "x-1994", "title": "X", "year": 1994,
+        "genres": ["Animation", "Drama"],
+        "directors": ["A. Director"],
+        "billed_cast": ["One", "Two", "Three"],
+        "origin_country": ["US"],
+        "keywords": [], "writers": None,
+    })
+    got = db_mod.get_film("x-1994")
+    assert got["genres"] == ["Animation", "Drama"]
+    assert got["billed_cast"] == ["One", "Two", "Three"]
+    assert got["keywords"] == []
+    assert got["writers"] == []          # NULL decodes to empty, never None
+    assert got["title"] == "X"
+
+    # every declared list column must survive a round trip
+    for column in db_mod.LIST_COLUMNS:
+        assert isinstance(got[column], list), f"{column} came back as {type(got[column])}"
+
+
+def test_read_only_connect_refuses_writes(monkeypatch, tmp_path):
+    """Analysis paths open read-only so a stray write cannot corrupt a store
+    that took real money to fill."""
+    import pytest, sqlite3
+    db_mod = _tmp_db(monkeypatch, tmp_path)
+    db_mod.upsert_film({"film_id": "y-2000", "title": "Y", "year": 2000})
+    with db_mod.connect(read_only=True) as con:
+        with pytest.raises(sqlite3.OperationalError):
+            con.execute("DELETE FROM films")

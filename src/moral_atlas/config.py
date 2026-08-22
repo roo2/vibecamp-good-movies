@@ -28,7 +28,7 @@ class Settings:
     root: Path = ROOT
     data_dir: Path = ROOT / "data"
     cache_dir: Path = ROOT / "data" / "cache"
-    db_path: Path = ROOT / "data" / "atlas.duckdb"
+    db_path: Path = ROOT / "data" / "atlas.sqlite"
 
     anthropic_api_key: str | None = _clean("ANTHROPIC_API_KEY")
     tmdb_read_token: str | None = _clean("TMDB_READ_TOKEN")

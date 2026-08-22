@@ -6,7 +6,7 @@ The repository is in two halves, so the infrastructure is too:
 
 | | What it is | Where it runs |
 |---|---|---|
-| **The atlas** | a batch pipeline that spends money on LLM calls and writes a DuckDB file | one EC2 runner, reachable only through SSM |
+| **The atlas** | a batch pipeline that spends money on LLM calls and writes a SQLite file | one EC2 runner, reachable only through SSM |
 | **The interface** | static screens plus one JSON payload | S3 behind CloudFront, on a private URL |
 
 One template builds both: [`moral-atlas.yaml`](moral-atlas.yaml).
@@ -26,7 +26,7 @@ add moving parts to something that wants exactly one machine, so it gets one
 machine — and the thing that actually matters, the database file, lives on a
 separate EBS volume that survives the instance being replaced.
 
-**DuckDB means one writer.** A DuckDB file admits a single read-write process
+**One writer at a time.** The SQLite store runs in WAL mode, so readers never block, but a single writer at a time
 at a time; readers cannot attach while a sweep holds it. That is fine for how
 this work happens, but it is the reason the design is the way it is:
 
@@ -55,7 +55,7 @@ closed.
   project installed into a venv at `/opt/atlas/app`.
 - **EBS data volume** — encrypted gp3, mounted at `/opt/atlas/data`, with
   `data/` in the checkout symlinked to it. `DeletionPolicy: Retain`, because a
-  UserData edit replaces the instance and the DuckDB file must not go with it.
+  UserData edit replaces the instance and the SQLite file must not go with it.
 - **S3 data bucket** — versioned, for database snapshots and bank exports.
 - **S3 site bucket + CloudFront** — private bucket, origin access control, the
   bucket reachable only through the distribution.
@@ -114,7 +114,7 @@ Three helpers are installed:
 | Command | What it does |
 |---|---|
 | `atlas-refresh-env` | rewrite `.env` from Secrets Manager; run after rotating a key |
-| `atlas-snapshot` | copy the DuckDB file and `bank.jsonl` to S3 (also nightly at 03:00 UTC) |
+| `atlas-snapshot` | copy the SQLite file and `bank.jsonl` to S3 (also nightly at 03:00 UTC) |
 | `atlas-publish <file.json>` | push a session payload to `/api/session.json` and invalidate the edge cache |
 | `atlas-update [branch]` | pull, reinstall, re-init — what CI runs after a push |
 
@@ -132,10 +132,10 @@ a torn snapshot that looks fine until the day you need it.
 BUCKET=$(aws cloudformation describe-stacks --stack-name moral-atlas-dev \
   --query 'Stacks[0].Outputs[?OutputKey==`DataBucketName`].OutputValue' --output text)
 
-aws s3 cp "s3://$BUCKET/latest/atlas.duckdb" data/atlas.duckdb
+aws s3 cp "s3://$BUCKET/latest/atlas.sqlite" data/atlas.sqlite
 
 # Pushing local work up is the same command reversed:
-aws s3 cp data/atlas.duckdb "s3://$BUCKET/latest/atlas.duckdb"
+aws s3 cp data/atlas.sqlite "s3://$BUCKET/latest/atlas.sqlite"
 ```
 
 That is the whole local setup for someone picking up the front end or the

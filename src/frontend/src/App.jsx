@@ -122,7 +122,7 @@ function App() {
   }
 
   if (route === '/complete') {
-    return <TestCompletePage access={access} />
+    return <TestCompletePage access={access} onContinue={() => navigate('/shortlist')} />
   }
   if (route === '/shortlist') {
     return <ShortlistPage access={access} onDone={() => navigate('/match')} />

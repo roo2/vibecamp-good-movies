@@ -9,7 +9,7 @@ function readingOf({ films_rated: rated, pairs_answered: pairs }) {
   return parts.join(' and ')
 }
 
-function CompassScreen({ access }) {
+function CompassScreen({ access, onContinue }) {
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState(null)
 
@@ -58,6 +58,9 @@ function CompassScreen({ access }) {
 
         <div className="compass-action">
           <p>Tap an axis to see the question behind it.</p>
+          <button className="peach-button" type="button" onClick={onContinue}>
+            See tonight’s list <span aria-hidden="true">→</span>
+          </button>
         </div>
       </section>
     </main>

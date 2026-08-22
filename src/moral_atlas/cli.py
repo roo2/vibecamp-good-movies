@@ -11,6 +11,7 @@ from rich.table import Table
 from . import db
 from .analysis import ab as ab_mod
 from .analysis import bank as bank_mod
+from .analysis import dimensions as dim_mod
 from .config import settings
 from .sources import ingest as ingest_mod
 from .sources import packet as packet_mod
@@ -198,6 +199,188 @@ def bank_import(version: str = typer.Option("b1"),
                 path: str = typer.Option("data/bank.jsonl")) -> None:
     """Read a pruned bank back in."""
     console.print(f"updated [bold]{bank_mod.import_bank(version, path)}[/] items")
+
+
+@app.command()
+def dimensions(
+    version: str = typer.Option("d1", help="Dimension set version label."),
+    bank: str = typer.Option("b1", help="Bank version to place on the axes."),
+    n_dims: int = typer.Option(8, help="How many axes to derive (aim for 5-10)."),
+    replicate: int = typer.Option(
+        150, help="Items to re-assign blind, as a reliability check. 0 skips it."),
+    cross_model: str = typer.Option(
+        "", help="Also assign with this model, to separate a real distinction "
+                 "from one model's taste. e.g. claude-sonnet-5"),
+    reuse: bool = typer.Option(
+        False, help="Keep the stored axes and only redo the assignment."),
+) -> None:
+    """Name the moral axes the bank measures, and place every item on one.
+
+    The audit passes are part of the same command on purpose: an assignment
+    nobody checked is an opinion, and the check costs a few percent of the run.
+    """
+    import random as _random
+
+    client = _client()
+    db.init_db()
+
+    if reuse:
+        dims = dim_mod.load_dimensions(version)
+        if not dims:
+            console.print(f"[red]no dimension set {version!r} to reuse[/]")
+            raise typer.Exit(1)
+        console.print(f"reusing [bold]{len(dims)}[/] stored dimensions")
+    else:
+        dims = dim_mod.derive(version, client, n_dims, bank_version=bank,
+                              progress=console.print)
+
+    table = Table("#", "dimension", "the question it poses", box=None)
+    for d in dims:
+        table.add_row(str(d["dim_id"]), d["name"], d["question"])
+    console.print(table)
+
+    items = dim_mod.bank_items(bank)
+    dim_mod.assign(version, bank, dims, client, items=items,
+                   progress=console.print)
+
+    if replicate:
+        sample = _random.Random(11).sample(items, min(replicate, len(items)))
+        dim_mod.assign(version, bank, dims, client, items=sample,
+                       pass_name=dim_mod.REPLICATE_PASS, shuffle_seed=11,
+                       progress=console.print)
+
+    if cross_model:
+        from .llm.client import LLMClient
+        other = LLMClient(model=cross_model)
+        sample = _random.Random(11).sample(items, min(replicate or 150, len(items)))
+        dim_mod.assign(version, bank, dims, other, items=sample,
+                       pass_name=f"crossmodel:{cross_model}", progress=console.print)
+        console.print(f"[dim]{cross_model} usage {json.dumps(other.usage.as_dict())}[/]")
+
+    console.print(f"\n{json.dumps(client.usage.as_dict())}")
+    console.print("[dim]now: atlas dimensions-validate[/]")
+
+
+@app.command("dimensions-validate")
+def dimensions_validate(
+    version: str = typer.Option("d1"),
+    bank: str = typer.Option("b1"),
+    permutations: int = typer.Option(1000, help="Permutations for the null."),
+    seed: int = typer.Option(3, help="Fixed, so a published number can be re-run."),
+    threshold: float = typer.Option(
+        0.45, help="Clustering threshold the bank was cut with — needed to trace "
+                   "each item back to its source film."),
+    include_own_film: bool = typer.Option(
+        False, help="Let a film vote on items harvested from itself. Inflates "
+                    "the result; off by default."),
+    variants: str = typer.Option("", help="Restrict to these evidence conditions."),
+    as_json: bool = typer.Option(False, "--json", help="Emit the raw report."),
+) -> None:
+    """Is this set of axes in the corpus, or did we impose it?
+
+    Prints the evidence rather than a verdict: coverage, agreement between
+    independent assignment passes, and two permutation tests against scores that
+    were produced before the axes existed.
+    """
+    report = dim_mod.validate(
+        version, bank, permutations=permutations, seed=seed,
+        exclude_own_film=not include_own_film, threshold=threshold,
+        variants=[v for v in variants.split(",") if v] or None,
+        progress=console.print,
+    )
+    if as_json:
+        console.print(json.dumps(report, indent=2))
+        return
+
+    cov = report["coverage"]
+    console.print(f"\n[bold]coverage[/]  {report['n_items']} items, median fit "
+                  f"{cov['median_fit']:.2f}, "
+                  f"{cov['share_fit_ge_0_4']:.0%} at fit >= 0.4")
+    t = Table("dimension", "items", box=None)
+    for name, n in cov["sizes"].items():
+        t.add_row(name, str(n))
+    console.print(t)
+
+    if report["agreement"]:
+        console.print("\n[bold]independent assignment passes[/]")
+        t = Table("pass", "model", "n", "same axis", "chance", "kappa",
+                  "same polarity", box=None)
+        for name, a in report["agreement"].items():
+            colour = ("green" if a["kappa"] and a["kappa"] >= 0.7 else
+                      "yellow" if a["kappa"] and a["kappa"] >= 0.4 else "red")
+            t.add_row(name, a.get("model") or "-", str(a["n"]),
+                      f"{a['raw']:.0%}" if a["raw"] is not None else "-",
+                      f"{a['chance']:.0%}" if a["chance"] is not None else "-",
+                      f"[{colour}]{a['kappa']:.2f}[/]" if a["kappa"] is not None else "-",
+                      f"{a['polarity_agreement']:.0%}"
+                      if a["polarity_agreement"] is not None else "-")
+        console.print(t)
+
+    if "co_engagement" in report:
+        mode = ("own-film verdicts excluded" if report["exclude_own_film"]
+                else "[yellow]own-film verdicts INCLUDED[/]")
+        console.print(f"\n[bold]behavioural tests[/]  {report['n_engagements']} "
+                      f"engagements over {report['n_packets']} packets, {mode}")
+        t = Table("test", "observed", "null", "z", "perms >= observed", box=None)
+        for key, label in (("co_engagement", "co-engagement (pairs sharing an axis)"),
+                           ("coherence", "stance coherence (|net| per film x axis)")):
+            r = report[key]
+            t.add_row(label, f"{r['observed']:.3f}",
+                      f"{r['null_mean']:.3f} (sd {r['null_sd']:.3f})",
+                      f"[bold]{r['z']:+.1f}[/]" if r["z"] is not None else "-",
+                      f"{r['n_at_least_observed']}/{r['permutations']}")
+        console.print(t)
+        console.print("[dim]The scoring run never saw the axes and the assignment "
+                      "never saw the scores, so shared structure is not an artefact "
+                      "of either.[/]")
+
+
+@app.command("dimensions-split-half")
+def dimensions_split_half(
+    n_dims: int = typer.Option(8),
+    seed: int = typer.Option(7, help="Which way the corpus is cut."),
+) -> None:
+    """Derive the axes twice, from film sets that share no propositions.
+
+    Axes that recur across two disjoint halves are a property of the corpus.
+    Axes that do not are a property of the prompt. Nothing is written — read the
+    two lists side by side and judge.
+    """
+    client = _client()
+    out = dim_mod.split_half(client, n_dims, seed, progress=console.print)
+    for half in ("half_a", "half_b"):
+        films = len(out[f"{half}_films"])
+        console.print(f"\n[bold]{half.replace('_', ' ').upper()}[/] ({films} films)")
+        t = Table("#", "dimension", "the question it poses", box=None)
+        for d in out[half]:
+            t.add_row(str(d["dim_id"]), d["name"], d["question"])
+        console.print(t)
+    console.print(f"\n{json.dumps(client.usage.as_dict())}")
+
+
+@app.command()
+def profile(
+    version: str = typer.Option("d1"),
+    bank: str = typer.Option("b1"),
+    top: int = typer.Option(3, help="Axes to show per film."),
+    film: str = typer.Option("", help="Just this film."),
+) -> None:
+    """Where each film sits on the axes — the human-readable output."""
+    profiles = dim_mod.film_profiles(version, bank, top)
+    if not profiles:
+        console.print("[yellow]nothing to profile — score against the bank first[/]")
+        raise typer.Exit()
+    for name, rows in profiles.items():
+        if film and film not in name:
+            continue
+        console.print(f"\n[bold]{name}[/]")
+        t = Table("dimension", "pole", "net", "items", box=None)
+        for r in rows:
+            pole = "HIGH" if r["net"] > 0 else "LOW"
+            colour = "green" if abs(r["net"]) >= 0.6 else "yellow"
+            t.add_row(r["dimension"], f"[{colour}]{pole}[/]",
+                      f"{r['net']:+.2f}", str(r["n_items"]))
+        console.print(t)
 
 
 @app.command()

@@ -1,5 +1,7 @@
 import React from 'react'
 
+import { APP_VERSION } from '../config/version'
+
 function LandingPage({ onSignIn, joining = false }) {
   const [error, setError] = React.useState(null)
   const [submitting, setSubmitting] = React.useState(false)
@@ -37,6 +39,8 @@ function LandingPage({ onSignIn, joining = false }) {
           For now this is a simple name-only session.
           <br />
           <a className="quiet-link" href="#/atlas">See the dataset behind it →</a>
+          <br />
+          <span className="build-marker">v{APP_VERSION}</span>
         </p>
       </section>
     </main>

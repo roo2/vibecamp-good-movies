@@ -18,6 +18,15 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# The same answer under /api, which is the only prefix that reaches this
+# application in the published environment: CloudFront sends /api/* to the
+# runner and everything else to the bucket, so a request for /health there is
+# answered by S3 with a 404 and tells you nothing about whether the API is up.
+@app.get("/api/health")
+def api_health() -> dict[str, str]:
+    return {"status": "ok", "version": app.version}
+
+
 app.include_router(landing.router)
 app.include_router(access.router)
 app.include_router(onboarding.router)

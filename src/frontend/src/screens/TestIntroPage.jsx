@@ -1,7 +1,6 @@
 import React from 'react'
-import { formatTime } from '../components/Countdown.jsx'
 
-function TestIntroPage({ durationSeconds, onContinue }) {
+function TestIntroPage({ onContinue }) {
   return (
     <main className="app-page">
       <section className="phone-screen welcome-screen">
@@ -15,7 +14,7 @@ function TestIntroPage({ durationSeconds, onContinue }) {
             <p>Small gaps are shared ground. Wide ones are the story arguments worth having afterwards.</p>
           </div>
         </div>
-        <button className="peach-button" type="button" onClick={onContinue}>Start — about {formatTime(durationSeconds)} <span aria-hidden="true">→</span></button>
+        <button className="peach-button" type="button" onClick={onContinue}>Start story pairs <span aria-hidden="true">→</span></button>
       </section>
     </main>
   )

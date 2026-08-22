@@ -22,6 +22,11 @@ def isolated_web_database(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
+    for index in range(20):
+        db.upsert_film({
+            "film_id": f"film-{index}", "title": f"Film {index}", "year": 2000 + index,
+            "description": f"A spoiler-free story prompt number {index}.",
+        })
     return db
 
 
@@ -58,30 +63,55 @@ def test_results_require_a_session():
     assert response.status_code == 401
 
 
-def test_movie_reaction_is_captured_for_the_active_user(monkeypatch):
-    from moral_atlas.web.routes import onboarding
-
-    monkeypatch.setattr(onboarding, "random_onboarding_films", lambda limit=10: [{
-        "id": "the-lion-king-1994", "title": "The Lion King", "year": 1994,
-        "genre": "Animation", "runtime_min": 88,
-    }])
-    monkeypatch.setattr(onboarding, "film_exists", lambda film_id: film_id == "the-lion-king-1994")
+def test_movie_reaction_is_captured_for_the_active_user():
     access = client.post("/api/access", json={"name": "Ada"}).json()
-    films = client.get("/api/onboarding/films")
+    headers = {"X-Session-Token": access["token"]}
+    group_session = client.post("/api/sessions", headers=headers).json()
+    share_token = group_session["share_token"]
+    films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=headers)
     assert films.status_code == 200
-    assert films.json()["films"][0]["id"] == "the-lion-king-1994"
+    assert len(films.json()["films"]) == 5
+    film_id = films.json()["films"][0]["id"]
 
     rating = client.post(
         "/api/onboarding/ratings",
-        headers={"X-Session-Token": access["token"]},
-        json={"film_id": "the-lion-king-1994", "reaction": "loved_it"},
+        headers=headers,
+        json={"film_id": film_id, "reaction": "loved_it", "session_share_token": share_token},
     )
     assert rating.status_code == 201
     assert rating.json()["reaction"] == "loved_it"
 
-    saved = client.get("/api/onboarding/ratings", headers={"X-Session-Token": access["token"]})
+    saved = client.get("/api/onboarding/ratings", headers=headers)
     assert saved.status_code == 200
-    assert saved.json()[0]["film_id"] == "the-lion-king-1994"
+    assert saved.json()[0]["film_id"] == film_id
+
+
+def test_session_members_receive_the_same_named_and_blind_film_deck(isolated_web_database):
+    from moral_atlas.web.store import group_session_deck
+    host = client.post("/api/access", json={"name": "Ada"}).json()
+    guest = client.post("/api/access", json={"name": "Sam"}).json()
+    host_headers = {"X-Session-Token": host["token"]}
+    guest_headers = {"X-Session-Token": guest["token"]}
+    share_token = client.post("/api/sessions", headers=host_headers).json()["share_token"]
+    client.post(f"/api/sessions/{share_token}/join", headers=guest_headers)
+
+    host_films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=host_headers).json()["films"]
+    guest_films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=guest_headers).json()["films"]
+    assert host_films == guest_films
+    assert len(host_films) == 5
+
+    host_pairs = client.get(f"/api/test/questions?share_token={share_token}", headers=host_headers).json()["questions"]
+    guest_pairs = client.get(f"/api/test/questions?share_token={share_token}", headers=guest_headers).json()["questions"]
+    assert host_pairs == guest_pairs
+    assert len(host_pairs) == 5
+    assert all(choice["label"] in {"Story A", "Story B"} for pair in host_pairs for choice in pair["choices"])
+    deck = group_session_deck(share_token, host["user"]["id"])
+    assert deck is not None
+    direct_ids = set(deck["direct"])
+    blind_ids = {film_id for pair in deck["pairs"] for film_id in pair}
+    assert len(direct_ids) == 5
+    assert len(blind_ids) == 10
+    assert direct_ids.isdisjoint(blind_ids)
 
 
 def test_group_session_tracks_members_and_unlocks_when_everyone_completes():
@@ -98,7 +128,7 @@ def test_group_session_tracks_members_and_unlocks_when_everyone_completes():
 
     for headers in (host_headers, guest_headers):
         response = client.post("/api/test/results", headers=headers, json={
-            "answers": {"responsibility": "a"}, "session_share_token": share_token,
+            "answers": {"pair-1": "a"}, "session_share_token": share_token,
         })
         assert response.status_code == 201
 

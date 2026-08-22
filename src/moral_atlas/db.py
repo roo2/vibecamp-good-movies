@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS films (
     revenue           INTEGER,
     wikipedia_title   TEXT,
     seed_note         TEXT,
+    description       TEXT,
     fetched_at        TEXT
 );
 
@@ -223,6 +224,7 @@ CREATE TABLE IF NOT EXISTS group_sessions (
     started_at         TEXT,
     waiting_started_at TEXT,
     continued_at       TEXT
+    deck_json          TEXT
 );
 
 CREATE TABLE IF NOT EXISTS session_members (
@@ -271,6 +273,14 @@ def connect(read_only: bool = False) -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with connect() as con:
         con.executescript(SCHEMA)
+        _add_column_if_missing(con, "films", "description", "TEXT")
+        _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
+
+
+def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+    if column not in columns:
+        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
 
 def _encode(column: str, value: Any) -> Any:
@@ -326,11 +336,16 @@ FILM_COLUMNS = [
     "film_id", "tmdb_id", "imdb_id", "title", "year", "runtime",
     "origin_country", "original_language", "genres", "keywords",
     "directors", "writers", "billed_cast", "collection", "based_on",
-    "budget", "revenue", "wikipedia_title", "seed_note", "fetched_at",
+    "budget", "revenue", "wikipedia_title", "seed_note", "description", "fetched_at",
 ]
 
 
 def upsert_film(row: dict[str, Any]) -> None:
+    # Metadata refreshes should not erase the curated blind-story description.
+    if row.get("description") is None:
+        existing = get_film(row["film_id"])
+        if existing and existing.get("description"):
+            row = {**row, "description": existing["description"]}
     values = [_encode(c, row.get(c)) for c in FILM_COLUMNS]
     with connect() as con:
         con.execute(
@@ -338,6 +353,11 @@ def upsert_film(row: dict[str, Any]) -> None:
             f"VALUES ({','.join('?' * len(FILM_COLUMNS))})",
             values,
         )
+
+
+def set_film_description(film_id: str, description: str) -> None:
+    with connect() as con:
+        con.execute("UPDATE films SET description=? WHERE film_id=?", [description, film_id])
 
 
 def upsert_evidence(

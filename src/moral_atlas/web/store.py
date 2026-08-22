@@ -8,6 +8,7 @@ from secrets import token_urlsafe
 from uuid import uuid4
 
 from .. import db
+from .film_service import build_session_deck, film_card
 from .schemas import GroupSession, GroupSessionStatus, MovieRating, SessionMember, TestResult, User
 
 WAIT_TO_CONTINUE_SECONDS = 10 * 60
@@ -124,14 +125,17 @@ def list_movie_ratings(user_id: str) -> list[MovieRating]:
 
 def create_group_session(host_user_id: str) -> GroupSession:
     _ensure_db()
+    deck = build_session_deck()
+    if not deck["direct"]:
+        raise ValueError("At least 15 seeded films are required to start a shared session.")
     group_session = GroupSession(
         id=f"group_{uuid4().hex[:12]}", share_token=token_urlsafe(12), host_user_id=host_user_id,
         status="lobby", created_at=db.now(),
     )
     with db.connect() as con:
         con.execute(
-            "INSERT INTO group_sessions (session_id, share_token, host_user_id, status, created_at) VALUES (?,?,?,?,?)",
-            [group_session.id, group_session.share_token, host_user_id, group_session.status, group_session.created_at.isoformat()],
+            "INSERT INTO group_sessions (session_id, share_token, host_user_id, status, created_at, deck_json) VALUES (?,?,?,?,?,?)",
+            [group_session.id, group_session.share_token, host_user_id, group_session.status, group_session.created_at.isoformat(), json.dumps(deck)],
         )
         con.execute(
             "INSERT INTO session_members (session_id, user_id, joined_at) VALUES (?,?,?)",
@@ -204,3 +208,42 @@ def _group_session_from_row(row) -> GroupSession:
         id=row["session_id"], share_token=row["share_token"], host_user_id=row["host_user_id"], status=row["status"],
         created_at=row["created_at"], started_at=row["started_at"], waiting_started_at=row["waiting_started_at"], continued_at=row["continued_at"],
     )
+
+
+def group_session_deck(share_token: str, user_id: str) -> dict[str, list[Any]] | None:
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        row = con.execute(
+            "SELECT s.deck_json FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
+            "WHERE s.share_token=? AND m.user_id=?", [share_token, user_id],
+        ).fetchone()
+    if row is None or not row["deck_json"]:
+        return None
+    return json.loads(row["deck_json"])
+
+
+def direct_session_films(share_token: str, user_id: str) -> list[dict[str, Any]] | None:
+    deck = group_session_deck(share_token, user_id)
+    if deck is None:
+        return None
+    return [card for film_id in deck["direct"] if (card := film_card(film_id))]
+
+
+def blind_session_pairs(share_token: str, user_id: str) -> list[dict[str, Any]] | None:
+    deck = group_session_deck(share_token, user_id)
+    if deck is None:
+        return None
+    pairs = []
+    for index, film_ids in enumerate(deck["pairs"], start=1):
+        cards = [film_card(film_id, include_title=False) for film_id in film_ids]
+        if all(cards):
+            pairs.append({"id": f"pair-{index}", "choices": [
+                {"id": "a", "label": "Story A", "copy": cards[0]["description"]},
+                {"id": "b", "label": "Story B", "copy": cards[1]["description"]},
+            ]})
+    return pairs
+
+
+def film_is_in_direct_session_deck(share_token: str, user_id: str, film_id: str) -> bool:
+    deck = group_session_deck(share_token, user_id)
+    return bool(deck and film_id in deck["direct"])

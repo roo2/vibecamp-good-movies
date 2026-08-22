@@ -34,6 +34,7 @@ class TestResult(BaseModel):
 class MovieRatingRequest(BaseModel):
     film_id: str = Field(min_length=1, max_length=120)
     reaction: str = Field(min_length=1, max_length=40)
+    session_share_token: str | None = Field(default=None, min_length=1, max_length=120)
 
 
 class MovieRating(BaseModel):

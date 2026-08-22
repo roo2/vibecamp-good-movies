@@ -11,7 +11,7 @@ function formatRuntime(minutes) {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-function SeenItPage({ onSubmit, onComplete }) {
+function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   const [films, setFilms] = useState([])
   const [filmIndex, setFilmIndex] = useState(0)
   const [error, setError] = useState(null)
@@ -19,15 +19,15 @@ function SeenItPage({ onSubmit, onComplete }) {
 
   useEffect(() => {
     let active = true
-    loadOnboardingFilms().then((items) => active && setFilms(items)).catch(() => active && setError('Those films could not be loaded. Please try again.'))
+    loadOnboardingFilms(access, shareToken).then((items) => active && setFilms(items)).catch(() => active && setError('Those films could not be loaded. Please try again.'))
     return () => { active = false }
-  }, [])
+  }, [access, shareToken])
 
   async function choose(reaction) {
     if (!film || selected) return
     setSelected(reaction)
     try {
-      await onSubmit(film.id, reaction)
+      await onSubmit(film.id, reaction, shareToken)
       if (filmIndex === films.length - 1) onComplete()
       else {
         setFilmIndex((index) => index + 1)

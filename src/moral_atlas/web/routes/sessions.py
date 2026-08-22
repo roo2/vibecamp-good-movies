@@ -14,7 +14,10 @@ router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
 @router.post("", response_model=GroupSession, status_code=status.HTTP_201_CREATED)
 def create(session: Annotated[Session, Depends(current_session)]) -> GroupSession:
-    return create_group_session(session.user.id)
+    try:
+        return create_group_session(session.user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.post("/{share_token}/join", response_model=GroupSession)

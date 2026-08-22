@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { TEST_DURATION_SECONDS } from './config/test.js'
 import LandingPage from './screens/LandingPage.jsx'
 import TestIntroPage from './screens/TestIntroPage.jsx'
 import QuickfireTestPage from './screens/QuickfireTestPage.jsx'
@@ -81,8 +80,8 @@ function App() {
     navigate('/seen-it')
   }, [access, groupSession, navigate])
 
-  const handleMovieReaction = useCallback(async (filmId, reaction) => {
-    await submitMovieReaction(access, filmId, reaction)
+  const handleMovieReaction = useCallback(async (filmId, reaction, shareToken) => {
+    await submitMovieReaction(access, filmId, reaction, shareToken)
   }, [access])
 
   const handleComplete = useCallback(async (answers) => {
@@ -107,7 +106,7 @@ function App() {
   }
 
   if (route === '/seen-it') {
-    return <SeenItPage onSubmit={handleMovieReaction} onComplete={() => navigate('/test-intro')} />
+    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => navigate('/test-intro')} />
   }
 
   if (route === '/lobby' && groupSession) {
@@ -119,11 +118,11 @@ function App() {
   }
 
   if (route === '/test-intro') {
-    return <TestIntroPage durationSeconds={TEST_DURATION_SECONDS} onContinue={() => navigate('/quickfire')} />
+    return <TestIntroPage onContinue={() => navigate('/quickfire')} />
   }
 
   if (route === '/quickfire') {
-    return <QuickfireTestPage durationSeconds={TEST_DURATION_SECONDS} onComplete={handleComplete} />
+    return <QuickfireTestPage access={access} shareToken={groupSession?.shareToken} onComplete={handleComplete} />
   }
 
   if (route === '/complete') {

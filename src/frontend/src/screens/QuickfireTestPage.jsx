@@ -1,30 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Countdown from '../components/Countdown.jsx'
 import { loadTestQuestions } from '../services/testService.js'
 
-function QuickfireTestPage({ durationSeconds, onComplete }) {
+function QuickfireTestPage({ access, shareToken, onComplete }) {
   const [questions, setQuestions] = useState([])
   const [answers, setAnswers] = useState({})
   const [questionIndex, setQuestionIndex] = useState(0)
-  const [secondsRemaining, setSecondsRemaining] = useState(durationSeconds)
   const [error, setError] = useState(null)
   const completedRef = useRef(false)
 
   useEffect(() => {
     let active = true
-    loadTestQuestions().then((items) => active && setQuestions(items)).catch(() => active && setError('Questions could not be loaded. Please try again.'))
+    loadTestQuestions(access, shareToken).then((items) => active && setQuestions(items)).catch(() => active && setError('Stories could not be loaded. Please try again.'))
     return () => { active = false }
-  }, [])
-
-  useEffect(() => {
-    if (questions.length === 0 || secondsRemaining === 0) return undefined
-    const interval = window.setInterval(() => setSecondsRemaining((seconds) => Math.max(seconds - 1, 0)), 1000)
-    return () => window.clearInterval(interval)
-  }, [questions.length, secondsRemaining])
-
-  useEffect(() => {
-    if (questions.length > 0 && secondsRemaining === 0) void completeTest(answers)
-  }, [answers, onComplete, questions.length, secondsRemaining])
+  }, [access, shareToken])
 
   if (error) return <main className="app-page"><p className="message">{error}</p></main>
   if (questions.length === 0) return <main className="app-page"><p className="message">Preparing your questions…</p></main>
@@ -56,7 +44,7 @@ function QuickfireTestPage({ durationSeconds, onComplete }) {
         <header className="fork-header">
           <button className="back-button" type="button" aria-label="Previous question" disabled={questionIndex === 0} onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))}>←</button>
           <div className="segment-progress" aria-label={`Question ${questionIndex + 1} of ${questions.length}`}>{questions.map((item, index) => <i className={index <= questionIndex ? 'active' : ''} key={item.id} />)}</div>
-          <div className="quiz-meta"><span>{questionIndex + 1} / {questions.length}</span><Countdown secondsRemaining={secondsRemaining} /></div>
+          <div className="quiz-meta"><span>{questionIndex + 1} / {questions.length}</span></div>
         </header>
         <div className="fork-heading"><p className="screen-label">Quick reaction</p><h1>Two stories. Which one would you rather watch?</h1></div>
         <div className="choice-stack" aria-label="Choose a story">

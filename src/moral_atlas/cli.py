@@ -508,6 +508,61 @@ def model_scan(
                       f"failed [red]{stats['failed']}[/]  {json.dumps(stats['usage'])}")
 
 
+@app.command("dimension-count")
+def dimension_count(
+    scorers: str = typer.Option("", help="Also run per model, e.g. grok,deepseek."),
+    bank: str = typer.Option("b1"),
+    iterations: int = typer.Option(200, help="Permutations for the parallel-analysis null."),
+    min_films: int = typer.Option(3, help="Drop items scored on fewer films than this."),
+) -> None:
+    """How many dimensions the FILMS support — discovered, not supplied.
+
+    Every other route to the axes asks a model to name N of them, so the count
+    was always an input. This reads how films actually responded to the items
+    and keeps only the factors that beat a null built by permuting each item's
+    own column.
+    """
+    from .analysis import latent
+
+    aliases = [None] + [a.strip() for a in scorers.split(",") if a.strip()]
+    reports = []
+    for alias in aliases:
+        try:
+            reports.append(latent.analyse(alias, bank, n_iter=iterations, min_films=min_films))
+        except RuntimeError as error:
+            console.print(f"[yellow]{alias or 'opus'}: {error}[/]")
+
+    for report in reports:
+        console.print(f"\n[bold]{report['scorer']}[/] — {report['films']} films x "
+                      f"{report['items']} items ({report['density']:.0%} dense, "
+                      f"{report['dropped_items']} items dropped as too rarely scored)")
+        table = Table("factor", "eigenvalue", "null 95th", "margin", box=None)
+        for index, (observed, threshold) in enumerate(
+                zip(report["eigenvalues"][:14], report["null_threshold"][:14]), start=1):
+            margin = (observed - threshold) / threshold if threshold else 0
+            colour = ("green" if margin >= 0.05 else "yellow" if margin > 0 else "dim")
+            table.add_row(str(index), f"{observed:.3f}", f"{threshold:.3f}",
+                          f"[{colour}]{margin:+.1%}[/]")
+        console.print(table)
+        console.print(f"  clears the null at all: [bold]{report['n_factors']}[/]   "
+                      f"clears it by >=5%: [bold]{report['n_clear_factors']}[/]   "
+                      f"[dim](at most {report['max_recoverable']} recoverable "
+                      f"from {report['films']} films)[/]")
+        console.print(f"  group sizes: {report['group_sizes']}")
+
+    if len(reports) > 1:
+        found = latent.convergence(reports)
+        console.print("\n[bold]do the scorers converge?[/]")
+        console.print(f"  counts: {found['counts']}   spread: {found['spread']}")
+        table = Table("pair", "items", "ARI", "chance", box=None)
+        for pair, row in found["grouping_agreement"].items():
+            table.add_row(pair, str(row["n_items"]), f"{row['ari']:+.3f}",
+                          f"{row['null_ari_mean']:+.4f}")
+        console.print(table)
+        console.print("[dim]Agreeing on the count is not agreeing on the grouping — "
+                      "two scorers can both say eight and cut the material differently.[/]")
+
+
 @app.command("model-propose")
 def model_propose(
     scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases."),

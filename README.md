@@ -123,6 +123,25 @@ Cite the corpus if any of this is published: Lison & Tiedemann (2016),
 *OpenSubtitles2016: Extracting Large Parallel Corpora from Movie and TV
 Subtitles*, LREC.
 
+## Looking at the data
+
+```bash
+duckdb data/atlas.duckdb          # opens it
+duckdb -ui data/atlas.duckdb      # local web UI: browse, query, chart
+```
+
+Note `-f` means *"execute SQL from this file"*, so `duckdb -f data/atlas.duckdb`
+tries to parse the database as a SQL script and fails with a parser error on
+binary content. The database is a positional argument, not a flag.
+
+```sql
+.tables
+SELECT stage, model, n_calls, cost_usd FROM runs ORDER BY started_at;
+SELECT variant, count(*) FROM skeletons GROUP BY 1;
+SELECT film_id, json_extract_string(data, '$.legitimacy_source')
+FROM skeletons WHERE variant = 'full' LIMIT 10;
+```
+
 ## Design notes
 
 **Evidence discipline.** Every phase-0 film is famous enough that the model has

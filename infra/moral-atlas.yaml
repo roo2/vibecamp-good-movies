@@ -709,9 +709,34 @@ Resources:
           sed -i "s|__REPO_URL__|${RepoUrl}|" /usr/local/bin/atlas-update
           chmod 755 /usr/local/bin/atlas-update
 
-          cat > /etc/cron.d/atlas-snapshot <<'CRON'
-          0 3 * * * ec2-user /usr/local/bin/atlas-snapshot >> /var/log/atlas-snapshot.log 2>&1
-          CRON
+          # A systemd timer, not a cron entry: Amazon Linux 2023 ships no cron
+          # at all — no cronie package, no /etc/cron.d — so writing a crontab
+          # fails outright rather than quietly never running. Output goes to
+          # the journal; read it with `journalctl -u atlas-snapshot`.
+          cat > /etc/systemd/system/atlas-snapshot.service <<'UNIT'
+          [Unit]
+          Description=Snapshot the atlas database to S3
+
+          [Service]
+          Type=oneshot
+          User=ec2-user
+          ExecStart=/usr/local/bin/atlas-snapshot
+          UNIT
+
+          cat > /etc/systemd/system/atlas-snapshot.timer <<'UNIT'
+          [Unit]
+          Description=Nightly atlas snapshot
+
+          [Timer]
+          OnCalendar=*-*-* 03:00:00
+          Persistent=true
+
+          [Install]
+          WantedBy=timers.target
+          UNIT
+
+          systemctl daemon-reload
+          systemctl enable --now atlas-snapshot.timer
 
           # ---- ship the bootstrap and snapshot logs to CloudWatch -------------
           # Entirely optional, and written so that a missing agent skips the
@@ -728,10 +753,7 @@ Resources:
                   "collect_list": [
                     { "file_path": "/var/log/atlas-bootstrap.log",
                       "log_group_name": "__LOG_GROUP__",
-                      "log_stream_name": "{instance_id}/bootstrap" },
-                    { "file_path": "/var/log/atlas-snapshot.log",
-                      "log_group_name": "__LOG_GROUP__",
-                      "log_stream_name": "{instance_id}/snapshot" }
+                      "log_stream_name": "{instance_id}/bootstrap" }
                   ]
                 }
               }

@@ -15,8 +15,12 @@ The project is in two halves that meet at one seam.
 ## Start here
 
 ```bash
-open design/parable-screen-flow.html      # the fourteen screens, offline
+open design/parable-screens.html          # the walkthrough — every screen, with the reasoning
+open design/parable-screen-flow.html      # the same screens on a pan/zoom canvas
 ```
+
+The walkthrough is also hosted, and unlike the canvas it can be shared by public
+link: <https://claude.ai/code/artifact/4f80a0b0-aed1-4bb4-8d8e-10e36d26e3af>
 
 Then read, in this order:
 

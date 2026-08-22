@@ -23,7 +23,7 @@ function QuickfireTestPage({ durationSeconds, onComplete }) {
   }, [questions.length, secondsRemaining])
 
   useEffect(() => {
-    if (questions.length > 0 && secondsRemaining === 0) completeTest(answers)
+    if (questions.length > 0 && secondsRemaining === 0) void completeTest(answers)
   }, [answers, onComplete, questions.length, secondsRemaining])
 
   if (error) return <main className="app-page"><p className="message">{error}</p></main>
@@ -32,16 +32,21 @@ function QuickfireTestPage({ durationSeconds, onComplete }) {
   const question = questions[questionIndex]
   const isLastQuestion = questionIndex === questions.length - 1
 
-  function completeTest(finalAnswers) {
+  async function completeTest(finalAnswers) {
     if (completedRef.current) return
     completedRef.current = true
-    onComplete(finalAnswers)
+    try {
+      await onComplete(finalAnswers)
+    } catch (submissionError) {
+      completedRef.current = false
+      setError(submissionError.message)
+    }
   }
 
   function submitChoice(choiceId) {
     const nextAnswers = { ...answers, [question.id]: choiceId }
     setAnswers(nextAnswers)
-    if (isLastQuestion) completeTest(nextAnswers)
+    if (isLastQuestion) void completeTest(nextAnswers)
     else setQuestionIndex((index) => index + 1)
   }
 

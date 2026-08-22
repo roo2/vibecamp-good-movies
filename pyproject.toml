@@ -5,9 +5,11 @@ description = "Discover the moral structure of narrative film from plot text, th
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.40",
+    "fastapi>=0.115",
     "httpx>=0.27",
     "pydantic>=2.7",
     "typer>=0.12",
+    "uvicorn[standard]>=0.30",
     "rich>=13.7",
     "pyyaml>=6.0",
     "python-dotenv>=1.0",

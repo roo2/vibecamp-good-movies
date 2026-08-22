@@ -1,9 +1,21 @@
 import React from 'react'
 
 function LandingPage({ onSignIn }) {
-  function handleSubmit(event) {
+  const [error, setError] = React.useState(null)
+  const [submitting, setSubmitting] = React.useState(false)
+
+  async function handleSubmit(event) {
     event.preventDefault()
-    onSignIn()
+    const form = new FormData(event.currentTarget)
+    setError(null)
+    setSubmitting(true)
+    try {
+      await onSignIn(form.get('name'))
+    } catch (submissionError) {
+      setError(submissionError.message)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -13,16 +25,15 @@ function LandingPage({ onSignIn }) {
         <div className="login-content">
           <p className="screen-label">Welcome back</p>
           <h1>Find your way<br />back to the <em>stories.</em></h1>
-          <p className="screen-copy">Sign in to return to the map you and your people are building together.</p>
+          <p className="screen-copy">Start with a name. You can add a fuller sign-in method later.</p>
         </div>
         <form className="login-form" onSubmit={handleSubmit}>
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" placeholder="you@example.com" required />
-          <label htmlFor="password">Password</label>
-          <input id="password" name="password" type="password" placeholder="••••••••" required />
-          <button className="peach-button" type="submit">Sign in <span aria-hidden="true">→</span></button>
+          <label htmlFor="name">Your name</label>
+          <input id="name" name="name" type="text" placeholder="Ada" autoComplete="name" required maxLength="80" />
+          {error && <p className="message" role="alert">{error}</p>}
+          <button className="peach-button" type="submit" disabled={submitting}>{submitting ? 'Starting…' : <>Continue <span aria-hidden="true">→</span></>}</button>
         </form>
-        <p className="login-footer">Demo only — sign in is not connected yet.</p>
+        <p className="login-footer">For now this is a simple name-only session.</p>
       </section>
     </main>
   )

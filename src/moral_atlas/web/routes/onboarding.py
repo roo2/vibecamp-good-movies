@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..deps import current_session
 from ..film_service import film_exists, random_onboarding_films
-from ..mock_store import Session, store
+from ..store import Session, list_movie_ratings, save_movie_rating as persist_movie_rating
 from ..schemas import MovieRating, MovieRatingRequest
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
@@ -31,4 +31,9 @@ def save_movie_rating(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown movie reaction.")
     if not film_exists(request.film_id):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unknown film.")
-    return store.save_movie_rating(session.user.id, request.film_id, request.reaction)
+    return persist_movie_rating(session.user.id, request.film_id, request.reaction)
+
+
+@router.get("/ratings", response_model=list[MovieRating])
+def get_movie_ratings(session: Annotated[Session, Depends(current_session)]) -> list[MovieRating]:
+    return list_movie_ratings(session.user.id)

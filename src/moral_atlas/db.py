@@ -138,6 +138,40 @@ CREATE INDEX IF NOT EXISTS idx_scores_lookup
     ON scores (bank_version, variant, film_id);
 CREATE INDEX IF NOT EXISTS idx_skeletons_film ON skeletons (film_id, variant);
 CREATE INDEX IF NOT EXISTS idx_props_film ON propositions_raw (film_id);
+
+-- Product-facing data is deliberately separate from the atlas research tables.
+-- User identity is intentionally minimal until an SSO provider replaces it.
+CREATE TABLE IF NOT EXISTS users (
+    user_id    TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+    token      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(user_id),
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS movie_ratings (
+    rating_id    TEXT PRIMARY KEY,
+    user_id      TEXT NOT NULL REFERENCES users(user_id),
+    film_id      TEXT NOT NULL REFERENCES films(film_id),
+    reaction     TEXT NOT NULL,
+    submitted_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS test_results (
+    result_id      TEXT PRIMARY KEY,
+    user_id        TEXT NOT NULL REFERENCES users(user_id),
+    answers        TEXT NOT NULL, -- JSON object
+    answered_count INTEGER NOT NULL,
+    submitted_at   TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_movie_ratings_user ON movie_ratings (user_id, submitted_at);
+CREATE INDEX IF NOT EXISTS idx_test_results_user ON test_results (user_id, submitted_at);
 """
 
 

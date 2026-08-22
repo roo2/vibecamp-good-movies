@@ -1,7 +1,7 @@
-# Web API (mock integration)
+# Web API
 
-This API is deliberately separate from the atlas data store. It provides a
-stable frontend boundary while the research database and scoring model change.
+This API shares the SQLite file with the atlas, but keeps its product-facing
+tables and route modules separate from the research pipeline.
 
 Run it from the repository root:
 
@@ -14,15 +14,16 @@ dev`.
 
 Endpoints:
 
-- `POST /api/access` — creates a name-only temporary session.
+- `POST /api/access` — creates a SQLite-backed name-only user and session.
+- `GET /api/access/me` — returns the current persisted user.
 - `GET /api/test/questions` — serves mock test questions.
 - `POST /api/test/results` — captures answers using `X-Session-Token`.
 - `GET /api/test/results` — returns the active user's captured results.
 - `GET /api/profile/compass` — serves a mock compass profile.
 
-The session and answers are stored in memory, so restarting the API clears
-them. Replace `mock_store.py` with a persistent user/session store later;
-routes and the frontend contract do not need to change.
+Users, sessions, movie reactions, and test results are stored in SQLite. The
+user record is intentionally limited to `id` and `name`; an SSO identity can be
+added later without altering the existing response tables.
 
 Movie cards are read from the existing SQLite `films` table. Seed the curated
 40-film deck without any external calls before using the onboarding API:

@@ -90,6 +90,13 @@ def harvest(
     def save(_p, result):
         p, harvested = result
         with db.connect() as con:
+            # Each row gets a fresh uuid, so without this a second run over the
+            # same film silently doubles its harvest rather than replacing it —
+            # and a doubled harvest quietly reweights every axis derived from it.
+            con.execute(
+                "DELETE FROM model_propositions WHERE scorer=? AND film_id=? AND variant=?",
+                [alias, p.film_id, variant],
+            )
             con.executemany(
                 "INSERT OR REPLACE INTO model_propositions (scorer, model, prop_id, film_id, "
                 "variant, run_id, text, stance, prompt_version, created_at) "

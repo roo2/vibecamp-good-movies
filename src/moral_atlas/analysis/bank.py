@@ -5,19 +5,36 @@ forty films will produce "the wicked must be punished" a dozen times over in
 slightly different words. Then an optional LLM pass that writes one canonical,
 non-loaded sentence per cluster.
 
-That second pass is the most consequential and least visible step in the whole
-pipeline. It rewrote the majority of the harvested propositions, so the sentences
-every film is scored against are the canonicaliser's wording, not the harvest's —
-and on b1 it inverted at least one outright ("violent response is never
-justified" became "the wronged are obliged to answer with violence"). It
+The canonicalisation pass is the most consequential and least visible step in the
+pipeline: it rewrote the majority of the harvested propositions, so the sentences
+every film is scored against are its wording rather than the harvest's. It
 therefore opens a run like every other LLM stage, and each item records the model
-and prompt version that wrote it. Before this, the step most able to inject
-phrasing bias was the only step with no provenance at all.
+and prompt version that wrote it.
 
-There was also a reversed-pair pass here, meant as an acquiescence check. It
-never populated a single row across 694 items, so the column recorded only that
-the check had not run — which reads, at a glance, exactly like "no inversions
-found". Removed rather than left to be trusted.
+THE INVERSION PROBLEM. Clustering compares vocabulary, and vocabulary is exactly
+where a negation does not live. "Violent response to violent injustice is never
+justified" and "...is morally required of the wronged" share every content word,
+so they sit almost on top of each other in the space the clustering measures and
+merge without complaint. `build_bank` then keeps the LONGEST member as the
+cluster's representative — a tie-break that is arbitrary with respect to meaning
+— and the bank ends up asserting whichever direction happened to be wordier,
+with no trace that the opposite was discarded.
+
+That is not hypothetical. It happened once in b1, on the only two clusters that
+merged anything at all, which makes the rate 50% of merges rather than 1 in 694:
+Do the Right Thing denied both absolutes, the "morally required" phrasing won by
+sixteen characters, and item I001 now says the wronged are obliged to answer with
+violence. Note where the fault lies — the canonicaliser was faithful to the
+representative it was handed. The inversion happened at clustering.
+
+`split_inverted` separates cluster members by polarity class before any of that,
+so opposed statements become two items rather than one. The bank wants both
+anyway: a proposition and its inverse are two things a film can take opposite
+positions on, and holding both is how a scorer that agrees with whatever it is
+shown becomes visible. The reason this is worth doing now, when it has bitten
+exactly one item, is that the current threshold of 0.45 almost never merges
+anything — the bug is rare by accident rather than by design, and anyone who
+lowers the threshold to make deduplication work would meet it at scale.
 """
 from __future__ import annotations
 
@@ -109,6 +126,92 @@ def cluster_propositions(threshold: float = 0.45) -> list[dict[str, Any]]:
     return out
 
 
+# Words that decide what a sentence DOES with its subject matter. TF-IDF cannot
+# see them: "violence is never justified" and "violence is morally required"
+# share every other token, so they sit almost on top of each other in the space
+# the clustering measures, and the merge threshold has nothing left to object to.
+NEGATION = {
+    "never", "not", "no", "cannot", "cant", "nothing", "neither", "nor",
+    "without", "none", "nobody", "isnt", "arent", "doesnt", "dont", "wont",
+}
+OBLIGATION = {
+    "must", "required", "requires", "obliged", "obligatory", "obligation",
+    "duty", "ought", "should", "demands", "demanded", "mandatory",
+}
+
+
+def polarity_class(text: str) -> str:
+    """What the sentence asserts about its subject: forbids, requires, or neither.
+
+    Negation wins over obligation, because "must not" is a prohibition rather
+    than a weaker requirement — collapsing those two would recreate the very
+    bug this exists to prevent.
+    """
+    words = set(_normalise(text).split())
+    if words & NEGATION:
+        return "negated"
+    if words & OBLIGATION:
+        return "obliged"
+    return "plain"
+
+
+def split_inverted(clusters: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Separate cluster members that assert opposite things.
+
+    The clustering has already decided these sentences are about the same thing;
+    that is exactly what makes a polarity disagreement inside a cluster
+    dangerous rather than interesting. `build_bank` keeps the LONGEST member as
+    the representative, which is arbitrary with respect to meaning — so when
+    "violent response is never justified" and "violent response is morally
+    required" land together, the longer one wins by two words and the bank ends
+    up asserting the opposite of what the shorter one said, with no trace that
+    anything was discarded.
+
+    Splitting by polarity class keeps both directions as separate items, which
+    is what the bank wants anyway: a proposition and its inverse are two things
+    a film can take opposite positions on, and having both is how a scorer that
+    simply agrees with whatever it is shown becomes visible.
+
+    Returns (clusters, splits) where `splits` records what was separated, so the
+    caller can say so rather than doing it silently.
+    """
+    out: list[dict[str, Any]] = []
+    splits: list[dict[str, Any]] = []
+    next_id = max((c["cluster_id"] for c in clusters), default=-1) + 1
+
+    for cluster in clusters:
+        members = cluster["members"]
+        if len(members) < 2:
+            out.append(cluster)
+            continue
+        by_class: dict[str, list[Any]] = {}
+        for member in members:
+            by_class.setdefault(polarity_class(member[2]), []).append(member)
+        if len(by_class) < 2:
+            out.append(cluster)
+            continue
+
+        # Largest group keeps the original id so anything already joined to it
+        # still resolves; the rest are new clusters.
+        ordered = sorted(by_class.items(), key=lambda kv: -len(kv[1]))
+        splits.append({
+            "cluster_id": cluster["cluster_id"],
+            "classes": {name: [m[2] for m in group] for name, group in ordered},
+        })
+        for index, (name, group) in enumerate(ordered):
+            out.append({
+                "cluster_id": cluster["cluster_id"] if index == 0 else next_id,
+                "members": group,
+                "representative": max(group, key=lambda m: len(m[2]))[2],
+                "support": len({m[1] for m in group}),
+                "n_statements": len(group),
+                "note": f"split from cluster {cluster['cluster_id']} ({name})",
+            })
+            if index:
+                next_id += 1
+    return out, splits
+
+
 def build_bank(
     bank_version: str, clusters: list[dict[str, Any]],
     client=None, min_support: int = 1, batch_size: int = 40, progress=None,
@@ -120,6 +223,11 @@ def build_bank(
     client the items are the harvest's own sentences and the run records that
     too — "no model touched this" is a provenance answer, not a missing one.
     """
+    clusters, splits = split_inverted(clusters)
+    if splits and progress:
+        for split in splits:
+            progress(f"[yellow]split cluster {split['cluster_id']}[/] — members asserted "
+                     f"opposite things: {', '.join(split['classes'])}")
     kept = [c for c in clusters if c["support"] >= min_support]
     canonical: dict[int, str] = {c["cluster_id"]: c["representative"] for c in kept}
     dropped: dict[int, str] = {}
@@ -178,7 +286,7 @@ def build_bank(
             "cluster_id": cid,
             "support": c["support"],
             "active": True,
-            "note": "",
+            "note": c.get("note", ""),
         })
 
     _write_items(bank_version, items, model, run_id)
@@ -192,6 +300,8 @@ def build_bank(
         "n_clusters": len(clusters),
         "n_items": len(items),
         "n_dropped": len(dropped),
+        "n_inversions_split": len(splits),
+        "inversions": splits,
         "dropped": dropped,
     }
 

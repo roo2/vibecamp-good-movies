@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Countdown from '../components/Countdown.jsx'
 import { loadTestQuestions } from '../services/testService.js'
 
@@ -8,69 +8,63 @@ function QuickfireTestPage({ durationSeconds, onComplete }) {
   const [questionIndex, setQuestionIndex] = useState(0)
   const [secondsRemaining, setSecondsRemaining] = useState(durationSeconds)
   const [error, setError] = useState(null)
+  const completedRef = useRef(false)
 
   useEffect(() => {
     let active = true
-    loadTestQuestions()
-      .then((items) => active && setQuestions(items))
-      .catch(() => active && setError('Questions could not be loaded. Please try again.'))
+    loadTestQuestions().then((items) => active && setQuestions(items)).catch(() => active && setError('Questions could not be loaded. Please try again.'))
     return () => { active = false }
   }, [])
 
   useEffect(() => {
     if (questions.length === 0 || secondsRemaining === 0) return undefined
-    const interval = window.setInterval(() => {
-      setSecondsRemaining((seconds) => Math.max(seconds - 1, 0))
-    }, 1000)
+    const interval = window.setInterval(() => setSecondsRemaining((seconds) => Math.max(seconds - 1, 0)), 1000)
     return () => window.clearInterval(interval)
   }, [questions.length, secondsRemaining])
 
   useEffect(() => {
-    if (questions.length > 0 && secondsRemaining === 0) onComplete(answers)
+    if (questions.length > 0 && secondsRemaining === 0) completeTest(answers)
   }, [answers, onComplete, questions.length, secondsRemaining])
 
-  if (error) {
-    return <main className="flow-shell"><p className="error-message">{error}</p></main>
-  }
-
-  if (questions.length === 0) {
-    return <main className="flow-shell"><p className="loading-message">Preparing your questions…</p></main>
-  }
+  if (error) return <main className="app-page"><p className="message">{error}</p></main>
+  if (questions.length === 0) return <main className="app-page"><p className="message">Preparing your questions…</p></main>
 
   const question = questions[questionIndex]
-  const selectedAnswer = answers[question.id]
   const isLastQuestion = questionIndex === questions.length - 1
 
-  function selectAnswer(option) {
-    setAnswers((current) => ({ ...current, [question.id]: option }))
+  function completeTest(finalAnswers) {
+    if (completedRef.current) return
+    completedRef.current = true
+    onComplete(finalAnswers)
   }
 
-  function continueTest() {
-    if (isLastQuestion) {
-      onComplete(answers)
-      return
-    }
-    setQuestionIndex((index) => index + 1)
+  function submitChoice(choiceId) {
+    const nextAnswers = { ...answers, [question.id]: choiceId }
+    setAnswers(nextAnswers)
+    if (isLastQuestion) completeTest(nextAnswers)
+    else setQuestionIndex((index) => index + 1)
   }
 
   return (
-    <main className="flow-shell quiz-shell">
-      <section className="quiz-card" aria-live="polite">
-        <header className="quiz-header">
-          <div><p className="eyebrow">Moral Atlas</p><p className="question-count">Question {questionIndex + 1} of {questions.length}</p></div>
-          <Countdown secondsRemaining={secondsRemaining} />
+    <main className="app-page">
+      <section className="phone-screen fork-screen" aria-live="polite">
+        <header className="fork-header">
+          <button className="back-button" type="button" aria-label="Previous question" disabled={questionIndex === 0} onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))}>←</button>
+          <div className="segment-progress" aria-label={`Question ${questionIndex + 1} of ${questions.length}`}>{questions.map((item, index) => <i className={index <= questionIndex ? 'active' : ''} key={item.id} />)}</div>
+          <div className="quiz-meta"><span>{questionIndex + 1} / {questions.length}</span><Countdown secondsRemaining={secondsRemaining} /></div>
         </header>
-        <div className="progress-track" aria-hidden="true"><div style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }} /></div>
-        <p className="step-label">Go with your first instinct</p>
-        <h1 className="question-prompt">{question.prompt}</h1>
-        <div className="options" role="radiogroup" aria-label={question.prompt}>
-          {question.options.map((option) => (
-            <button className={`option ${selectedAnswer === option ? 'selected' : ''}`} type="button" role="radio" aria-checked={selectedAnswer === option} key={option} onClick={() => selectAnswer(option)}>
-              <span className="option-marker" aria-hidden="true" />{option}
-            </button>
+        <div className="fork-heading"><p className="screen-label">Quick reaction</p><h1>Two stories. Which one would you rather watch?</h1></div>
+        <div className="choice-stack" aria-label="Choose a story">
+          {question.choices.map((choice, index) => (
+            <React.Fragment key={choice.id}>
+              {index === 1 && <div className="or-divider"><i />or<i /></div>}
+              <button className={`story-choice ${index === 1 ? 'accent-choice' : ''} ${answers[question.id] === choice.id ? 'selected-story' : ''}`} type="button" aria-pressed={answers[question.id] === choice.id} onClick={() => submitChoice(choice.id)}>
+                <span className="choice-label"><b>{index === 0 ? 'A' : 'B'}</b>{choice.label}</span><strong>{choice.copy}</strong>
+              </button>
+            </React.Fragment>
           ))}
         </div>
-        <button className="primary-button" type="button" disabled={!selectedAnswer} onClick={continueTest}>{isLastQuestion ? 'See my result' : 'Next question'} <span aria-hidden="true">→</span></button>
+        <div className="fork-footer"><button className="neither-button" type="button" onClick={() => submitChoice('neither')}>Neither — show me another pair</button><p>No titles, no posters, no cast. Just the shape of the story, so you answer honestly.</p></div>
       </section>
     </main>
   )

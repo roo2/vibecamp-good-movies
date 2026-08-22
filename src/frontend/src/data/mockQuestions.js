@@ -1,52 +1,22 @@
 export const mockQuestions = [
-  {
-    id: 'responsibility',
-    prompt: 'When someone causes harm, what matters most?',
-    options: [
-      'They take responsibility for it.',
-      'They make things right for the person hurt.',
-      'The circumstances that led to it are understood.',
-      'The rules are applied fairly to everyone.',
-    ],
-  },
-  {
-    id: 'loyalty',
-    prompt: 'A friend asks you to keep a secret that could hurt someone else. You…',
-    options: [
-      'Keep your word — loyalty comes first.',
-      'Tell the person who may be harmed.',
-      'Try to help your friend tell them themselves.',
-      'Need more context before deciding.',
-    ],
-  },
-  {
-    id: 'rules',
-    prompt: 'A rule is clearly unfair in one situation. The best response is to…',
-    options: [
-      'Follow it; consistency protects everyone.',
-      'Break it; a bad rule deserves no obedience.',
-      'Find a fair exception within the system.',
-      'Ask who the rule benefits before acting.',
-    ],
-  },
-  {
-    id: 'forgiveness',
-    prompt: 'Someone genuinely regrets a serious mistake. They deserve…',
-    options: [
-      'A second chance, once the harm is repaired.',
-      'Forgiveness, even if repair takes time.',
-      'Consequences first; remorse is not enough.',
-      'Support, because people can change.',
-    ],
-  },
-  {
-    id: 'community',
-    prompt: 'A community is healthiest when people…',
-    options: [
-      'Protect shared traditions.',
-      'Question the traditions they inherited.',
-      'Make room for each person to choose their own path.',
-      'Put the most vulnerable people first.',
-    ],
-  },
+  { id: 'responsibility', choices: [
+    { id: 'a', label: 'Reckoning', copy: 'A leader causes real harm, then chooses public accountability even though it will cost the people who still believe in them.' },
+    { id: 'b', label: 'Repair', copy: 'The person harmed refuses an easy punishment and asks what it would take for everyone involved to make a life after the damage.' },
+  ] },
+  { id: 'loyalty', choices: [
+    { id: 'a', label: 'Loyalty', copy: 'Two friends protect each other through a terrible mistake, knowing that telling the truth might end the only family either of them has.' },
+    { id: 'b', label: 'Truth', copy: 'A friend breaks a promise to expose a secret that could hurt someone else, and has to live with betraying the person they love.' },
+  ] },
+  { id: 'rules', choices: [
+    { id: 'a', label: 'Order', copy: 'An outsider learns that the rules holding a small town together are cruel in places — but dismantling them may leave the vulnerable with nothing.' },
+    { id: 'b', label: 'Upheaval', copy: 'A young worker discovers that the system was designed to keep people like her out, and decides the only fair exception is a new system.' },
+  ] },
+  { id: 'forgiveness', choices: [
+    { id: 'a', label: 'Second chance', copy: 'After prison, a father returns to the daughter he failed and tries to earn a place in her life without asking her to forgive him.' },
+    { id: 'b', label: 'Consequences', copy: 'A woman is asked to forgive the person who destroyed her family, and discovers that mercy is not the same thing as letting someone escape.' },
+  ] },
+  { id: 'community', choices: [
+    { id: 'a', label: 'Inheritance', copy: 'An eldest child returns home to protect a fading family tradition, even as everyone else wants permission to become someone new.' },
+    { id: 'b', label: 'Freedom', copy: 'A tight-knit community starts to fracture when its youngest members ask whether belonging should ever require becoming the same.' },
+  ] },
 ]

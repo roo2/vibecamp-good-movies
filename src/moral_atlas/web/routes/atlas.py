@@ -14,8 +14,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
+from ... import db
 from ...analysis import dataset as dataset_mod
-from ...config import settings
 
 router = APIRouter(prefix="/api", tags=["atlas"])
 
@@ -25,7 +25,9 @@ _cache: dict[str, Any] = {"key": None, "payload": None}
 @router.get("/atlas")
 def get_atlas(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
     """Everything the dataset explorer draws, from the current store."""
-    db_path = settings().db_path
+    # Through `db`, not `config`, so this asks the same question the store
+    # itself does — and so a test that redirects the store redirects this too.
+    db_path = db.settings().db_path
     if not db_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -20,6 +20,7 @@ def random_onboarding_films(limit: int = 5) -> list[dict[str, Any]]:
             "year": film.get("year"),
             "genre": (film.get("genres") or ["Film"])[0],
             "runtime_min": film.get("runtime"),
+            "artwork_url": film.get("artwork_url"),
         }
         for film in selected
     ]

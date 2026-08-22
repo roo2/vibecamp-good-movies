@@ -54,8 +54,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
         </header>
         <div className="seen-it-heading"><p className="screen-label">Step one · Gut reaction</p><h1>Seen it? Did you like it?</h1></div>
         <div className="seen-it-content">
-          <article className="movie-card">
-            <span>Poster placeholder</span>
+          <article className="movie-card" style={film.artwork_url ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.82), rgba(23,19,16,.08)), url(${film.artwork_url})` } : undefined}>
             <div><h2>{film.title}</h2><p>{film.year || '—'} · {film.genre} · {film.runtime_min ? formatRuntime(film.runtime_min) : 'Runtime unavailable'}</p></div>
           </article>
           <div className="movie-reactions" aria-label={`Your reaction to ${film.title}`}>

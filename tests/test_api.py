@@ -26,6 +26,7 @@ def isolated_web_database(monkeypatch, tmp_path):
         db.upsert_film({
             "film_id": f"film-{index}", "title": f"Film {index}", "year": 2000 + index,
             "description": f"A spoiler-free story prompt number {index}.",
+            "artwork_url": f"https://example.test/posters/film-{index}.jpg",
         })
     return db
 
@@ -80,6 +81,7 @@ def test_movie_reaction_is_captured_for_the_active_user():
     films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=headers)
     assert films.status_code == 200
     assert len(films.json()["films"]) == 5
+    assert all(film["artwork_url"] for film in films.json()["films"])
     film_id = films.json()["films"][0]["id"]
 
     rating = client.post(

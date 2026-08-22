@@ -66,6 +66,9 @@ def store(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     monkeypatch.setattr(dataset, "db", db)
+    # A thousand regroupings per build() is right for a published number and
+    # absurd for a test that only checks a field is populated.
+    monkeypatch.setattr(dataset, "PERMUTATIONS", 20)
     db.init_db()
 
     db.upsert_film({"film_id": "a", "title": "Film A", "year": 1999,
@@ -252,6 +255,93 @@ def test_a_film_with_no_skeleton_is_present_and_empty(store):
     film = next(f for f in dataset.build()["films"] if f["id"] == "c")
     assert film["skeleton"] is None
     assert "variant" not in film
+
+
+# --------------------------------------------------------------------------
+# The reduction, and the evidence for it
+# --------------------------------------------------------------------------
+
+def test_the_funnel_counts_statements_not_verdicts(scored_store):
+    """3,629 verdicts on the same ladder as 694 claims would flatter the drop."""
+    stages = dataset.build()["reduction"]["stages"]
+    assert [stage["key"] for stage in stages] == ["propositions", "bank", "dimensions"]
+    assert [stage["n"] for stage in stages] == [0, 2, 1]   # no propositions seeded
+    # The scoring pass is reported, but beside the ladder rather than on it.
+    assert dataset.build()["reduction"]["scored"] == 3
+
+
+def test_each_axis_reports_its_own_agreement(scored_store):
+    """An aggregate can look healthy while one axis does all the work."""
+    with db.connect() as con:
+        # I1 is re-checked and lands on the same axis; I2 is not re-checked.
+        con.execute(
+            "INSERT INTO item_dimensions "
+            "(dim_version, bank_version, item_id, dim_id, polarity, fit, pass_name, model) "
+            "VALUES ('d1', 'b1', 'I1', 1, 1, 0.9, 'replicate', 'claude-opus-5')")
+    agreement = dataset.build()["dimensions"][0]["agreement"]
+    assert agreement["n_items"] == 2
+    assert agreement["rechecked"] == 1
+    assert agreement["same_axis"] == 1.0
+    assert agreement["same_polarity"] == 1.0
+
+
+def test_a_disagreeing_recheck_is_reported_as_such(scored_store):
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO dimensions (dim_version, dim_id, name, question, pole_high, pole_low) "
+            "VALUES ('d1', 2, 'Telling or Sparing', 'Expose or conceal?', 'Tell', 'Spare')")
+        con.execute(
+            "INSERT INTO item_dimensions "
+            "(dim_version, bank_version, item_id, dim_id, polarity, fit, pass_name, model) "
+            "VALUES ('d1', 'b1', 'I1', 2, -1, 0.5, 'replicate', 'claude-opus-5')")
+    agreement = dataset.build()["dimensions"][0]["agreement"]
+    assert agreement["rechecked"] == 1
+    assert agreement["same_axis"] == 0.0
+    assert agreement["same_polarity"] == 0.0
+
+
+def test_reliability_is_absent_rather_than_invented_on_a_thin_store(store):
+    """No scores, no axes — the page must not claim a validation it cannot run."""
+    assert dataset.build()["reliability"] is None
+
+
+# --------------------------------------------------------------------------
+# A film, axis by axis
+# --------------------------------------------------------------------------
+
+def test_a_films_position_carries_the_verdicts_it_was_made_of(scored_store):
+    with db.connect() as con:
+        con.execute("UPDATE scores SET evidence='Because of a line in the film.' "
+                    "WHERE film_id='a' AND item_id='I1'")
+    axes = dataset.film_evidence("a")["axes"]
+    assert [axis["dim_id"] for axis in axes] == [1]
+    axis = axes[0]
+    assert axis["net"] == 0.0 and axis["n_items"] == 2
+    assert axis["variant"] == "full" and axis["variant_label"] == "Everything"
+
+    verdicts = {item["item_id"]: item for item in axis["items"]}
+    assert verdicts["I1"]["verdict"] == "affirms"
+    assert verdicts["I1"]["toward"] == "high"
+    assert verdicts["I1"]["evidence"] == "Because of a line in the film."
+    assert verdicts["I2"]["verdict"] == "denies"
+    assert verdicts["I2"]["toward"] == "low"
+    assert verdicts["I2"]["text"] == "A proposition."
+
+
+def test_polarity_decides_which_pole_a_verdict_pulls_toward(scored_store):
+    """Affirming a statement that sits low on its axis pulls the film low."""
+    with db.connect() as con:
+        con.execute("UPDATE item_dimensions SET polarity=-1 "
+                    "WHERE item_id='I1' AND pass_name='main'")
+    axis = dataset.film_evidence("a")["axes"][0]
+    affirmed = next(i for i in axis["items"] if i["item_id"] == "I1")
+    assert affirmed["verdict"] == "affirms"      # what the film did with the claim
+    assert affirmed["toward"] == "low"           # where that puts it on the axis
+
+
+def test_a_film_with_no_scores_has_no_axes(scored_store):
+    db.upsert_film({"film_id": "c", "title": "Film C", "year": 2020})
+    assert dataset.film_evidence("c")["axes"] == []
 
 
 # --------------------------------------------------------------------------

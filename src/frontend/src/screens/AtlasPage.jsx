@@ -1,6 +1,7 @@
 import React from 'react'
 import { DivergingBars, MagnitudeBars, StatTiles } from '../components/atlas/Charts.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
+import { Reduction, Reliability } from '../components/atlas/Method.jsx'
 import {
   FATE_LABELS, dimensionsByItems, fateDistribution, filmsOnAxis, filterFilms,
   ironyFilms, loadAtlas, originByFate,
@@ -118,6 +119,39 @@ function AtlasPage({ onBack }) {
           ]}
           />
         </section>
+
+        {atlas.reduction && (
+          <section aria-labelledby="reduction">
+            <h2 id="reduction">
+              From {atlas.reduction.stages[0].n.toLocaleString()} separate moral claims to
+              {' '}{totals.dimensions}
+            </h2>
+            <p className="atlas-note">
+              Films were treated as respondents and moral propositions as items, the way the
+              Big Five personality factors were found: harvest a large pool of statements out
+              of the corpus itself, cut it to a fixed bank, score every film against every
+              item, then ask what the bank is really measuring. Nothing was chosen in advance
+              — the axes are whatever survived.
+            </p>
+            <Reduction reduction={atlas.reduction} dimensions={atlas.dimensions} />
+          </section>
+        )}
+
+        {atlas.reliability && (
+          <section aria-labelledby="reliability">
+            <h2 id="reliability">Does this hold up?</h2>
+            <p className="atlas-note">
+              Four attempts to knock the axes down, reported as numbers rather than as a
+              verdict. They are here because “an LLM read 694 statements and found eight
+              themes” is not evidence of anything on its own.
+            </p>
+            <Reliability
+              reliability={atlas.reliability}
+              dimensions={atlas.dimensions}
+              splitHalf={atlas.split_half}
+            />
+          </section>
+        )}
 
         {dims.length > 0 && (
           <section aria-labelledby="axes">

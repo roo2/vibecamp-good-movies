@@ -23,13 +23,25 @@ def moral_profile(
     dim_version: str = user_scores.DEFAULT_DIM_VERSION,
     bank_version: str = user_scores.DEFAULT_BANK_VERSION,
 ) -> MoralProfile:
+    ratings = user_rating_inputs(user_id)
+    pairs = user_pair_answers(user_id)
     dimensions = user_scores.load_dimensions(dim_version)
     if not dimensions:
-        raise LookupError(f"No dimension set {dim_version!r} has been derived.")
+        if dim_version != user_scores.DEFAULT_DIM_VERSION:
+            raise LookupError(f"No dimension set {dim_version!r} has been derived.")
+        return MoralProfile(
+            user_id=user_id, dim_version=dim_version, bank_version=bank_version, scores=[],
+            evidence=ProfileEvidence(
+                films_rated=sum(1 for _film_id, reaction in ratings if reaction != "havent_seen"),
+                films_not_seen=sum(1 for _film_id, reaction in ratings if reaction == "havent_seen"),
+                pairs_answered=sum(1 for choice, _film_ids in pairs if choice in ("a", "b")),
+                films_used=0, films_without_scores=[],
+            ),
+            is_provisional=True,
+            summary="Your film choices are saved. The shared moral map is still being prepared.",
+        )
 
-    ratings = user_rating_inputs(user_id)
     preferences = user_scores.rating_preferences(ratings)
-    pairs = user_pair_answers(user_id)
     for choice, film_ids in pairs:
         preferences.extend(user_scores.pair_preferences(choice, film_ids))
 

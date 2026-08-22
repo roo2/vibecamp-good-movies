@@ -9,7 +9,7 @@ function readingOf({ films_rated: rated, pairs_answered: pairs }) {
   return parts.join(' and ')
 }
 
-function CompassScreen({ access }) {
+function CompassScreen({ access, onContinue }) {
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState(null)
 
@@ -35,7 +35,7 @@ function CompassScreen({ access }) {
 
         <h1>Where the films put you.</h1>
         <p className="compass-lede">
-          These axes came out of the films themselves — nobody chose them.{' '}
+          This compass reads your choices against the values films explore.{' '}
           {reading ? (
             <>
               We read <strong>{reading}</strong> against the moral propositions each
@@ -58,6 +58,9 @@ function CompassScreen({ access }) {
 
         <div className="compass-action">
           <p>Tap an axis to see the question behind it.</p>
+          <button className="peach-button" type="button" onClick={onContinue}>
+            See tonight’s list <span aria-hidden="true">→</span>
+          </button>
         </div>
       </section>
     </main>

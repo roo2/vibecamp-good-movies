@@ -26,6 +26,9 @@ Endpoints:
 - `GET /api/test/results` — returns the active user's captured results.
 - `GET /api/profile/moral` — the caller's score on each derived moral axis, read
   from the films they reacted to and the story pairs they chose between.
+- `GET /api/shortlist/films` — tonight's deck, ranked by how well each film's
+  moral positions match everyone in the session. Pass `share_token` to rank for
+  the whole room; without it the caller is ranked alone.
 - `GET /api/atlas` — the whole dataset the explorer at `#/atlas` draws: corpus
   totals, the derived axes, every film's skeleton and its position on each axis.
   Rebuilt when the store's mtime changes, so a pipeline run shows up on reload.

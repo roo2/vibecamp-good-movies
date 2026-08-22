@@ -62,7 +62,14 @@ def search_article(title: str, year: int | None = None) -> str | None:
 
 
 def populate_artwork(force: bool = False) -> dict[str, int]:
-    """Store Wikipedia lead-image URLs; no API key is required."""
+    """Store Wikipedia lead-image URLs; no API key is required.
+
+    `pilicense=any` is what makes this useful rather than nearly empty. The
+    parameter defaults to `free`, and a film poster is almost never freely
+    licensed — so the default returns an image only for films old enough to have
+    fallen into the public domain. On this corpus that was six of forty: the
+    pre-1960 titles, and nothing since.
+    """
     db.init_db()
     stats = {"updated": 0, "missing": 0, "skipped": 0}
     for film in db.list_films():
@@ -75,7 +82,7 @@ def populate_artwork(force: bool = False) -> dict[str, int]:
             continue
         data = cached_get("wiki", API, {
             "action": "query", "prop": "pageimages", "piprop": "thumbnail",
-            "pithumbsize": 780, "titles": article, "redirects": 1,
+            "pithumbsize": 780, "pilicense": "any", "titles": article, "redirects": 1,
             "format": "json", "formatversion": 2,
         })
         pages = data.get("query", {}).get("pages", [])

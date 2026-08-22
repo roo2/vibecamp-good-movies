@@ -47,6 +47,7 @@ def film_card(film_id: str, include_title: bool = True) -> dict[str, Any] | None
         card.update({
             "title": film["title"], "year": film.get("year"),
             "genre": (film.get("genres") or ["Film"])[0], "runtime_min": film.get("runtime"),
+            "artwork_url": film.get("artwork_url"),
         })
     return card
 

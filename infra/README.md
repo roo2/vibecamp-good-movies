@@ -141,6 +141,35 @@ aws s3 cp data/atlas.sqlite "s3://$BUCKET/latest/atlas.sqlite"
 That is the whole local setup for someone picking up the front end or the
 analysis — real scores, no API key, no sweep of their own.
 
+## Administering the database
+
+The admin is public, at `/admin` on the site distribution, behind the same HTTP
+basic auth as the rest of the private site:
+
+```
+https://<SiteUrl>/admin/
+```
+
+Full CRUD — insert, edit, delete, add and drop columns and tables, arbitrary
+SQL, import and export. Credentials are `SiteUsername` / `SitePassword` from the
+stack parameters.
+
+How the exposure is bounded, since an unauthenticated CRUD admin on the open
+internet would be a genuinely bad idea:
+
+| layer | what it does |
+|---|---|
+| CloudFront `/admin*` behaviour | terminates TLS, runs the basic-auth function on every request |
+| Security group | inbound 8002 only from the managed prefix list `com.amazonaws.global.cloudfront.origin-facing` — zero CIDR rules, so the port is not open to the internet |
+| Elastic IP | a stable origin name, so the idle-stop alarm restarting the runner does not break the admin |
+
+**The residual gap, stated plainly:** that prefix list covers *every* CloudFront
+distribution, not only ours. Someone who learns the runner's Elastic IP could
+point their own distribution at it and reach the admin without our basic auth.
+Closing that properly means either a shared secret header checked at the origin,
+or sqlite-web's own `--password`. For a hackathon this is a reasonable place to
+stop; for anything longer-lived it is not.
+
 ## Browsing the database
 
 Two views of the same SQLite file, both running on the runner and bound to

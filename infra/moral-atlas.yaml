@@ -70,6 +70,15 @@ Parameters:
       Left alone otherwise — the machine is still fully prepared and you can
       clone by hand inside the SSM session.
 
+  CloudFrontOriginPrefixList:
+    Type: String
+    Default: pl-b8a742d1
+    Description: >-
+      Managed prefix list for CloudFront origin-facing IPs in this region
+      (ap-southeast-2 is pl-b8a742d1). Look it up with:
+      aws ec2 describe-managed-prefix-lists --filters
+      Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing
+
   EnableSiteAuth:
     Type: String
     Default: "true"
@@ -200,6 +209,18 @@ Resources:
         Outbound only. There is deliberately no ingress rule and no SSH - shell
         access is via SSM Session Manager, which dials out.
       VpcId: !Ref Vpc
+      # Ingress only from CloudFront's origin-facing ranges, via the managed
+      # prefix list, so the admin port is not open to the internet at large.
+      # Caveat worth knowing: that list is every CloudFront distribution, not
+      # just ours, so it narrows the exposure rather than eliminating it.
+      SecurityGroupIngress: !If
+        - SiteAuth
+        - - IpProtocol: tcp
+            FromPort: 8002
+            ToPort: 8002
+            SourcePrefixListId: !Ref CloudFrontOriginPrefixList
+            Description: sqlite-web admin, reachable only through CloudFront
+        - !Ref AWS::NoValue
       SecurityGroupEgress:
         - IpProtocol: -1
           CidrIp: 0.0.0.0/0
@@ -355,6 +376,23 @@ Resources:
             DomainName: !GetAtt SiteBucket.RegionalDomainName
             OriginAccessControlId: !GetAtt OriginAccessControl.Id
             S3OriginConfig: { OriginAccessIdentity: "" }
+          # The database admin, on the runner. CloudFront terminates TLS for the
+          # viewer; the hop to the origin is plain HTTP inside AWS, which is the
+          # trade for not running a certificate on the instance.
+          - !If
+            - SiteAuth
+            - Id: admin
+              # EC2's public DNS name is the IP with dots turned into dashes.
+              # Split/Join is the only way to do that substitution in a template.
+              DomainName: !Sub
+                - "ec2-${Dashed}.${AWS::Region}.compute.amazonaws.com"
+                - Dashed: !Join ["-", !Split [".", !Ref RunnerEip]]
+              CustomOriginConfig:
+                HTTPPort: 8002
+                OriginProtocolPolicy: http-only
+                OriginReadTimeout: 60
+                OriginKeepaliveTimeout: 5
+            - !Ref AWS::NoValue
         DefaultCacheBehavior:
           TargetOriginId: site
           ViewerProtocolPolicy: redirect-to-https
@@ -369,6 +407,26 @@ Resources:
                 FunctionARN: !GetAtt AuthFunction.FunctionMetadata.FunctionARN
             - !Ref AWS::NoValue
         CacheBehaviors:
+          # Database admin. Every method is allowed because this is CRUD, nothing
+          # is cached, and AllViewer forwards the cookies and CSRF token that
+          # sqlite-web needs. The basic-auth function is NOT optional here — the
+          # behaviour only exists when SiteAuth is on.
+          - !If
+            - SiteAuth
+            - PathPattern: /admin*
+              TargetOriginId: admin
+              ViewerProtocolPolicy: redirect-to-https
+              AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+              CachedMethods: [GET, HEAD]
+              Compress: true
+              # Managed-CachingDisabled
+              CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+              # Managed-AllViewerExceptHostHeader
+              OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+              FunctionAssociations:
+                - EventType: viewer-request
+                  FunctionARN: !GetAtt AuthFunction.FunctionMetadata.FunctionARN
+            - !Ref AWS::NoValue
           # The session payload the interface reads. Never cached at the edge,
           # so a fresh `atlas-publish` shows up on the next reload rather than
           # after someone remembers to invalidate.
@@ -393,6 +451,24 @@ Resources:
             ErrorCachingMinTTL: 10
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
+
+  # A CloudFront origin must be a stable name. Without an EIP the runner's
+  # public IP changes every time the idle alarm stops it and someone starts it
+  # again, and the admin would 502 until the stack was updated.
+  RunnerEip:
+    Type: AWS::EC2::EIP
+    Condition: SiteAuth
+    Properties:
+      Domain: vpc
+      Tags:
+        - { Key: Name, Value: !Sub "${ProjectName}-${EnvironmentName}-runner" }
+
+  RunnerEipAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: SiteAuth
+    Properties:
+      AllocationId: !GetAtt RunnerEip.AllocationId
+      InstanceId: !Ref Runner
 
   # ------------------------------------------------------------------ runner
 
@@ -734,8 +810,11 @@ Resources:
           [Service]
           User=ec2-user
           WorkingDirectory=/opt/atlas/app
-          ExecStart=/opt/atlas/app/.venv/bin/sqlite_web data/atlas.sqlite \
-            --host 127.0.0.1 --port 8002 --no-browser
+          # 0.0.0.0 with the security group restricted to CloudFront's
+          # origin-facing prefix list: the port is not open to the internet,
+          # but CloudFront can reach it. --url-prefix matches /admin*.
+          ExecStart=/opt/atlas/app/.venv/bin/sqlite_web /opt/atlas/data/atlas.sqlite \
+            --host 0.0.0.0 --port 8002 --no-browser --url-prefix /admin
           Restart=always
           RestartSec=5
           [Install]

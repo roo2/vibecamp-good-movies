@@ -40,7 +40,19 @@ trap 'rm -rf "$STAGE"' EXIT
 
 if [ -n "$SITE_DIR" ]; then
   echo "→ staging $SITE_DIR"
+  if [ ! -d "$ROOT/$SITE_DIR" ]; then
+    echo "SITE_DIR=$SITE_DIR does not exist under $ROOT — build it first" >&2
+    exit 1
+  fi
   cp -R "$ROOT/$SITE_DIR/." "$STAGE/"
+  # The sync below deletes whatever it does not stage, so the design screens
+  # would vanish the first time a real front end is published. They run
+  # offline and cost nothing to carry, so keep them reachable under /design.
+  if [ ! -d "$STAGE/design" ]; then
+    echo "→ staging design/ alongside it"
+    mkdir -p "$STAGE/design"
+    cp -R "$ROOT/design/." "$STAGE/design/"
+  fi
 else
   echo "→ staging design/ (no SITE_DIR given)"
   mkdir -p "$STAGE/design"

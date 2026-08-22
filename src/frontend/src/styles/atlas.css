@@ -1,0 +1,243 @@
+/* The dataset explorer.
+ *
+ * The product screens are a 390px phone frame; this is the one view that is not,
+ * because a forty-row diverging chart in a phone column is unreadable. It keeps
+ * the same palette and type so it still reads as the same product.
+ *
+ * Chart colour: magnitude is one hue (--mag). Polarity is the diverging pair
+ * --pole-low / --pole-high with a neutral zero gauge — validated against the
+ * #1c1713 surface for lightness band, chroma floor, CVD separation (ΔE 22.5
+ * protan) and contrast. Do not substitute either pole for a brand tint without
+ * re-running that check.
+ */
+
+.atlas-page {
+  --ink: #f5efe6;
+  --ink2: #b3aa9e;
+  --ink3: #7e766c;
+  --surface: #1c1713;
+  --surface2: #241d18;
+  --rule: #2d251f;
+  --rule2: #3a312a;
+  --mag: #eda36b;
+  --pole-low: #6c8ae0;
+  --pole-high: #c68347;
+  --gauge: #4a423b;
+
+  min-height: 100dvh;
+  padding: 0 0 80px;
+  background: radial-gradient(80% 45% at 50% 0%, #2a211b 0%, #171310 68%);
+  color: var(--ink);
+}
+
+.atlas-wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.atlas-topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 34px; }
+
+.atlas-header h1 {
+  margin: 10px 0 0; max-width: 20ch;
+  font-family: Georgia, 'Times New Roman', serif; font-size: clamp(34px, 5vw, 54px);
+  font-weight: 400; line-height: 1.05; letter-spacing: -.02em;
+}
+.atlas-header h1 em { color: var(--mag); font-style: italic; }
+.atlas-lede { max-width: 62ch; margin: 18px 0 0; color: var(--ink2); font-size: 16px; line-height: 1.6; }
+.atlas-caveat {
+  max-width: 62ch; margin: 16px 0 0; padding: 14px 16px;
+  border-left: 2px solid var(--rule2); border-radius: 0 8px 8px 0;
+  background: var(--surface); color: var(--ink3); font-size: 13px; line-height: 1.55;
+}
+
+.atlas-page section { margin-top: 56px; }
+.atlas-page h2 {
+  margin: 0 0 8px; font-family: Georgia, serif; font-size: 26px; font-weight: 400; letter-spacing: -.01em;
+}
+.atlas-note { max-width: 68ch; margin: 0 0 20px; color: var(--ink2); font-size: 14px; line-height: 1.6; }
+.atlas-note em { color: var(--ink); font-style: italic; }
+.atlas-loading, .atlas-error { padding: 80px 0; color: var(--ink2); }
+.atlas-error { color: var(--mag); }
+
+/* ---- stat tiles ---- */
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 10px; }
+.stat-tile {
+  display: grid; gap: 3px; padding: 16px 16px 14px;
+  border: 1px solid var(--rule); border-radius: 12px; background: var(--surface);
+}
+.stat-tile strong {
+  font-family: Georgia, serif; font-size: 30px; font-weight: 400; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-tile span { color: var(--ink2); font-size: 12px; }
+.stat-tile small { color: var(--ink3); font-size: 11px; line-height: 1.4; }
+
+/* ---- charts ---- */
+.atlas-figure { margin: 0; }
+/* Fixed layout: the colgroup below sets every column but the plot, which then
+ * takes the remainder. Leaving this to auto layout collapses either the bar or
+ * the label, depending on which column wins the fight for the width. */
+.atlas-chart { width: 100%; table-layout: fixed; border-collapse: collapse; }
+/* Capped as a share of the table as well as in pixels: fixed columns that sum
+ * to more than the table width overflow it, and one overflowing table gives the
+ * whole page a horizontal scrollbar on a phone. */
+.atlas-chart .col-label { width: min(var(--label-w, 260px), 42%); }
+.atlas-chart .col-value { width: 62px; }
+.atlas-chart .col-n { width: 68px; }
+
+.atlas-chart th[scope='row'] {
+  padding: 4px 14px 4px 0;
+  color: var(--ink2); font-size: 13px; font-weight: 400; text-align: right;
+  overflow-wrap: anywhere; hyphens: auto;
+}
+.atlas-chart td { padding: 4px 0; vertical-align: middle; }
+.atlas-chart .bar-n {
+  padding-left: 10px; color: var(--ink3); font-size: 11px;
+  font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap;
+}
+.atlas-chart .bar-value {
+  padding-left: 12px; color: var(--ink2); font-size: 12px;
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+
+.bar-track { height: 12px; border-radius: 3px; background: #221c17; }
+.bar-fill { height: 100%; min-inline-size: 2px; border-radius: 0 4px 4px 0; background: var(--mag); }
+
+.diverging-legend {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px 22px; margin-bottom: 18px; color: var(--ink2); font-size: 12px; line-height: 1.5;
+}
+/* Direct children only — the inner span carries the label text and must not
+ * inherit this grid, or the pole name lands in the swatch column. */
+.diverging-legend > span { display: grid; grid-template-columns: 10px 1fr; align-items: start; gap: 9px; }
+.diverging-legend > span > span { display: block; }
+.diverging-legend .swatch { margin-top: 4px; }
+.diverging-legend b { display: block; color: var(--ink); font-weight: 500; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; }
+.swatch.low { background: var(--pole-low); }
+.swatch.high { background: var(--pole-high); }
+
+.diverging-track { position: relative; height: 12px; border-radius: 3px; background: #221c17; }
+.zero-line { position: absolute; inset-block: -2px; inset-inline-start: 50%; width: 1px; background: var(--gauge); }
+.diverging-fill { position: absolute; inset-block: 0; min-inline-size: 2px; }
+.diverging-fill.high { border-radius: 0 4px 4px 0; background: var(--pole-high); }
+.diverging-fill.low { border-radius: 4px 0 0 4px; background: var(--pole-low); }
+
+.atlas-chart.diverging tr { cursor: pointer; }
+.atlas-chart.diverging tr:hover th, .atlas-chart.diverging tr:hover .bar-value { color: var(--ink); }
+.atlas-chart.diverging tr:hover .diverging-track { background: #2b241d; }
+.atlas-chart.diverging tr.selected th { color: var(--mag); }
+.row-button { padding: 0; border: 0; color: inherit; background: none; font: inherit; text-align: right; }
+
+.atlas-figure figcaption { margin-top: 10px; color: var(--ink3); font-size: 12px; }
+.axis-note { display: flex; justify-content: space-between; max-width: 100%; }
+.axis-note b { font-weight: 400; }
+
+.axis-picker { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 22px; }
+.chip {
+  min-height: 32px; padding: 0 13px; border: 1px solid var(--rule2); border-radius: 16px;
+  color: var(--ink2); background: transparent; font-size: 12px;
+}
+.chip:hover { border-color: #766254; color: var(--ink); }
+.chip.on { border-color: var(--mag); color: #171310; background: var(--mag); font-weight: 650; }
+
+/* ---- matrix ---- */
+.matrix { display: grid; gap: 6px; overflow-x: auto; }
+.matrix [role='row'] { display: grid; grid-template-columns: 148px repeat(4, minmax(120px, 1fr)); gap: 6px; }
+.matrix [role='columnheader'], .matrix [role='rowheader'] {
+  padding: 6px 4px; color: var(--ink3); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+}
+.matrix [role='cell'] {
+  display: grid; align-content: start; gap: 5px; min-height: 76px; padding: 11px 12px;
+  border: 1px solid var(--rule); border-radius: 10px; background: var(--surface);
+}
+.matrix [role='cell'].filled { border-color: var(--rule2); background: var(--surface2); }
+.matrix [role='cell'] b {
+  font-family: Georgia, serif; font-size: 22px; font-weight: 400; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.matrix [role='cell'] em { color: var(--ink3); font-size: 11px; font-style: normal; line-height: 1.45; }
+
+/* ---- film grid ---- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 18px; }
+.controls input {
+  flex: 1 1 220px; min-height: 34px; padding: 0 13px;
+  border: 1px solid var(--rule2); border-radius: 17px;
+  color: var(--ink); background: var(--surface); outline: none;
+}
+.controls input:focus { border-color: var(--mag); }
+.controls input::placeholder { color: var(--ink3); }
+.controls .count { margin-left: auto; color: var(--ink3); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.film-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 10px; }
+.film-card {
+  display: grid; align-content: start; gap: 8px; padding: 16px;
+  border: 1px solid var(--rule); border-radius: 12px;
+  background: var(--surface); color: var(--ink); text-align: left;
+}
+.film-card:hover { border-color: #766254; background: var(--surface2); }
+.film-card.flagged { border-color: rgba(198, 131, 71, .45); }
+.film-card strong { font-family: Georgia, serif; font-size: 18px; font-weight: 400; }
+.film-card strong span { color: var(--ink3); font-size: 13px; }
+.film-card p {
+  display: -webkit-box; margin: 0; overflow: hidden;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 4;
+  color: var(--ink2); font-size: 13px; line-height: 1.5;
+}
+.film-card small { color: var(--ink3); font-size: 11px; }
+
+/* ---- detail ---- */
+.detail-scrim {
+  position: fixed; inset: 0; z-index: 20; display: flex; justify-content: flex-end;
+  background: rgba(10, 8, 6, .62); backdrop-filter: blur(2px);
+}
+.film-detail {
+  width: min(560px, 100vw); height: 100dvh; overflow-y: auto; padding: 26px 28px 60px;
+  border-left: 1px solid var(--rule2); background: #171310;
+}
+.detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.detail-head h3 { margin: 0; font-family: Georgia, serif; font-size: 27px; font-weight: 400; }
+.detail-head h3 span { color: var(--ink3); font-size: 18px; }
+.detail-provenance { margin: 6px 0 0; color: var(--ink3); font-size: 12px; }
+.detail-provenance b { color: var(--ink2); font-weight: 500; }
+.close-button { width: 32px; height: 32px; border: 1px solid var(--rule2); border-radius: 50%; color: var(--ink2); background: transparent; font-size: 18px; line-height: 1; }
+.detail-blurb { margin: 18px 0 0; color: var(--ink2); font-size: 14px; font-style: italic; line-height: 1.6; }
+.detail-empty { margin: 20px 0 0; color: var(--ink3); }
+
+.detail-field { margin-top: 22px; }
+.detail-field > span { display: block; margin-bottom: 6px; color: var(--ink3); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.detail-field p { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.62; }
+.detail-field ul { margin: 0; padding-left: 18px; color: var(--ink2); font-size: 13px; line-height: 1.6; }
+.detail-field.flagged { padding: 14px 16px; border: 1px solid rgba(198, 131, 71, .4); border-radius: 10px; background: rgba(198, 131, 71, .07); }
+.detail-field.unsupported { padding: 14px 16px; border: 1px dashed var(--rule2); border-radius: 10px; }
+.detail-quotes { padding-left: 0; list-style: none; }
+.detail-quotes li { margin-bottom: 9px; padding-left: 11px; border-left: 2px solid var(--rule2); color: var(--ink2); font-style: italic; }
+.detail-axes { padding-left: 0; list-style: none; }
+.detail-axes li { display: grid; gap: 2px; margin-bottom: 10px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); }
+.detail-axes b { font-weight: 500; }
+.detail-axes em { font-size: 13px; font-style: normal; }
+.detail-axes em.high { color: var(--pole-high); }
+.detail-axes em.low { color: var(--pole-low); }
+.detail-axes span { color: var(--ink3); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.atlas-footer { margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--rule); }
+.atlas-footer p { max-width: 78ch; margin: 0 0 8px; color: var(--ink3); font-size: 12px; line-height: 1.6; }
+
+@media (max-width: 720px) {
+  .atlas-wrap { padding: 0 16px; }
+  .atlas-chart th[scope='row'] { padding-right: 9px; font-size: 12px; }
+  .atlas-chart .col-value { width: 52px; }
+  .atlas-chart .col-n { width: 54px; }
+  .atlas-chart .bar-value { padding-left: 7px; font-size: 11px; }
+  .atlas-chart .bar-n { padding-left: 6px; font-size: 10px; }
+  .matrix [role='row'] { grid-template-columns: 108px repeat(4, minmax(104px, 1fr)); }
+  .film-detail { width: 100vw; padding: 20px 18px 60px; }
+}
+
+/* Wide content scrolls inside its own box rather than the page scrolling
+ * sideways. The matrix is the one table too dense to squeeze onto a phone, and
+ * it is the only element on the page wider than a 414px viewport. */
+.matrix { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

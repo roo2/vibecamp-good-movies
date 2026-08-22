@@ -74,6 +74,25 @@ atlas dimensions-split-half        # derive twice from disjoint halves of the co
 atlas profile                      # where each film sits
 ```
 
+## Showing it to someone
+
+The dataset explorer is a page in the interface, at `#/atlas`. It reads one
+JSON document rather than the store, because the demo site is static S3 behind
+CloudFront and cannot query a database:
+
+```bash
+atlas dataset                      # -> src/frontend/public/api/atlas.json
+cd src/frontend && npm run build   # copies it into dist/api/atlas.json
+SITE_DIR=src/frontend/dist ./infra/deploy-site.sh
+```
+
+Re-run `atlas dataset` after any pipeline stage; the page shows whatever the
+store holds at that moment, and says which evidence condition every film was
+read under. It is public by design — outside the sign-in guard, carrying no
+user data — and it carries no evidence text, only the short quotes each
+extracted claim is grounded in. Locally the same page will also read a live
+`GET /api/atlas`, so a pipeline run shows up on reload without a rebuild.
+
 Note that the axes are derived semantically, by an LLM reading the bank, and not
 by the TF-IDF clustering that cuts the bank. That clustering compares vocabulary
 rather than meaning, and on canonicalised propositions it barely merges anything

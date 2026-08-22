@@ -26,6 +26,11 @@ Endpoints:
 - `GET /api/test/results` — returns the active user's captured results.
 - `GET /api/profile/moral` — the caller's score on each derived moral axis, read
   from the films they reacted to and the story pairs they chose between.
+- `GET /api/atlas` — the whole dataset the explorer at `#/atlas` draws: corpus
+  totals, the derived axes, every film's skeleton and its position on each axis.
+  Rebuilt when the store's mtime changes, so a pipeline run shows up on reload.
+  The published demo does not use this endpoint — that site is static and reads
+  `/api/atlas.json`, which `atlas dataset` writes into `src/frontend/public/`.
 
 Users, sessions, movie reactions, and test results are stored in SQLite. The
 user record is intentionally limited to `id` and `name`; an SSO identity can be
@@ -37,3 +42,7 @@ Movie cards are read from the existing SQLite `films` table. Seed the curated
 ```powershell
 atlas seed-films
 ```
+
+The explorer at `#/atlas` is outside the sign-in guard: it reads a published
+file, holds nothing about anyone, and is the thing to show someone before they
+have a reason to sign in.

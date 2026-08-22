@@ -26,21 +26,33 @@ function App() {
   const [groupSession, setGroupSession] = useState(loadGroupSession)
   const [sessionStatus, setSessionStatus] = useState(null)
 
+  const navigate = useCallback((nextRoute) => {
+    window.location.hash = nextRoute
+  }, [])
+
   useEffect(() => {
     const handleHashChange = () => setRoute(currentRoute())
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
-  const navigate = useCallback((nextRoute) => {
-    window.location.hash = nextRoute
-  }, [])
+  useEffect(() => {
+    const joinToken = route.startsWith('/join/') ? route.split('/')[2] : null
+    if (!access || !joinToken) return
+    joinGroupSession(access, joinToken)
+      .then((nextGroupSession) => {
+        setGroupSession({ shareToken: nextGroupSession.share_token })
+        navigate('/lobby')
+      })
+      .catch(console.error)
+  }, [access, navigate, route])
 
   const handleSignIn = useCallback(async (name) => {
     const nextAccess = await startAccess(name)
     setAccess(nextAccess)
     const joinToken = currentRoute().startsWith('/join/') ? currentRoute().split('/')[2] : null
-    const nextGroupSession = joinToken ? await joinGroupSession(nextAccess, joinToken) : await createGroupSession(nextAccess)
+    if (joinToken) return
+    const nextGroupSession = await createGroupSession(nextAccess)
     setGroupSession({ shareToken: nextGroupSession.share_token })
     navigate('/lobby')
   }, [navigate])
@@ -118,7 +130,7 @@ function App() {
     return <TestCompletePage answers={result} onStartOver={() => navigate('/')} />
   }
 
-  return <LandingPage onSignIn={handleSignIn} />
+  return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />
 }
 
 export default App

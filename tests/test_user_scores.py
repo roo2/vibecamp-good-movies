@@ -273,8 +273,23 @@ def test_unseen_films_are_counted_but_do_not_score(scored_atlas):
     assert all(score["evidence_items"] == 0 for score in body["scores"])
 
 
-def test_blind_pair_answers_are_traced_back_to_their_films(scored_atlas):
+def test_blind_pair_answers_are_traced_back_to_their_films(scored_atlas, monkeypatch):
     """The answers only say "pair-2"; the session's deck says which films that was."""
+    # A real deck is fifteen films sampled at random, so it can deal a pair of
+    # two odd-indexed films — and then neither answer to that pair affirms
+    # axis 1, the leaning lands on "balanced", and this fails. Measured at one
+    # run in two hundred, which is often enough to redden main and rare enough
+    # to look like someone else's problem.
+    #
+    # What is under test is the tracing, not the sampling, so deal a fixed
+    # deck: every pair holds exactly one even-indexed film, and the orientation
+    # alternates so the choice below still exercises both branches.
+    from moral_atlas.web import store as store_mod
+    monkeypatch.setattr(store_mod, "build_session_deck", lambda: {
+        "direct": [f"film-{index}" for index in range(10, 15)],
+        "pairs": [["film-0", "film-1"], ["film-3", "film-2"], ["film-4", "film-5"],
+                  ["film-7", "film-6"], ["film-8", "film-9"]],
+    })
     headers, share_token = _start_session()
     questions = client.get(f"/api/test/questions?share_token={share_token}",
                            headers=headers).json()["questions"]

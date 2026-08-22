@@ -68,7 +68,12 @@ jobs:
           CHANGED=$(git diff --name-only "$BEFORE" '${{ github.sha }}')
           echo "$CHANGED"
           grep -qE '^infra/'                        <<<"$CHANGED" && I=true || I=false
-          grep -qE '^(src/|seeds/|pyproject\.toml)' <<<"$CHANGED" && C=true || C=false
+          # infra/ counts as code for the runner's sake: the runner has this
+          # repository checked out, and the scripts it runs — load-corpus.sh
+          # and its loader — live there. Without it they land in main and never
+          # reach the machine that is supposed to run them, which is exactly
+          # what happened the first time they shipped.
+          grep -qE '^(src/|seeds/|infra/|pyproject\.toml)' <<<"$CHANGED" && C=true || C=false
           echo "infra=$I" >> "$GITHUB_OUTPUT"
           echo "code=$C"  >> "$GITHUB_OUTPUT"
 
@@ -180,13 +185,19 @@ jobs:
             exit 0
           fi
 
-          # One command, so there is no shell quoting to get wrong here. The
-          # update procedure itself lives on the instance as atlas-update.
+          # atlas-update pulls the new code and reinstalls it, and that is all
+          # it does — it restarts nothing. So the API kept serving the process
+          # that was already running, and a deploy could report success while
+          # /api went on answering from the commit before it. Restart it here.
+          #
+          # `|| true` on the unit check rather than the restart: if atlas-api is
+          # not installed we say so and carry on, but if it is installed and
+          # fails to come back, that is a broken deploy and should fail.
           CMD=$(aws ssm send-command \
             --instance-ids "$INSTANCE" \
             --document-name AWS-RunShellScript \
             --comment "deploy ${{ github.sha }}" \
-            --parameters 'commands=["/usr/local/bin/atlas-update main"]' \
+            --parameters 'commands=["/usr/local/bin/atlas-update main","if systemctl list-unit-files atlas-api.service >/dev/null 2>&1 && systemctl cat atlas-api.service >/dev/null 2>&1; then systemctl restart atlas-api && sleep 3 && systemctl is-active atlas-api; else echo \"no atlas-api unit on this instance\"; fi"]' \
             --query 'Command.CommandId' --output text)
 
           echo "ssm command $CMD"

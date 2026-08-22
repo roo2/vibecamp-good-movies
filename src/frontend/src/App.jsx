@@ -11,7 +11,7 @@ import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/lobby', '/seen-it', '/test-intro', '/quickfire', '/complete', '/waiting'])
+const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/results-intro', '/complete', '/waiting'])
 
 function currentRoute() {
   const route = window.location.hash.slice(1) || '/'
@@ -68,7 +68,7 @@ function App() {
     async function updateStatus() {
       const nextStatus = await refreshSessionStatus()
       if (route === '/lobby' && nextStatus?.status === 'in_progress') navigate('/seen-it')
-      if (route === '/waiting' && nextStatus?.status === 'results_started') navigate('/complete')
+      if (route === '/waiting' && nextStatus?.status === 'results_started') navigate('/results-intro')
     }
     updateStatus()
     const timer = window.setInterval(updateStatus, 4000)
@@ -98,7 +98,7 @@ function App() {
 
   const handleContinue = useCallback(async () => {
     await continueWithoutMembers(access, groupSession.shareToken)
-    navigate('/complete')
+    navigate('/results-intro')
   }, [access, groupSession, navigate])
 
   if (!access && route !== '/' && !route.startsWith('/join/')) {
@@ -106,7 +106,7 @@ function App() {
   }
 
   if (route === '/seen-it') {
-    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => navigate('/test-intro')} />
+    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => navigate('/quickfire')} />
   }
 
   if (route === '/lobby' && groupSession) {
@@ -117,12 +117,12 @@ function App() {
     return <SessionWaitingPage status={sessionStatus} isHost={sessionStatus.host_user_id === access.user.id} onContinue={handleContinue} />
   }
 
-  if (route === '/test-intro') {
-    return <TestIntroPage onContinue={() => navigate('/quickfire')} />
-  }
-
   if (route === '/quickfire') {
     return <QuickfireTestPage access={access} shareToken={groupSession?.shareToken} onComplete={handleComplete} />
+  }
+
+  if (route === '/results-intro') {
+    return <TestIntroPage onContinue={() => navigate('/complete')} />
   }
 
   if (route === '/complete') {

@@ -26,6 +26,9 @@ Endpoints:
 - `GET /api/test/results` — returns the active user's captured results.
 - `GET /api/profile/moral` — the caller's score on each derived moral axis, read
   from the films they reacted to and the story pairs they chose between.
+- `GET /api/shortlist/films` — tonight's deck, ranked by how well each film's
+  moral positions match everyone in the session. Pass `share_token` to rank for
+  the whole room; without it the caller is ranked alone.
 
 Users, sessions, movie reactions, and test results are stored in SQLite. The
 user record is intentionally limited to `id` and `name`; an SSO identity can be

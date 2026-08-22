@@ -125,7 +125,7 @@ function App() {
     return <TestCompletePage access={access} onContinue={() => navigate('/shortlist')} />
   }
   if (route === '/shortlist') {
-    return <ShortlistPage access={access} onDone={() => navigate('/match')} />
+    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} onDone={() => navigate('/match')} />
   }
   if (route === '/match') {
     return <MatchPage onContinue={() => navigate('/tiebreak')} />

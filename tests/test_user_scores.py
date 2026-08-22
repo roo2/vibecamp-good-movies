@@ -283,3 +283,84 @@ def test_a_missing_dimension_set_is_a_404_not_a_blank_profile(scored_atlas):
     headers, _ = _start_session()
     response = client.get("/api/profile/moral?dim_version=d99", headers=headers)
     assert response.status_code == 404
+
+
+# --------------------------------------------------------------------------
+# Ranking tonight's shortlist
+# --------------------------------------------------------------------------
+
+def _rate(user_id, index, reaction):
+    from moral_atlas.web.store import save_movie_rating
+    save_movie_rating(user_id, f"film-{index}", reaction)
+
+
+def _new_user(name):
+    from moral_atlas.web.store import create_session
+    return create_session(name).user.id
+
+
+def test_the_deck_is_ranked_by_what_the_viewer_believes(scored_atlas):
+    """Even-index films affirm axis 1; someone who loves one should get more."""
+    from moral_atlas.web.shortlist_service import ranked_shortlist
+
+    viewer = _new_user("Ada")
+    _rate(viewer, 0, "loved_it")          # film-0 affirms axis 1
+    deck = ranked_shortlist([viewer], limit=6)
+
+    assert deck, "a scored viewer should get a deck"
+    assert all(int(film["id"].split("-")[1]) % 2 == 0 for film in deck[:3]), \
+        "films arguing what she believes should come first"
+    assert deck == sorted(deck, key=lambda f: -f["agreement"])
+    assert deck[0]["agreement"] > 0
+
+
+def test_films_you_have_already_seen_are_not_on_tonights_list(scored_atlas):
+    from moral_atlas.web.shortlist_service import ranked_shortlist
+
+    viewer = _new_user("Ada")
+    _rate(viewer, 0, "loved_it")
+    _rate(viewer, 2, "not_for_me")
+    _rate(viewer, 4, "havent_seen")
+    ids = {film["id"] for film in ranked_shortlist([viewer], limit=20)}
+
+    assert "film-0" not in ids, "already seen and loved"
+    assert "film-2" not in ids, "already seen and rejected"
+    assert "film-4" in ids, "not having seen it is a qualification, not a bar"
+
+
+def test_two_people_are_ranked_by_whoever_likes_the_film_least(scored_atlas):
+    """The film one adores and the other cannot stand must not win on average."""
+    from moral_atlas.web.shortlist_service import ranked_shortlist
+
+    ada, bob = _new_user("Ada"), _new_user("Bob")
+    _rate(ada, 0, "loved_it")             # Ada leans toward axis 1's high pole
+    _rate(bob, 1, "loved_it")             # Bob leans the opposite way on both axes
+
+    together = ranked_shortlist([ada, bob], limit=20)
+    alone = {film["id"]: film["agreement"] for film in ranked_shortlist([ada], limit=20)}
+
+    assert max(alone.values()) > together[0]["agreement"], \
+        "adding someone who disagrees cannot improve the best match"
+    for film in together:
+        # `agreement` is the worst view of the film, so it can never flatter a
+        # film by averaging away the person who dislikes it.
+        assert film["agreement"] <= alone[film["id"]] + 1e-9
+
+
+def test_the_shortlist_endpoint_ranks_for_everyone_in_the_session(scored_atlas):
+    headers, share_token = _start_session()
+    response = client.get(f"/api/shortlist/films?share_token={share_token}", headers=headers)
+    assert response.status_code == 200
+    films = response.json()["films"]
+    assert films and all({"id", "title", "agreement"} <= set(film) for film in films)
+    assert films == sorted(films, key=lambda f: -f["agreement"])
+
+
+def test_the_shortlist_is_not_readable_from_outside_the_session(scored_atlas):
+    _headers, share_token = _start_session("Ada")
+    outsider = client.post("/api/access", json={"name": "Mallory"}).json()
+    response = client.get(
+        f"/api/shortlist/films?share_token={share_token}",
+        headers={"X-Session-Token": outsider["token"]},
+    )
+    assert response.status_code == 404

@@ -1,22 +1,22 @@
-# Phase 0 seed corpus — 40 films.
+# Phase 0 seed corpus — 50 films.
 #
 # Chosen for three things at once:
 #   1. The split-case battery (note: battery) — films the space MUST separate.
 #      If these collapse together the ontology is broken, so they go in first.
-#   2. Spread across era (1939-2022), country, and register, so any factor that
+#   2. Spread across era (1939-2024), country, and register, so any factor that
 #      is really "is this a modern American prestige picture" shows itself.
 #   3. Documentation depth — all should carry a full Wikipedia plot section, and
 #      most a themes/analysis section, which is what phase 0 is testing.
 #
-# Revised to films the intended audience has actually seen. Ten arthouse and
-# mid-century titles — Rashomon, Tokyo Story, Seven Samurai, Bicycle Thieves,
-# A Man for All Seasons, Chariots of Fire, Do the Right Thing, Les Misérables,
-# V for Vendetta, A Separation — gave way to ten widely-seen ones. That is a
-# real cost to the spread: what left was most of the non-anglophone corpus and
-# most of the pre-1960 arthouse, so any claim that an axis is universal rather
-# than a feature of mainstream anglophone cinema is now much weaker, and the
-# `origin_country` confound has less to bite on. It buys audience recognition,
-# which the product needs more than the paper does.
+# Fifty films: the original spread plus ten the intended audience has actually
+# seen. Widely-recognised titles were added rather than substituted, because
+# dropping the arthouse and non-anglophone half would have cost exactly the
+# variation that lets a confound show itself — with only mainstream anglophone
+# cinema in the corpus, "this axis is a feature of narrative film" and "this
+# axis is a feature of Hollywood" cannot be told apart.
+#
+# The cost of keeping both is scoring: fifty films rather than forty, against
+# the same bank.
 #
 # `wikipedia` overrides the article title where the plain title is ambiguous.
 
@@ -135,3 +135,28 @@ films:
     wikipedia: "Parasite (2019 film)"
   - title: "Top Gun: Maverick"
     year: 2022
+
+  # ---- returned to the corpus: the spread the new titles cost ----
+  - title: "Bicycle Thieves"
+    year: 1948
+  - title: "Rashomon"
+    year: 1950
+  - title: "Tokyo Story"
+    year: 1953
+  - title: "Seven Samurai"
+    year: 1954
+  - title: "A Man for All Seasons"
+    year: 1966
+    wikipedia: "A Man for All Seasons (1966 film)"
+  - title: "Chariots of Fire"
+    year: 1981
+  - title: "Do the Right Thing"
+    year: 1989
+  - title: "A Separation"
+    year: 2011
+  - title: "Les Misérables"
+    year: 2012
+    wikipedia: "Les Misérables (2012 film)"
+  - title: "V for Vendetta"
+    year: 2005
+    wikipedia: "V for Vendetta (film)"

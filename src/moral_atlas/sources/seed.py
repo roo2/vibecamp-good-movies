@@ -49,6 +49,16 @@ DESCRIPTIONS = {
     "The Avengers": "Powerful individuals who distrust one another must decide whether a shared threat is worth surrendering their independence for.",
     "Guardians of the Galaxy": "A band of self-interested outcasts find that protecting something larger than themselves costs more than they meant to give.",
     "Captain Marvel": "A soldier who has been told what she is discovers her memories were shaped by the people who trained her.",
+    "Les Misérables": "Lives collide across years as mercy, law, poverty, and a chance to become someone new pull in different directions.",
+    "Bicycle Thieves": "A working family faces a single loss that threatens livelihood, pride, and the bond between a parent and child.",
+    "Rashomon": "Several witnesses tell incompatible versions of one event, leaving everyone to wrestle with truth and self-interest.",
+    "Tokyo Story": "An ageing couple visits their adult children and discovers how love can persist alongside distance and disappointment.",
+    "Seven Samurai": "Strangers with little to spare decide whether protecting a vulnerable community is worth the personal cost.",
+    "A Man for All Seasons": "A public servant must decide whether conscience can survive when loyalty to power becomes a condition of safety.",
+    "Chariots of Fire": "Two gifted runners pursue excellence for very different reasons and confront institutions that want to set their limits.",
+    "Do the Right Thing": "A hot day exposes the pressures beneath a neighbourhood's everyday coexistence and tests who will take responsibility.",
+    "V for Vendetta": "A citizen living under fearful rule is invited to consider whether liberation can be separated from violence and revenge.",
+    "A Separation": "A family dispute becomes a web of competing duties, where every honest choice appears to harm someone else.",
 }
 
 

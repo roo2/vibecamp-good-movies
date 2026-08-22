@@ -469,7 +469,7 @@ def models_cmd() -> None:
 
 @app.command("model-scan")
 def model_scan(
-    scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases; see `atlas models`."),
+    scorers: str = typer.Option("deepseek", help="Comma-separated aliases; see `atlas models`. DeepSeek by default: at roughly a hundredth of the cost per film it is what makes a corpus this size affordable to score at all."),
     bank: str = typer.Option("b1"),
     variant: str = typer.Option("spine", help="Evidence condition; the same one for every scorer."),
     limit: Optional[int] = typer.Option(None, help="Score only the first N films."),
@@ -599,7 +599,7 @@ def dimension_count(
 
 @app.command("model-propose")
 def model_propose(
-    scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases."),
+    scorers: str = typer.Option("deepseek", help="Comma-separated aliases. DeepSeek by default, on cost."),
     variant: str = typer.Option("full", help="Evidence condition, the same for every model."),
     limit: Optional[int] = typer.Option(None),
     films: str = typer.Option("", help="Only these films (ids or title fragments)."),
@@ -623,7 +623,7 @@ def model_propose(
 
 @app.command("model-axes")
 def model_axes(
-    scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases."),
+    scorers: str = typer.Option("deepseek", help="Comma-separated aliases. DeepSeek by default, on cost."),
     k: str = typer.Option("8", help="Axis counts to derive, e.g. 4,6,8,10,12."),
     bank: str = typer.Option("b1"),
     assign: bool = typer.Option(True, help="Also sort the shared bank onto each model's axes."),

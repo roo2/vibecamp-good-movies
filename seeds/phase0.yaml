@@ -1,88 +1,85 @@
-# Phase 0 seed corpus — 40 films.
+# Phase 0 seed corpus — 50 films.
 #
 # Chosen for three things at once:
 #   1. The split-case battery (note: battery) — films the space MUST separate.
 #      If these collapse together the ontology is broken, so they go in first.
-#   2. Spread across era (1942-2024), country, and register, so any factor that
+#   2. Spread across era (1939-2024), country, and register, so any factor that
 #      is really "is this a modern American prestige picture" shows itself.
 #   3. Documentation depth — all should carry a full Wikipedia plot section, and
 #      most a themes/analysis section, which is what phase 0 is testing.
+#
+# Fifty films: the original spread plus ten the intended audience has actually
+# seen. Widely-recognised titles were added rather than substituted, because
+# dropping the arthouse and non-anglophone half would have cost exactly the
+# variation that lets a confound show itself — with only mainstream anglophone
+# cinema in the corpus, "this axis is a feature of narrative film" and "this
+# axis is a feature of Hollywood" cannot be told apart.
+#
+# The cost of keeping both is scoring: fifty films rather than forty, against
+# the same bank.
 #
 # `wikipedia` overrides the article title where the plain title is ambiguous.
 
 films:
   # ---- split-case battery ----
   - title: "The Lion King"
-    year: 1994  
+    year: 1994
     note: battery
   - title: "Maleficent"
-    year: 2014  
+    year: 2014
     note: battery
   - title: "The Lord of the Rings: The Return of the King"
-    year: 2003  
+    year: 2003
     note: battery
-  - title: "Les Misérables"
-    year: 2012  
-    note: battery
-    wikipedia: "Les Misérables (2012 film)"
   - title: "Hacksaw Ridge"
-    year: 2016  
+    year: 2016
     note: battery
   - title: "The Dark Knight"
-    year: 2008  
+    year: 2008
     note: battery
   - title: "Frozen"
-    year: 2013  
+    year: 2013
     note: battery
     wikipedia: "Frozen (2013 film)"
   - title: "Joker"
-    year: 2019  
+    year: 2019
     note: battery
     wikipedia: "Joker (2019 film)"
   - title: "Starship Troopers"
-    year: 1997  
+    year: 1997
     note: battery
     wikipedia: "Starship Troopers (film)"
   - title: "Dead Poets Society"
-    year: 1989  
+    year: 1989
     note: battery
-
-  # ---- revision pair, for the displacement probe ----
   - title: "Sleeping Beauty"
-    year: 1959  
-    note: revision-parent
+    year: 1959
+    note: battery
     wikipedia: "Sleeping Beauty (1959 film)"
   - title: "Wicked"
-    year: 2024  
-    note: revision-child
+    year: 2024
+    note: battery
     wikipedia: "Wicked (2024 film)"
-  - title: "The Wizard of Oz"
-    year: 1939  
-    note: revision-parent
-    wikipedia: "The Wizard of Oz (1939 film)"
 
-  # ---- spread ----
+  # ---- spread: era, country, register ----
+  - title: "The Wizard of Oz"
+    year: 1939
+    wikipedia: "The Wizard of Oz (1939 film)"
   - title: "Casablanca"
     year: 1942
+    wikipedia: "Casablanca (film)"
   - title: "It's a Wonderful Life"
     year: 1946
-  - title: "Bicycle Thieves"
-    year: 1948
-  - title: "Rashomon"
-    year: 1950
-  - title: "Tokyo Story"
-    year: 1953
-  - title: "Seven Samurai"
-    year: 1954
-  - title: "A Man for All Seasons"
-    year: 1966
-    wikipedia: "A Man for All Seasons (1966 film)"
+  - title: "The Terminator"
+    year: 1984
   - title: "The Godfather"
     year: 1972
-  - title: "Chariots of Fire"
-    year: 1981
-  - title: "Do the Right Thing"
-    year: 1989
+  - title: "Sense and Sensibility"
+    year: 1995
+    wikipedia: "Sense and Sensibility (1995 film)"
+  - title: "Pride & Prejudice"
+    year: 2005
+    wikipedia: "Pride & Prejudice (2005 film)"
   - title: "Thelma & Louise"
     year: 1991
   - title: "Groundhog Day"
@@ -106,22 +103,60 @@ films:
     year: 2001
   - title: "Shrek"
     year: 2001
-  - title: "V for Vendetta"
-    year: 2005
-    wikipedia: "V for Vendetta (film)"
+  - title: "Master and Commander: The Far Side of the World"
+    year: 2003
   - title: "No Country for Old Men"
     year: 2007
     wikipedia: "No Country for Old Men (film)"
   - title: "WALL-E"
     year: 2008
-  - title: "A Separation"
-    year: 2011
+  - title: "Avatar"
+    year: 2009
+    wikipedia: "Avatar (2009 film)"
+  - title: "The Avengers"
+    year: 2012
+    wikipedia: "The Avengers (2012 film)"
   - title: "The Wolf of Wall Street"
     year: 2013
     wikipedia: "The Wolf of Wall Street (2013 film)"
+  - title: "Guardians of the Galaxy"
+    year: 2014
+    wikipedia: "Guardians of the Galaxy (film)"
+  - title: "Zootopia"
+    year: 2016
   - title: "Arrival"
     year: 2016
     wikipedia: "Arrival (film)"
+  - title: "Captain Marvel"
+    year: 2019
+    wikipedia: "Captain Marvel (film)"
   - title: "Parasite"
     year: 2019
     wikipedia: "Parasite (2019 film)"
+  - title: "Top Gun: Maverick"
+    year: 2022
+
+  # ---- returned to the corpus: the spread the new titles cost ----
+  - title: "Bicycle Thieves"
+    year: 1948
+  - title: "Rashomon"
+    year: 1950
+  - title: "Tokyo Story"
+    year: 1953
+  - title: "Seven Samurai"
+    year: 1954
+  - title: "A Man for All Seasons"
+    year: 1966
+    wikipedia: "A Man for All Seasons (1966 film)"
+  - title: "Chariots of Fire"
+    year: 1981
+  - title: "Do the Right Thing"
+    year: 1989
+  - title: "A Separation"
+    year: 2011
+  - title: "Les Misérables"
+    year: 2012
+    wikipedia: "Les Misérables (2012 film)"
+  - title: "V for Vendetta"
+    year: 2005
+    wikipedia: "V for Vendetta (film)"

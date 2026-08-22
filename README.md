@@ -201,6 +201,28 @@ python -c "import sqlite3,pandas as pd; \
   print(pd.read_sql('SELECT * FROM runs', sqlite3.connect('data/atlas.sqlite')))"
 ```
 
+### Getting the corpus without running a sweep
+
+A sweep costs money and an API key. If someone else has already run one, take
+theirs — `infra/export-corpus.sh` publishes the store with every user table
+dropped, and that file is what a collaborator wants:
+
+```bash
+aws s3 cp s3://<data-bucket>/latest/atlas-corpus.sqlite data/atlas.sqlite
+```
+
+Films, skeletons, propositions, the item bank, the dimensions and every score,
+and nothing about anybody who used the demo. It is an ordinary store, so
+`atlas dataset`, Datasette and the interface all read it unchanged.
+
+Publish a new one with `./infra/export-corpus.sh`. It refuses to upload if a
+user table survived the drop, so the file cannot leak people by a typo.
+
+The same object is what the demo runs on: `infra/load-corpus.sh` pulls it onto
+the runner and swaps the derived tables in, leaving the demo's own users, group
+sessions and ratings untouched — the laptop is authoritative for the corpus, the
+runner for the people, and neither overwrites the other.
+
 In the `sqlite3` CLI, `.headers on` and `.mode box` make output readable.
 
 ```sql

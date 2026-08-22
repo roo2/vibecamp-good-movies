@@ -391,6 +391,101 @@ def profile(
         console.print(t)
 
 
+@app.command("models")
+def models_cmd() -> None:
+    """The scorers available for the bias study, and which have credentials."""
+    from .llm.providers import PROVIDERS, SCORERS, available
+
+    table = Table("alias", "provider", "model", "posture", "key", box=None)
+    for alias, scorer in SCORERS.items():
+        ready = available(alias)
+        table.add_row(alias, scorer.provider, scorer.model, scorer.posture,
+                      "[green]set[/]" if ready else "[yellow]missing[/]")
+    console.print(table)
+    console.print("\n[bold]where the keys come from[/]")
+    for name, provider in PROVIDERS.items():
+        console.print(f"  {name:<12} {provider.env_var:<20} {provider.console}")
+    console.print("\n[dim]Notes[/]")
+    for alias, scorer in SCORERS.items():
+        console.print(f"  [bold]{alias}[/]: {scorer.note}")
+
+
+@app.command("model-scan")
+def model_scan(
+    scorers: str = typer.Option("grok,deepseek", help="Comma-separated aliases; see `atlas models`."),
+    bank: str = typer.Option("b1"),
+    variant: str = typer.Option("spine", help="Evidence condition; the same one for every scorer."),
+    limit: Optional[int] = typer.Option(None, help="Score only the first N films."),
+) -> None:
+    """Score the corpus again with other models, to see whose morals the scores are.
+
+    Writes to `model_verdicts`, never to `scores` — the product's film positions
+    must not move because an audit ran.
+    """
+    from .analysis import model_bias
+    from .llm.providers import missing_credentials
+
+    aliases = [a.strip() for a in scorers.split(",") if a.strip()]
+    missing = missing_credentials(aliases)
+    for alias, provider in missing.items():
+        console.print(f"[yellow]skipping {alias}[/] — set {provider.env_var} ({provider.console})")
+    aliases = [a for a in aliases if a not in missing]
+    if not aliases:
+        console.print("[red]no scorers with credentials[/] — see `atlas models`")
+        raise typer.Exit(1)
+
+    film_ids = _film_ids(limit)
+    for alias in aliases:
+        console.print(f"\n[bold]{alias}[/] over {len(film_ids)} films ({variant})")
+        stats = model_bias.scan(alias, film_ids, bank, variant, progress=console.print)
+        console.print(f"  scored {stats['scored']}, refused [yellow]{stats['refused']}[/], "
+                      f"failed [red]{stats['failed']}[/]  {json.dumps(stats['usage'])}")
+
+
+@app.command("model-bias")
+def model_bias_cmd(
+    bank: str = typer.Option("b1"),
+    version: str = typer.Option("d1", help="Dimension set naming the axes."),
+    top: int = typer.Option(12, help="Largest per-axis divergences to show."),
+) -> None:
+    """Where the scorers agree, where they refuse, and which way each one leans."""
+    from .analysis import model_bias
+
+    report = model_bias.report(bank, version)
+
+    t = Table("scorer", "posture", "films", "verdicts", "items/film", "affirm%", "refused", box=None)
+    for alias, row in report["scorers"].items():
+        t.add_row(alias, row["posture"], str(row["films"]), str(row["verdicts"]),
+                  str(row["items_per_film"]),
+                  f"{row['affirm_share']:.0%}" if row["affirm_share"] is not None else "-",
+                  f"[yellow]{row['refusals']}[/]" if row["refusals"] else "0")
+    console.print("\n[bold]what each scorer did with the same bank[/]")
+    console.print(t)
+
+    if report["agreement"]:
+        t = Table("pair", "shared cells", "raw", "kappa", box=None)
+        for pair, row in report["agreement"].items():
+            kappa = row["kappa"]
+            colour = "green" if kappa and kappa >= 0.6 else "yellow" if kappa and kappa >= 0.4 else "red"
+            t.add_row(pair, str(row["shared_cells"]), f"{row['raw']:.2f}",
+                      f"[{colour}]{kappa:+.2f}[/]" if kappa is not None else "-")
+        console.print("\n[bold]do they agree on the same films and items?[/]")
+        console.print(t)
+        console.print("[dim]kappa corrects for chance: the verdicts run about two "
+                      "affirms per denial, so raw agreement flatters everybody.[/]")
+
+    if report["divergence"]:
+        t = Table("scorer", "axis", "gap vs opus", "scorer", "opus", "items", box=None)
+        for row in report["divergence"][:top]:
+            colour = "red" if abs(row["gap"]) >= 0.2 else "yellow" if abs(row["gap"]) >= 0.1 else "dim"
+            t.add_row(row["scorer"], row["axis"], f"[{colour}]{row['gap']:+.2f}[/]",
+                      f"{row['scorer_lean']:+.2f}", f"{row['incumbent_lean']:+.2f}", str(row["n"]))
+        console.print("\n[bold]same films, different verdict: per-axis lean[/]")
+        console.print(t)
+        console.print("[dim]The films were identical, so a gap here is the scorer, "
+                      "not the corpus.[/]")
+
+
 @app.command("user-profile")
 def user_profile(
     user: str = typer.Option("", help="User id or name captured by the web app."),

@@ -31,6 +31,12 @@ class Settings:
     db_path: Path = ROOT / "data" / "atlas.sqlite"
 
     anthropic_api_key: str | None = _clean("ANTHROPIC_API_KEY")
+    # Alternative scorers, for auditing whose morals the scores encode. Each is
+    # optional: absent means that model sits the comparison out, not that the
+    # pipeline breaks.
+    xai_api_key: str | None = _clean("XAI_API_KEY")
+    deepseek_api_key: str | None = _clean("DEEPSEEK_API_KEY")
+    openrouter_api_key: str | None = _clean("OPENROUTER_API_KEY")
     tmdb_read_token: str | None = _clean("TMDB_READ_TOKEN")
     tmdb_api_key: str | None = _clean("TMDB_API_KEY")
     opensubtitles_key: str | None = _clean("OPENSUBTITLES_API_KEY")
@@ -88,6 +94,15 @@ PRICES = {
     "claude-opus-4-8": (5.00, 25.00),
     "claude-sonnet-5": (3.00, 15.00),
     "claude-haiku-4-5": (1.00, 5.00),
+    # Alternative scorers. Published list prices at time of writing; they move,
+    # and the cost line in the CLI is an estimate rather than an invoice.
+    "grok-4": (3.00, 15.00),
+    "grok-3": (3.00, 15.00),
+    "deepseek-chat": (0.28, 0.42),
+    "deepseek-reasoner": (0.55, 2.19),
+    "nousresearch/hermes-3-llama-3.1-405b": (0.80, 0.80),
+    "cognitivecomputations/dolphin-mixtral-8x22b": (0.90, 0.90),
+    "meta-llama/llama-3.1-405b": (2.00, 2.00),
 }
 
 

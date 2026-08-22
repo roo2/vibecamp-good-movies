@@ -1,6 +1,7 @@
 import React from 'react'
 import { DivergingBars, MagnitudeBars, StatTiles } from '../components/atlas/Charts.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
+import { Dimensionality } from '../components/atlas/Dimensionality.jsx'
 import { Reduction, Reliability } from '../components/atlas/Method.jsx'
 import {
   FATE_LABELS, dimensionsByItems, fateDistribution, filmsOnAxis, filterFilms,
@@ -152,6 +153,11 @@ function AtlasPage({ onBack }) {
             />
           </section>
         )}
+
+        {/* Placed straight after the reliability battery because it answers the
+            objection that section raises and cannot itself settle: the axes are
+            checked for coherence, but their COUNT was supplied. */}
+        <Dimensionality dimensionality={atlas.dimensionality} />
 
         {dims.length > 0 && (
           <section aria-labelledby="axes">

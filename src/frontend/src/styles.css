@@ -1,0 +1,83 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #17221f;
+  background: #f4f0e6;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .22;
+  background-image: radial-gradient(#8b887c 0.55px, transparent 0.55px);
+  background-size: 7px 7px;
+}
+
+.shell { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem); gap: clamp(3rem, 8vw, 8rem); align-items: center; max-width: 76rem; min-height: 100vh; margin: 0 auto; padding: 4rem clamp(1.5rem, 6vw, 6rem); }
+.hero { max-width: 36rem; }
+.eyebrow, .card-kicker { color: #38756b; font-size: .75rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+h1 { margin: 1.25rem 0 1.5rem; font-family: Georgia, serif; font-size: clamp(3.2rem, 7vw, 6.7rem); font-weight: 400; letter-spacing: -.055em; line-height: .93; }
+.intro { max-width: 29rem; margin: 0; color: #40514b; font-size: clamp(1.05rem, 1.8vw, 1.35rem); line-height: 1.55; }
+.aside-note { margin-top: 3rem; color: #a26c20; font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.card { padding: clamp(1.75rem, 4vw, 2.75rem); border: 1px solid rgba(23, 34, 31, .12); border-top: 4px solid #d89b39; border-radius: 2px; background: rgba(255, 253, 248, .91); box-shadow: 0 1.5rem 4rem rgba(61, 55, 39, .09); }
+.card-heading h2 { margin: .45rem 0 .35rem; font-family: Georgia, serif; font-size: 2rem; font-weight: 400; }
+.card-kicker { margin: 0; }
+.muted { margin: 0 0 2rem; color: #69756f; font-size: .92rem; }
+form { display: grid; gap: .55rem; }
+label { margin-top: .6rem; color: #40514b; font-size: .78rem; font-weight: 750; }
+input { width: 100%; padding: .85rem .9rem; border: 1px solid #c9c8bb; border-radius: 2px; color: #17221f; background: #fff; font: inherit; outline-color: #38756b; }
+input::placeholder { color: #a3a69d; }
+button { display: flex; align-items: center; justify-content: space-between; margin-top: 1.2rem; padding: .95rem 1rem; border: 0; border-radius: 2px; color: #fffdf8; background: #38756b; cursor: pointer; font: inherit; font-weight: 750; }
+button:hover { background: #285c54; }
+button span { font-size: 1.25rem; line-height: 1; }
+.fine-print, .demo-note { color: #69756f; font-size: .78rem; text-align: center; }
+.fine-print { margin: 1.25rem 0 .65rem; }
+.fine-print a { color: #38756b; font-weight: 700; }
+.demo-note { margin: 0; color: #a26c20; }
+
+.flow-shell { position: relative; display: grid; min-height: 100vh; place-items: center; padding: 2rem 1.25rem; }
+.flow-card, .quiz-card { width: min(100%, 45rem); padding: clamp(2rem, 6vw, 4rem); border: 1px solid rgba(23, 34, 31, .12); border-top: 4px solid #d89b39; background: rgba(255, 253, 248, .94); box-shadow: 0 1.5rem 4rem rgba(61, 55, 39, .09); }
+.intro-card { width: min(100%, 39rem); }
+.flow-card h1, .question-prompt { max-width: 12ch; margin: .55rem 0 1.3rem; font-family: Georgia, serif; font-size: clamp(2.7rem, 6vw, 4.8rem); font-weight: 400; letter-spacing: -.045em; line-height: .98; }
+.step-label { margin: 1.75rem 0 .4rem; color: #a26c20; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.flow-copy { max-width: 34rem; color: #40514b; font-size: 1.1rem; line-height: 1.6; }
+.time-callout { display: grid; grid-template-columns: auto 1fr; column-gap: 1.5rem; align-items: center; margin: 2.4rem 0; padding: 1.3rem 0; border-top: 1px solid #d8d4c8; border-bottom: 1px solid #d8d4c8; }
+.time-callout span, .countdown span { color: #69756f; font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.time-callout strong { color: #38756b; font-family: Georgia, serif; font-size: 2.8rem; font-weight: 400; }
+.time-callout p { grid-column: 1 / -1; margin: .45rem 0 0; color: #69756f; font-size: .9rem; }
+.primary-button { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding: 1rem 1.1rem; border: 0; color: #fffdf8; background: #38756b; cursor: pointer; font: inherit; font-weight: 750; }
+.primary-button:hover { background: #285c54; }
+.primary-button:disabled { cursor: not-allowed; background: #aeb8b3; }
+.quiz-card { width: min(100%, 50rem); }
+.quiz-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+.quiz-header .eyebrow { margin: 0; }
+.question-count { margin: .4rem 0 0; color: #69756f; font-size: .86rem; }
+.countdown { min-width: 6.5rem; padding-left: 1rem; border-left: 2px solid #d89b39; text-align: right; }
+.countdown strong { display: block; margin-top: .15rem; color: #17221f; font-size: 1.4rem; }
+.progress-track { height: 4px; margin: 2rem 0 0; overflow: hidden; background: #e4e0d5; }
+.progress-track div { height: 100%; background: #38756b; transition: width .2s ease; }
+.question-prompt { max-width: 18ch; margin-top: .5rem; font-size: clamp(2.25rem, 5vw, 4rem); }
+.options { display: grid; gap: .7rem; }
+.option { display: flex; align-items: center; gap: .85rem; width: 100%; margin: 0; padding: 1rem 1.1rem; border: 1px solid #d4d2c7; color: #28342f; background: #fff; text-align: left; font: inherit; font-weight: 600; line-height: 1.35; }
+.option:hover { border-color: #38756b; background: #f4faf7; }
+.option.selected { border-color: #38756b; color: #173e38; background: #e8f3ee; }
+.option-marker { width: 1rem; height: 1rem; flex: 0 0 1rem; border: 1px solid #a9ada5; border-radius: 50%; }
+.option.selected .option-marker { border: 4px solid #38756b; }
+.loading-message, .error-message { position: relative; padding: 1rem; color: #40514b; background: #fffdf8; }
+.error-message { color: #8b3d30; }
+
+@media (max-width: 760px) {
+  .shell { grid-template-columns: 1fr; align-content: center; gap: 3rem; padding-top: 3rem; padding-bottom: 3rem; }
+  .hero { max-width: 30rem; }
+  h1 { font-size: clamp(3.3rem, 15vw, 5rem); }
+  .aside-note { margin-top: 2rem; }
+  .flow-card, .quiz-card { padding: 2rem 1.5rem; }
+  .quiz-header { align-items: center; }
+  .question-prompt { font-size: 2.5rem; }
+}

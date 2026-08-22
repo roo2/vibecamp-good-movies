@@ -173,6 +173,47 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_movie_ratings_user ON movie_ratings (user_id, submitted_at);
 CREATE INDEX IF NOT EXISTS idx_test_results_user ON test_results (user_id, submitted_at);
 
+-- The item bank measures; these name what it is measuring. A dimension set is
+-- versioned exactly like a bank, because deriving one is an LLM judgement and a
+-- later derivation must be diffable against the earlier one rather than silently
+-- replacing it.
+CREATE TABLE IF NOT EXISTS dimensions (
+    dim_version    TEXT,
+    dim_id         INTEGER,
+    name           TEXT,
+    question       TEXT,
+    pole_high      TEXT,
+    pole_low       TEXT,
+    n_dims         INTEGER,
+    source         TEXT,   -- what the axes were derived FROM
+    run_id         TEXT,
+    model          TEXT,
+    prompt_version TEXT,
+    created_at     TEXT,
+    PRIMARY KEY (dim_version, dim_id)
+);
+
+-- One row per (item, pass). `pass_name` is what makes the audit repeatable:
+-- 'main' is the assignment in use, and the replicate / cross-model passes sit
+-- beside it under their own names instead of overwriting it, so agreement
+-- between passes is a query rather than a memory of a run someone once did.
+CREATE TABLE IF NOT EXISTS item_dimensions (
+    dim_version  TEXT,
+    bank_version TEXT,
+    item_id      TEXT,
+    dim_id       INTEGER,
+    polarity     INTEGER,  -- +1 affirming points to pole_high, -1 to pole_low
+    fit          REAL,
+    pass_name    TEXT,
+    run_id       TEXT,
+    model        TEXT,
+    created_at   TEXT,
+    PRIMARY KEY (dim_version, bank_version, item_id, pass_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_item_dimensions_lookup
+    ON item_dimensions (dim_version, bank_version, pass_name);
+
 CREATE TABLE IF NOT EXISTS group_sessions (
     session_id         TEXT PRIMARY KEY,
     share_token        TEXT NOT NULL UNIQUE,

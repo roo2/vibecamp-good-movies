@@ -60,6 +60,47 @@ atlas score --version b1           # stage 3, score every film in every conditio
 atlas ab --version b1              # the verdict
 ```
 
+## Moral dimensions
+
+The item bank is an instrument, not an answer: hundreds of propositions is a
+fine thing to score against and a useless thing to hand a person. These commands
+reduce it to a handful of named axes and then try to knock them down.
+
+```bash
+atlas dimensions --version d1 --n-dims 8 \
+    --cross-model claude-sonnet-5  # derive the axes, place every item on one
+atlas dimensions-validate          # the evidence that they are real
+atlas dimensions-split-half        # derive twice from disjoint halves of the corpus
+atlas profile                      # where each film sits
+```
+
+Note that the axes are derived semantically, by an LLM reading the bank, and not
+by the TF-IDF clustering that cuts the bank. That clustering compares vocabulary
+rather than meaning, and on canonicalised propositions it barely merges anything
+— the typical nearest-neighbour cosine similarity is ~0.12 against a merge
+threshold that demands 0.55. Forcing small *k* does not help either: LSA plus
+k-means scores a silhouette around 0.03, which is a numerical way of saying the
+lexical structure is not there.
+
+That invites a fair objection — an LLM asked for eight moral dimensions will
+always produce eight moral dimensions — so `dimensions-validate` reports evidence
+rather than a verdict, and four of its five tests can fail:
+
+| Test | What it would mean if it failed |
+|---|---|
+| Split-half | Axes derived from disjoint film sets disagree → they came from the prompt, not the corpus |
+| Blind replicate | Items shuffled and axes renumbered, and agreement collapses → items have no determinate home |
+| Cross-model | A second model disagrees → one model's taste, not a real distinction |
+| Co-engagement | Films do not engage same-axis items together → the axis is not in how the corpus behaves |
+| Stance coherence | Films scatter across a pole instead of landing on one → not an axis |
+
+The last two are permutation-tested against a null that shuffles which item sits
+on which axis while holding the axis sizes fixed, so lopsided groups cannot
+manufacture significance. Both discard each film's verdicts on items harvested
+from that same film by default, since almost every item traces back to one film
+and letting it vote for its own propositions would inflate the result for free.
+Every number is seeded, so anything quoted can be re-run.
+
 ### Evidence conditions
 
 The A/B works by withholding layers. The same film, the same propositions,

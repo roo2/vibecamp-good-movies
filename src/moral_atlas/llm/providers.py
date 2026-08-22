@@ -100,27 +100,32 @@ SCORERS = {
         Scorer("deepseek-r1", "deepseek", "deepseek-reasoner", "safety-trained, reasoning",
                "Same house, reasoning-tuned: separates 'this model's norms' from "
                "'this model thought harder'."),
-        Scorer("hermes", "openrouter", "nousresearch/hermes-3-llama-3.1-405b",
+        Scorer("hermes", "openrouter", "nousresearch/hermes-4-405b",
                "neutrally aligned",
-               "Nous trains Hermes to follow the operator rather than an internal "
-               "policy, with refusal behaviour deliberately minimised. The "
-               "recommended no-guardrails scorer: frontier-scale, commercially "
-               "served, and still capable enough to return clean JSON."),
-        Scorer("dolphin", "openrouter", "cognitivecomputations/dolphin-mixtral-8x22b",
+               "The strongest genuinely unaligned model OpenRouter serves: 405B, "
+               "and Nous trains it to follow the operator rather than an internal "
+               "policy, with refusal behaviour deliberately minimised. Frontier "
+               "scale is what makes it evidence — when it disagrees with Claude "
+               "that is a difference of judgement, not of competence."),
+        Scorer("hermes-3", "openrouter", "nousresearch/hermes-3-llama-3.1-405b",
+               "neutrally aligned, older",
+               "The previous generation at the same size. Worth a run only to ask "
+               "whether a Hermes/Claude gap is stable across Nous releases or an "
+               "artefact of one of them."),
+        Scorer("dolphin", "openrouter", "cognitivecomputations/dolphin-mistral-24b-venice-edition",
                "explicitly uncensored",
-               "Alignment data stripped from the fine-tune outright. Weaker than "
-               "the others, so divergence may be incapacity rather than candour — "
-               "read it as a floor, not a verdict."),
-        Scorer("llama-base", "openrouter", "meta-llama/llama-3.1-405b",
-               "no instruction tuning at all",
-               "The purest control: a base model that never had preferences "
-               "trained into it. Hardest to hold to a schema, which is the price "
-               "of asking what the pretraining distribution alone believes."),
+               "Alignment data stripped from the fine-tune outright. At 24B it is "
+               "an order of magnitude smaller than Hermes, so a gap here may be "
+               "incapacity rather than candour — read it as a floor, not a "
+               "verdict. It is also the ONLY dolphin OpenRouter still lists; the "
+               "8x22B mixtral edition is gone."),
     ]
 }
 
 # Some scorers cannot be trusted to honour a schema; ask for less from them.
-NO_RESPONSE_FORMAT = {"llama-base", "dolphin"}
+# OpenRouter reports dolphin as taking response_format but not strict structured
+# outputs, and at 24B it is the most likely to answer in prose regardless.
+NO_RESPONSE_FORMAT = {"dolphin"}
 
 REFUSAL_MARKERS = (
     "i can't", "i cannot", "i won't", "i'm not able to", "i am not able to",
@@ -168,12 +173,31 @@ def missing_credentials(aliases: Iterable[str]) -> dict[str, Provider]:
     return out
 
 
-def _first_json_object(text: str) -> dict[str, Any] | None:
+class Truncated(RuntimeError):
+    """The answer was cut off by the token budget.
+
+    Worth its own type because the failure it causes is silent otherwise. When
+    the outer object never closes, brace-matching skips it and returns the first
+    *inner* object that happens to balance — a single score instead of the whole
+    set — which then fails schema validation somewhere far from the cause.
+    """
+
+
+def _first_json_object(text: str, require_key: str | None = None) -> dict[str, Any] | None:
     """Pull the first balanced {...} out of prose.
 
     The last resort for models that cannot be told to answer in JSON. Brace
-    counting rather than a regex because the payload nests.
+    counting rather than a regex because the payload nests. `require_key` keeps
+    a truncated outer object from silently degrading into an inner fragment:
+    with it, only an object carrying the schema's own top-level key will do.
     """
+    for candidate in _balanced_objects(text):
+        if require_key is None or require_key in candidate:
+            return candidate
+    return None
+
+
+def _balanced_objects(text: str):
     start = text.find("{")
     while start != -1:
         depth, in_string, escaped = 0, False, False
@@ -195,11 +219,11 @@ def _first_json_object(text: str) -> dict[str, Any] | None:
                 depth -= 1
                 if depth == 0:
                     try:
-                        return json.loads(text[start:index + 1])
+                        yield json.loads(text[start:index + 1])
                     except json.JSONDecodeError:
-                        break
+                        pass
+                    break
         start = text.find("{", start + 1)
-    return None
 
 
 class OpenAICompatibleClient:
@@ -275,6 +299,8 @@ class OpenAICompatibleClient:
                 body["response_format"] = response_format
             try:
                 text = self._post(body)
+            except Truncated:
+                raise
             except httpx.HTTPStatusError as e:
                 # A 400 here usually means "I do not support that
                 # response_format" — drop to the next rung rather than give up.
@@ -282,7 +308,8 @@ class OpenAICompatibleClient:
                     last = e
                     continue
                 raise
-            parsed = _first_json_object(text)
+            root_key = next(iter(schema.get("properties") or {}), None)
+            parsed = _first_json_object(text, root_key)
             if parsed is None:
                 if _looks_like_refusal(text):
                     refusal = Refusal(self.model, text)
@@ -313,9 +340,17 @@ class OpenAICompatibleClient:
                 data = response.json()
                 self.usage.add_openai(self.model, data.get("usage") or {})
                 choice = (data.get("choices") or [{}])[0]
-                if choice.get("finish_reason") == "content_filter":
+                finish = choice.get("finish_reason")
+                if finish == "content_filter":
                     raise Refusal(self.model, "stopped by the provider's content filter")
-                return (choice.get("message") or {}).get("content") or ""
+                content = (choice.get("message") or {}).get("content") or ""
+                if finish == "length":
+                    raise Truncated(
+                        f"{self.model} hit the output limit after "
+                        f"{(data.get('usage') or {}).get('completion_tokens', '?')} tokens. "
+                        f"It is answering at far greater length than the rubric asks "
+                        f"for — the bank expects only the items a film engages.")
+                return content
             except httpx.HTTPStatusError:
                 raise
             except httpx.HTTPError as e:

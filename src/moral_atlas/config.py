@@ -104,9 +104,10 @@ PRICES = {
     "grok-3": (3.00, 15.00),
     "deepseek-chat": (0.28, 0.42),
     "deepseek-reasoner": (0.55, 2.19),
-    "nousresearch/hermes-3-llama-3.1-405b": (0.80, 0.80),
-    "cognitivecomputations/dolphin-mixtral-8x22b": (0.90, 0.90),
-    "meta-llama/llama-3.1-405b": (2.00, 2.00),
+    # Read off the OpenRouter catalogue rather than remembered.
+    "nousresearch/hermes-4-405b": (1.00, 3.00),
+    "nousresearch/hermes-3-llama-3.1-405b": (1.00, 1.00),
+    "cognitivecomputations/dolphin-mistral-24b-venice-edition": (0.20, 0.90),
 }
 
 

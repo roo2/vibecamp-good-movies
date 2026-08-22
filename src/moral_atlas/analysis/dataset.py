@@ -6,15 +6,17 @@ this is the opposite trade, denormalised so the browser does no joins.
 
 It is built to be published. The demo site is static S3 behind CloudFront and
 `/api/*` is served from the bucket, not from this API, so the visualisation
-cannot query anything at run time: whatever it shows has to be in this file.
-Two consequences follow, and both are deliberate rather than incidental.
+cannot query anything at run time: whatever it shows has to be on disk before
+the deploy. Two consequences follow, and both are deliberate.
 
-**No evidence layer.** `evidence` holds subtitle text, which the repository is
-careful never to commit because it is not ours to redistribute. It is not in
-this bundle either, at any size. The short `evidence_quotes` a skeleton cites to
-ground its own claims are kept — that is quotation for analysis, and the point
-of the corpus is that every assertion can be checked against a line — but they
-are capped per film so the bundle can never become a subtitle track by degrees.
+**The index is small; evidence is beside it.** Every claim in the corpus is
+supposed to be checkable against the text it was read from, so the evidence
+travels — plot, themes, reception and the dialogue track. It is 3MB against an
+index of 240KB, though, and making every visitor download a subtitle track for
+forty films to read one chart would be a poor trade. So `write` emits an index
+plus one file per film, and the interface fetches a film's evidence when
+somebody opens that film. The short `evidence_quotes` a skeleton cites stay in
+the index, because those are what the charts are annotated with.
 
 **The variant is named, per film.** A film's skeleton exists under up to four
 evidence conditions, and which one you read changes what it says. Showing a
@@ -52,9 +54,21 @@ FATE_ORDER = (
     "escapes", "no_clear_antagonist", "unknown",
 )
 
-# Quotation for analysis, bounded. See the module docstring.
+# Quotation for analysis, bounded. These annotate the charts, so they live in
+# the index rather than in the per-film evidence files.
 MAX_QUOTES = 6
 MAX_QUOTE_CHARS = 300
+
+# Thinnest first: this is the order the evidence reads in, and roughly the order
+# of how much of it there is.
+EVIDENCE_LAYERS = ("plot", "themes", "reception", "subtitles")
+
+EVIDENCE_LABELS = {
+    "plot": "Plot summary",
+    "themes": "Themes and analysis",
+    "reception": "Critical reception",
+    "subtitles": "Dialogue track",
+}
 
 # Passed straight through from the skeleton. Everything else in the film record
 # is either computed or comes from `films`.
@@ -221,6 +235,64 @@ def _profiles(con, dim_version: str, bank_version: str) -> dict[str, list[dict[s
     return out
 
 
+def _evidence_index(con) -> dict[str, list[dict[str, Any]]]:
+    """What each film has, without the text — enough to label a closed panel."""
+    out: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    rows = con.execute(
+        "SELECT film_id, layer, word_count, LENGTH(content) chars FROM evidence"
+    ).fetchall()
+    order = {layer: i for i, layer in enumerate(EVIDENCE_LAYERS)}
+    for row in rows:
+        if row["layer"] not in order:
+            continue
+        out[row["film_id"]].append({
+            "layer": row["layer"],
+            "label": EVIDENCE_LABELS[row["layer"]],
+            "words": row["word_count"],
+            "chars": row["chars"],
+        })
+    for layers in out.values():
+        layers.sort(key=lambda layer: order[layer["layer"]])
+    return out
+
+
+def film_evidence(film_id: str, dim_version: str = "d1",
+                  bank_version: str = "b1") -> dict[str, Any] | None:
+    """One film's evidence in full — the text every claim about it was read from.
+
+    Returned as its own document because it is large and only wanted when
+    somebody asks for that film. `None` if the film does not exist; a film that
+    exists with no evidence yet returns an empty `layers`, which the interface
+    can say plainly rather than treating as an error.
+    """
+    with db.connect(read_only=True) as con:
+        film = con.execute(
+            "SELECT film_id, title, year FROM films WHERE film_id=?", [film_id],
+        ).fetchone()
+        if film is None:
+            return None
+        rows = con.execute(
+            "SELECT layer, content, source_url, word_count FROM evidence "
+            "WHERE film_id=?", [film_id],
+        ).fetchall()
+
+    order = {layer: i for i, layer in enumerate(EVIDENCE_LAYERS)}
+    layers = sorted(
+        ({
+            "layer": row["layer"],
+            "label": EVIDENCE_LABELS[row["layer"]],
+            "content": row["content"],
+            "source_url": row["source_url"],
+            "words": row["word_count"],
+        } for row in rows if row["layer"] in order),
+        key=lambda layer: order[layer["layer"]],
+    )
+    return {
+        "id": film["film_id"], "title": film["title"], "year": film["year"],
+        "layers": layers,
+    }
+
+
 def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
     """The whole document. Never raises on a half-run pipeline — it reports it."""
     with db.connect(read_only=True) as con:
@@ -231,6 +303,7 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
         skeletons = _best_skeletons(con)
         dimensions = _dimensions(con, dim_version, bank_version)
         profiles = _profiles(con, dim_version, bank_version)
+        evidence = _evidence_index(con)
         coverage = _variant_coverage(con)
         totals = {
             "films": len(films),
@@ -262,6 +335,10 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
             "note": film["seed_note"],
             "description": film["description"],
             "profile": profiles.get(film["film_id"], []),
+            # What text exists for this film, but not the text itself: it is
+            # fetched per film, so the index stays small enough to open on a
+            # phone. See the module docstring.
+            "evidence_layers": evidence.get(film["film_id"], []),
         }
         if skeleton is None:
             record["skeleton"] = None
@@ -302,10 +379,39 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
     }
 
 
-def write(out_path: str | Path, dim_version: str = "d1",
-          bank_version: str = "b1") -> tuple[Path, dict[str, Any]]:
+def _dump(path: Path, payload: Any) -> int:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    path.write_text(text)
+    return len(text.encode())
+
+
+def write(out_path: str | Path, dim_version: str = "d1", bank_version: str = "b1",
+          include_evidence: bool = True) -> tuple[Path, dict[str, Any]]:
+    """Write the index, and one evidence file per film beside it.
+
+    The evidence files go in a directory named for the index — `atlas.json`
+    gets `atlas/<film_id>.json` — so a static host serves them from the same
+    prefix the interface asks for, with no routing to configure.
+    """
     payload = build(dim_version, bank_version)
     path = Path(out_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+    index_bytes = _dump(path, payload)
+
+    written, evidence_bytes = 0, 0
+    if include_evidence:
+        directory = path.with_suffix("")
+        for film in payload["films"]:
+            if not film["evidence_layers"]:
+                continue
+            document = film_evidence(film["id"], dim_version, bank_version)
+            if document is None:
+                continue
+            evidence_bytes += _dump(directory / f"{film['id']}.json", document)
+            written += 1
+
+    payload["_written"] = {
+        "index_path": str(path), "index_bytes": index_bytes,
+        "evidence_files": written, "evidence_bytes": evidence_bytes,
+    }
     return path, payload

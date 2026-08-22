@@ -2,9 +2,12 @@
 __pycache__/
 *.pyc
 .env
+# Fetched corpora and indexes: hundreds of MB, and reproducible from the
+# public sources on demand, so there is nothing to gain by carrying them.
 data/cache/
-# The store holds subtitle text. It must never be committed —
-# this repo is public and that text is not ours to redistribute.
+# The store is a large binary that changes wholesale on every write, which is
+# not a thing to keep in git. It also holds user records — users, sessions and
+# test results — which is the reason that outlives the size one.
 data/*.duckdb
 data/*.duckdb.wal
 data/*.sqlite

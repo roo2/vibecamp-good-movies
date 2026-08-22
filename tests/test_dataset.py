@@ -1,10 +1,11 @@
 """The published dataset.
 
-Two things matter enough to pin down. The first is that it is *publishable*: the
-demo is a public URL, and the one thing that must never travel with it is the
-subtitle text the repository is careful not to commit. The second is that it is
-honest about provenance — a film's position depends on which evidence it was
-read from, so the document has to say which, per film, every time.
+Two things matter enough to pin down. The first is that the index stays small:
+the evidence travels now, but a visitor reading a chart must not be made to
+download forty subtitle tracks to do it, so the text lives in per-film files
+beside the index rather than inside it. The second is that it is honest about
+provenance — a film's position depends on which evidence it was read from, so
+the document has to say which, per film, every time.
 
 The rest is ordinary arithmetic, tested on a store built by hand so the expected
 answer is known rather than asserted against whatever the pipeline last did.
@@ -110,15 +111,60 @@ def scored_store(store):
 
 
 # --------------------------------------------------------------------------
-# Publishability — the constraints that make this safe on a public URL
+# The index stays small; the evidence travels beside it
 # --------------------------------------------------------------------------
 
-def test_no_evidence_text_travels_with_the_bundle(store):
-    """`evidence` holds subtitle text. It must not appear at any size."""
-    db.upsert_evidence("a", "subs", "SUBTITLE LINE THAT MUST NOT TRAVEL " * 200)
+def test_the_index_carries_no_evidence_text(store):
+    """A chart reader must not pay for forty dialogue tracks to read a chart."""
+    db.upsert_evidence("a", "subtitles", "A LINE OF DIALOGUE " * 200)
     payload = dataset.build()
-    assert "MUST NOT TRAVEL" not in json.dumps(payload)
-    assert "evidence" not in payload
+    assert "A LINE OF DIALOGUE" not in json.dumps(payload)
+
+
+def test_the_index_says_what_evidence_exists_without_carrying_it(store):
+    db.upsert_evidence("a", "subtitles", "A line of dialogue.", meta=None)
+    db.upsert_evidence("a", "plot", "A plot summary.")
+    film = next(f for f in dataset.build()["films"] if f["id"] == "a")
+    # Thinnest layer first, so the panel reads plot before dialogue.
+    assert [layer["layer"] for layer in film["evidence_layers"]] == ["plot", "subtitles"]
+    assert [layer["label"] for layer in film["evidence_layers"]] == [
+        "Plot summary", "Dialogue track"]
+    assert all("content" not in layer for layer in film["evidence_layers"])
+
+
+def test_film_evidence_returns_the_text_in_full(store):
+    db.upsert_evidence("a", "subtitles", "A line of dialogue.",
+                       source_url="https://opus.example/a")
+    document = dataset.film_evidence("a")
+    assert document["title"] == "Film A"
+    assert document["layers"][0]["content"] == "A line of dialogue."
+    assert document["layers"][0]["source_url"] == "https://opus.example/a"
+
+
+def test_film_evidence_is_none_for_an_unknown_film(store):
+    assert dataset.film_evidence("no-such-film") is None
+
+
+def test_a_film_with_no_evidence_yet_reports_an_empty_layer_list(store):
+    document = dataset.film_evidence("b")
+    assert document is not None and document["layers"] == []
+
+
+def test_write_puts_each_film_beside_the_index(store, tmp_path):
+    db.upsert_evidence("a", "subtitles", "A line of dialogue.")
+    path, payload = dataset.write(tmp_path / "api" / "atlas.json")
+    beside = tmp_path / "api" / "atlas" / "a.json"
+    assert beside.exists()
+    assert json.loads(beside.read_text())["layers"][0]["content"] == "A line of dialogue."
+    # Only films that have evidence get a file.
+    assert not (tmp_path / "api" / "atlas" / "b.json").exists()
+    assert payload["_written"]["evidence_files"] == 1
+
+
+def test_write_can_leave_the_evidence_out(store, tmp_path):
+    db.upsert_evidence("a", "subtitles", "A line of dialogue.")
+    dataset.write(tmp_path / "api" / "atlas.json", include_evidence=False)
+    assert not (tmp_path / "api" / "atlas").exists()
 
 
 def test_grounding_quotes_are_capped_rather_than_unbounded(store):
@@ -216,6 +262,17 @@ def test_write_produces_the_file_the_interface_fetches(scored_store, tmp_path):
     path, payload = dataset.write(tmp_path / "public" / "api" / "atlas.json")
     assert path.exists()
     assert json.loads(path.read_text())["totals"] == payload["totals"]
+
+
+def test_api_serves_one_film_evidence(store):
+    from moral_atlas.web.routes import atlas as atlas_route
+    atlas_route._cache["key"] = None
+    db.upsert_evidence("a", "subtitles", "A line of dialogue.")
+    client = TestClient(app)
+
+    body = client.get("/api/atlas/films/a").json()
+    assert body["layers"][0]["content"] == "A line of dialogue."
+    assert client.get("/api/atlas/films/no-such-film").status_code == 404
 
 
 def test_api_serves_the_same_document(scored_store):

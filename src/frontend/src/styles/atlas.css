@@ -241,3 +241,28 @@
  * it is the only element on the page wider than a 414px viewport. */
 .matrix { overflow-x: auto; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---- source text ----
+ * A dialogue track is 65k characters on average. It is collapsed by default and
+ * scrolls in its own box, so opening a film never means scrolling past a
+ * subtitle file to reach the rest of the panel. */
+.detail-field.evidence details {
+  margin-bottom: 7px; border: 1px solid var(--rule); border-radius: 9px;
+  background: var(--surface);
+}
+.detail-field.evidence summary {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 11px 13px; color: var(--ink); font-size: 13px; cursor: pointer;
+}
+.detail-field.evidence summary::marker { color: var(--ink3); }
+.detail-field.evidence summary em { color: var(--ink3); font-size: 11px; font-style: normal; font-variant-numeric: tabular-nums; }
+.detail-field.evidence pre {
+  max-height: 340px; margin: 0; padding: 0 13px 13px; overflow: auto;
+  color: var(--ink2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.evidence-source {
+  display: block; padding: 0 13px 8px; color: var(--ink3);
+  font-size: 11px; overflow-wrap: anywhere;
+}
+.detail-muted { margin: 0; color: var(--ink3); font-size: 12px; }

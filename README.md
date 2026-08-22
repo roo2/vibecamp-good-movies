@@ -89,9 +89,14 @@ SITE_DIR=src/frontend/dist ./infra/deploy-site.sh
 Re-run `atlas dataset` after any pipeline stage; the page shows whatever the
 store holds at that moment, and says which evidence condition every film was
 read under. It is public by design — outside the sign-in guard, carrying no
-user data — and it carries no evidence text, only the short quotes each
-extracted claim is grounded in. Locally the same page will also read a live
-`GET /api/atlas`, so a pipeline run shows up on reload without a rebuild.
+user data.
+
+The source text travels with it, so every claim is checkable against what it was
+read from: plot, themes, reception and the dialogue track. That is 3MB against a
+240KB index, so it is written as one file per film — `api/atlas/<film_id>.json`
+— and fetched only when somebody opens that film. `--no-evidence` leaves it out.
+Locally the same page also reads a live `GET /api/atlas`, so a pipeline run shows
+up on reload without a rebuild.
 
 Note that the axes are derived semantically, by an LLM reading the bank, and not
 by the TF-IDF clustering that cuts the bank. That clustering compares vocabulary

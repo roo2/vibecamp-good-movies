@@ -552,6 +552,11 @@ def dataset_cmd(
              "is copied into the published site by `vite build`."),
     version: str = typer.Option("d1", help="Dimension version."),
     bank: str = typer.Option("b1", help="Item bank version."),
+    evidence: bool = typer.Option(
+        True, "--evidence/--no-evidence",
+        help="Write each film's source text — plot, themes, reception, dialogue "
+             "— as its own file beside the index, so the explorer can show what "
+             "every claim was read from."),
 ) -> None:
     """Build the JSON the interface visualises, from what the store holds now.
 
@@ -559,7 +564,7 @@ def dataset_cmd(
     a document that says so rather than one that fails.
     """
     from .analysis import dataset as dataset_mod
-    path, payload = dataset_mod.write(out, version, bank)
+    path, payload = dataset_mod.write(out, version, bank, evidence)
     totals = payload["totals"]
 
     table = Table("in the bundle", "n", box=None)
@@ -572,8 +577,15 @@ def dataset_cmd(
     table.add_row("scores", str(totals["scores"]))
     console.print(table)
 
-    size_kb = path.stat().st_size / 1024
-    console.print(f"\n[green]wrote[/] {path} [dim]({size_kb:.0f} KB)[/]")
+    written = payload["_written"]
+    console.print(f"\n[green]wrote[/] {path} "
+                  f"[dim]({written['index_bytes'] / 1024:.0f} KB index)[/]")
+    if written["evidence_files"]:
+        console.print(
+            f"[green]wrote[/] {path.with_suffix('')}/ [dim]"
+            f"({written['evidence_files']} films, "
+            f"{written['evidence_bytes'] / 1024 / 1024:.1f} MB of source text, "
+            f"fetched only when a film is opened)[/]")
     if not totals["dimensions"] or not totals["films_profiled"]:
         console.print(
             "[yellow]No axes or no placements[/] — the interface will show the "

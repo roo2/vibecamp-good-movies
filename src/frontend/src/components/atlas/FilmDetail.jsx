@@ -1,5 +1,5 @@
 import React from 'react'
-import { FATE_LABELS } from '../../services/atlasService.js'
+import { FATE_LABELS, loadFilmEvidence } from '../../services/atlasService.js'
 
 function Field({ label, value }) {
   if (!value) return null
@@ -17,6 +17,47 @@ function ListField({ label, values }) {
     <div className="detail-field">
       <span>{label}</span>
       <ul>{values.map((value, index) => <li key={index}>{value}</li>)}</ul>
+    </div>
+  )
+}
+
+// The source text every claim about this film was read from. It is the point of
+// the corpus that this is checkable, so it is here rather than described — but
+// it is fetched per film, and only once the panel is open.
+function Evidence({ film }) {
+  const [state, setState] = React.useState({ status: 'idle' })
+
+  React.useEffect(() => {
+    if (!film.evidence_layers?.length) return undefined
+    let live = true
+    setState({ status: 'loading' })
+    loadFilmEvidence(film.id)
+      .then((document) => live && setState({ status: 'ready', document }))
+      .catch((error) => live && setState({ status: 'failed', message: error.message }))
+    return () => { live = false }
+  }, [film.id, film.evidence_layers])
+
+  if (!film.evidence_layers?.length) return null
+
+  return (
+    <div className="detail-field evidence">
+      <span>Read from</span>
+      {state.status === 'loading' && <p className="detail-muted">Fetching the source text…</p>}
+      {state.status === 'failed' && <p className="detail-muted">{state.message}</p>}
+      {state.status === 'ready' && state.document.layers.map((layer) => (
+        <details key={layer.layer}>
+          <summary>
+            {layer.label}
+            <em>{layer.words ? `${layer.words.toLocaleString()} words` : ''}</em>
+          </summary>
+          {layer.source_url && (
+            <a className="evidence-source" href={layer.source_url} target="_blank" rel="noreferrer">
+              {layer.source_url}
+            </a>
+          )}
+          <pre>{layer.content}</pre>
+        </details>
+      ))}
     </div>
   )
 }
@@ -119,6 +160,8 @@ function FilmDetail({ film, dimensions, onClose }) {
           )}
         </>
       )}
+
+      <Evidence film={film} />
     </aside>
   )
 }

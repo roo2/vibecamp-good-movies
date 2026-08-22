@@ -31,6 +31,10 @@ Endpoints:
   Rebuilt when the store's mtime changes, so a pipeline run shows up on reload.
   The published demo does not use this endpoint — that site is static and reads
   `/api/atlas.json`, which `atlas dataset` writes into `src/frontend/public/`.
+- `GET /api/atlas/films/{film_id}` — one film's source text in full: plot,
+  themes, reception and dialogue. Separate from the index because it is ~80KB
+  per film and only wanted for the film someone opened. The static site serves
+  the same documents from `/api/atlas/<film_id>.json`.
 
 Users, sessions, movie reactions, and test results are stored in SQLite. The
 user record is intentionally limited to `id` and `name`; an SSO identity can be

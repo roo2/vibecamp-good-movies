@@ -35,6 +35,29 @@ export async function loadAtlas() {
   }
 }
 
+// A film's source text — plot, themes, reception, dialogue. Fetched only when
+// somebody opens that film: it averages ~80KB and the dialogue tracks run to
+// 170KB, which is not something to put in front of every visitor to the index.
+export async function loadFilmEvidence(filmId) {
+  const id = encodeURIComponent(filmId)
+  try {
+    const body = await fetch(`/api/atlas/${id}.json`, { headers: { Accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+    if (!Array.isArray(body?.layers)) throw new Error('not an evidence document')
+    return body
+  } catch {
+    return fetchEvidenceLive(id)
+  }
+}
+
+async function fetchEvidenceLive(id) {
+  const response = await fetch(`/api/atlas/films/${id}`, { headers: { Accept: 'application/json' } })
+  if (!response.ok) throw new Error('No source text has been published for this film.')
+  const body = await response.json()
+  if (!Array.isArray(body?.layers)) throw new Error('No source text has been published for this film.')
+  return body
+}
+
 // Everything below is presentation arithmetic over the payload. It lives here
 // rather than in the components so the numbers on screen have one definition.
 

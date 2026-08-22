@@ -37,3 +37,18 @@ def get_atlas(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, An
         _cache["payload"] = dataset_mod.build(dim_version, bank_version)
         _cache["key"] = key
     return _cache["payload"]
+
+
+@router.get("/atlas/films/{film_id}")
+def get_film_evidence(film_id: str) -> dict[str, Any]:
+    """One film's source text — what every claim about it was read from.
+
+    Its own endpoint rather than part of the index because it is large and only
+    wanted for the film somebody opened. Not cached: it is one indexed read,
+    and it is served far less often than the index.
+    """
+    document = dataset_mod.film_evidence(film_id)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"No film {film_id!r}.")
+    return document

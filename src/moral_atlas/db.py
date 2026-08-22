@@ -162,12 +162,16 @@ CREATE TABLE IF NOT EXISTS movie_ratings (
     submitted_at TEXT NOT NULL
 );
 
+-- `session_share_token` is what makes the blind answers scorable: the answers
+-- name pairs ("pair-3"), and only the session's deck knows which two films that
+-- pair actually was.
 CREATE TABLE IF NOT EXISTS test_results (
-    result_id      TEXT PRIMARY KEY,
-    user_id        TEXT NOT NULL REFERENCES users(user_id),
-    answers        TEXT NOT NULL, -- JSON object
-    answered_count INTEGER NOT NULL,
-    submitted_at   TEXT NOT NULL
+    result_id           TEXT PRIMARY KEY,
+    user_id             TEXT NOT NULL REFERENCES users(user_id),
+    answers             TEXT NOT NULL, -- JSON object
+    answered_count      INTEGER NOT NULL,
+    submitted_at        TEXT NOT NULL,
+    session_share_token TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions (user_id);
@@ -275,6 +279,7 @@ def init_db() -> None:
         con.executescript(SCHEMA)
         _add_column_if_missing(con, "films", "description", "TEXT")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
+        _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
 
 
 def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:

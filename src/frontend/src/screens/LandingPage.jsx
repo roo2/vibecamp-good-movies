@@ -29,7 +29,7 @@ function LandingPage({ onSignIn, joining = false }) {
         </div>
         <form className="login-form" onSubmit={handleSubmit}>
           <label htmlFor="name">Your name</label>
-          <input id="name" name="name" type="text" placeholder="Ada" autoComplete="name" required maxLength="80" />
+          <input id="name" name="name" type="text" placeholder="Your name" autoComplete="name" required maxLength="80" />
           {error && <p className="message" role="alert">{error}</p>}
           <button className="peach-button" type="submit" disabled={submitting}>{submitting ? 'Joining…' : <>{joining ? 'Join session' : 'Continue'} <span aria-hidden="true">→</span></>}</button>
         </form>

@@ -1,11 +1,12 @@
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f5efe6; background: #171310; font-synthesis: none; }
 * { box-sizing: border-box; }
-body { min-width: 320px; min-height: 100vh; margin: 0; background: #171310; }
+html, body, #root { min-height: 100%; }
+body { min-width: 320px; min-height: 100dvh; margin: 0; background: #171310; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 
-.app-page { min-height: 100vh; display: grid; place-items: center; background: radial-gradient(80% 65% at 50% 0%, #2a211b 0%, #171310 72%); }
-.phone-screen { width: min(100%, 390px); min-height: 844px; display: flex; flex-direction: column; padding: 52px 24px 28px; overflow: hidden; background: #171310; }
+.app-page { min-height: 100dvh; display: grid; place-items: center; background: radial-gradient(80% 65% at 50% 0%, #2a211b 0%, #171310 72%); }
+.phone-screen { width: min(100%, 390px); height: min(844px, 100dvh); min-height: min(844px, 100dvh); display: flex; flex-direction: column; padding: clamp(24px, 6vh, 52px) 24px clamp(18px, 3.5vh, 28px); overflow: hidden; background: #171310; }
 .brand { display: flex; align-items: center; gap: 8px; color: #b3aa9e; font-size: 12px; font-weight: 650; letter-spacing: .22em; text-transform: uppercase; }
 .brand-mark { color: #eda36b; font-size: 22px; line-height: 1; }
 .screen-label { margin: 0; color: #7e766c; font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
@@ -108,4 +109,28 @@ button { cursor: pointer; }
 .compass-reading span { margin-top: 3px; color: #574f47; font-size: 16px; }.compass-reading p { margin: 0; color: #f5efe6; font-family: Georgia, serif; font-size: 19px; line-height: 1.3; }
 .compass-action { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding-top: 18px; }.compass-action p { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; text-align: center; }
 
-@media (max-width: 420px) { .phone-screen { min-height: 100vh; } }
+@media (max-width: 420px) { .phone-screen { width: 100%; } }
+
+@media (max-height: 740px) {
+  .phone-screen { padding: 22px 20px 16px; }
+  .phone-screen h1, .login-content h1 { font-size: 34px; }
+  .screen-copy { font-size: 13px; }
+  .seen-it-header, .fork-header { margin-bottom: 14px; }
+  .seen-it-heading, .fork-heading { margin-bottom: 12px; }
+  .seen-it-heading h1, .fork-heading h1, .compass-screen h1 { font-size: 26px; }
+  .movie-card { min-height: 210px; padding: 18px; }
+  .movie-card h2 { font-size: 32px; }
+  .movie-reaction { min-height: 50px; }
+  .movie-reaction strong { font-size: 18px; }
+  .seen-it-note { margin-top: 10px; padding: 10px 12px; }
+  .choice-stack { gap: 8px; }
+  .story-choice { min-height: 104px; padding: 14px; gap: 7px; }
+  .story-choice strong { font-size: 17px; }
+  .fork-footer { margin-top: 10px; }
+  .neither-button { min-height: 40px; }
+  .session-content { gap: 10px; }
+  .session-content h1 { font-size: 32px; }
+  .session-qr { width: 142px; height: 142px; }
+  .compass-map { width: min(100%, 270px); align-self: center; }
+  .compass-reading { margin-top: 10px; }
+}

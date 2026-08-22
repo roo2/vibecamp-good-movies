@@ -14,8 +14,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
+from ... import db
 from ...analysis import dataset as dataset_mod
-from ...config import settings
 
 router = APIRouter(prefix="/api", tags=["atlas"])
 
@@ -25,7 +25,11 @@ _cache: dict[str, Any] = {"key": None, "payload": None}
 @router.get("/atlas")
 def get_atlas(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
     """Everything the dataset explorer draws, from the current store."""
-    db_path = settings().db_path
+    # Ask `db` where the store is, rather than reading the setting again
+    # independently. They are the same path in every real deployment, but only
+    # `db` follows a store that has been pointed somewhere else — so guarding on
+    # the setting meant this endpoint checked one file and then read another.
+    db_path = db.settings().db_path
     if not db_path.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

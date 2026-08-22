@@ -21,6 +21,27 @@ from moral_atlas.web.app import app
 
 client = TestClient(app)
 
+
+@pytest.fixture(autouse=True)
+def never_touch_the_real_store(monkeypatch, tmp_path):
+    """No test in this module may open the developer's actual atlas.
+
+    Most tests here take a fixture that redirects the store, but not all:
+    `test_moral_profile_needs_a_session` calls an endpoint with no fixture at
+    all, and the session dependency opens the store to look the caller up. That
+    created data/atlas.sqlite in the working tree. A store that exists only
+    because the tests ran is a store that makes the next run behave differently
+    from a fresh checkout — which is exactly how a real failure stays hidden
+    locally and only shows up in CI.
+    """
+    from moral_atlas import db
+    from moral_atlas.config import settings
+
+    monkeypatch.setattr(db, "settings", lambda: replace(
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "isolated.sqlite"))
+
+
 # Two axes, and three films positioned on them by hand.
 DIMENSIONS = [
     {"dim_id": 1, "name": "Payback or Mercy", "question": "Retribution or restraint?",

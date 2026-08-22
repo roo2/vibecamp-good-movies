@@ -136,6 +136,41 @@ CREATE TABLE IF NOT EXISTS scores (
     PRIMARY KEY (film_id, item_id, bank_version, variant, run_id)
 );
 
+-- Deliberately NOT the `scores` table. The bias study asks a different question
+-- of the same films, and `film_stances` reads every row in `scores` for a bank
+-- version without filtering by run — so a second scorer's verdicts landing there
+-- would quietly move where films sit and, through them, every user's profile.
+-- An audit that changes the thing it audits is worthless, hence a separate home.
+CREATE TABLE IF NOT EXISTS model_verdicts (
+    scorer       TEXT,    -- alias from llm.providers.SCORERS
+    model        TEXT,    -- the provider's own model id
+    film_id      TEXT,
+    item_id      TEXT,
+    bank_version TEXT,
+    variant      TEXT,
+    run_id       TEXT,
+    value        INTEGER, -- +1 affirms, -1 denies
+    confidence   REAL,
+    evidence     TEXT,
+    created_at   TEXT,
+    PRIMARY KEY (scorer, film_id, item_id, bank_version, variant)
+);
+
+-- A scorer declining to judge is a finding, so it is recorded rather than lost
+-- in a log: guardrails that fire are exactly what the study is measuring.
+CREATE TABLE IF NOT EXISTS model_refusals (
+    scorer     TEXT,
+    model      TEXT,
+    film_id    TEXT,
+    variant    TEXT,
+    run_id     TEXT,
+    detail     TEXT,
+    created_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_model_verdicts_lookup
+    ON model_verdicts (bank_version, scorer, film_id);
+
 CREATE INDEX IF NOT EXISTS idx_scores_lookup
     ON scores (bank_version, variant, film_id);
 CREATE INDEX IF NOT EXISTS idx_skeletons_film ON skeletons (film_id, variant);

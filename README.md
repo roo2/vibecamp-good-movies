@@ -269,6 +269,57 @@ so it goes in the system block behind a cache breakpoint with the film's evidenc
 after it. That is most of the reason a full sweep costs tens rather than
 hundreds.
 
+## Whose morals are in the scores?
+
+Every number in the atlas came from one model reading a film and voting on 694
+moral propositions. That model has moral opinions of its own, so an equally good
+explanation of the whole corpus is that we have measured `claude-opus-5`
+carefully, forty times. Nothing in the pipeline so far can tell those two
+explanations apart.
+
+The design that separates them is a substitution: hold the bank, the evidence
+packet, the rubric and the film byte-identical, and change only the scorer. What
+survives is the film; what moves is the scorer.
+
+```bash
+atlas models                                  # who is available, and which keys are set
+atlas model-scan --scorers grok,deepseek,hermes --limit 10
+atlas model-bias                              # engagement, refusals, agreement, lean
+```
+
+Four things get measured. **Engagement** is how many items a scorer thinks a
+film takes a position on at all — a model that engages half as much is measuring
+something narrower, not being more careful. **Refusal** is the guardrail
+question put directly: a model that will not say what a film argues about
+obedience has returned a missing answer rather than a neutral one, and
+missingness is not evenly spread across the axes. **Agreement** is Cohen's kappa
+on the cells two scorers both voted on, chance-corrected because the verdicts run
+about two affirms per denial. **Lean** is the payoff: average each scorer's
+polarity-adjusted verdicts within an axis, and a gap between two scorers reading
+the *same forty films* cannot be a property of the films.
+
+`model-scan` writes to `model_verdicts`, never to `scores`. The product's film
+positions — and through them every user's profile — must not move because an
+audit ran.
+
+### Choosing a scorer without guardrails
+
+Refusal training is only the visible half. A safety-trained model also learns
+which conclusions are comfortable, and on a corpus about vengeance, complicity
+and obedience that is exactly the variable under test — so a scorer with no such
+training is a control, not a stunt. Three options, commercially available by API:
+
+| alias | model | what it buys |
+|---|---|---|
+| `hermes` | Nous Hermes 3 405B (OpenRouter) | **Recommended.** Trained to follow the operator rather than an internal policy, with refusal behaviour deliberately minimised. Frontier-scale, so divergence from Claude is a difference of judgement rather than of competence — and it still returns clean JSON. |
+| `dolphin` | Dolphin Mixtral 8x22B (OpenRouter) | Alignment data stripped from the fine-tune outright. Weaker, so read a gap as a floor: it may be incapacity rather than candour. |
+| `llama-base` | Llama 3.1 405B base (OpenRouter) | The purest control — never had preferences trained into it at all. Hardest to hold to a schema, which is the price of asking what the pretraining distribution alone believes. |
+
+`hermes` is the one to start with. The other two are worth running precisely
+because they fail differently: if all three diverge from Claude in the same
+direction, that is a finding; if only the weakest does, that is a bug in the
+weakest.
+
 ## Layout
 
 ```

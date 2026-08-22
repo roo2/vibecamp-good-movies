@@ -69,6 +69,23 @@ class Usage:
             self.cache_write_tokens += cw
             self.cost_usd += estimate_cost(model, inp + cr + cw, out, cr)
 
+    def add_openai(self, model: str, usage: dict[str, Any]) -> None:
+        """Same accounting, OpenAI's field names.
+
+        Cached prompt tokens are reported inside `prompt_tokens_details` when a
+        provider reports them at all, so they are pulled out separately rather
+        than billed at the full input rate.
+        """
+        with self._lock:
+            self.n_calls += 1
+            inp = usage.get("prompt_tokens", 0) or 0
+            out = usage.get("completion_tokens", 0) or 0
+            cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0) or 0
+            self.input_tokens += inp
+            self.output_tokens += out
+            self.cache_read_tokens += cached
+            self.cost_usd += estimate_cost(model, inp, out, cached)
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "n_calls": self.n_calls,

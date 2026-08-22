@@ -86,6 +86,17 @@ cd src/frontend && npm run build   # copies it into dist/api/atlas.json
 SITE_DIR=src/frontend/dist ./infra/deploy-site.sh
 ```
 
+The page is built around the reduction the project claims — 696 harvested
+propositions down to 8 axes — and around the evidence that the reduction is
+real rather than imposed. `atlas dataset` runs the same battery
+`atlas dimensions-validate` prints (blind re-assignment, and two permutation
+tests against verdicts recorded before the axes existed) and publishes the
+numbers with the seed that produced them, so a figure on the page can be
+reproduced from the command line. It is a few seconds of arithmetic with no API
+call. Each film is then presented axis by axis, and every position expands into
+the propositions it was scored on, the verdict, and the grounding the scorer
+gave — so a number can be read back to the sentences behind it.
+
 Re-run `atlas dataset` after any pipeline stage; the page shows whatever the
 store holds at that moment, and says which evidence condition every film was
 read under. It is public by design — outside the sign-in guard, carrying no

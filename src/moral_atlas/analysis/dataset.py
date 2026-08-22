@@ -59,6 +59,11 @@ FATE_ORDER = (
 MAX_QUOTES = 6
 MAX_QUOTE_CHARS = 300
 
+# The null for the permutation tests. A published number should rest on a
+# thousand regroupings; a test asserting the field exists should not pay for
+# them, so this is a module constant a test can lower rather than a literal.
+PERMUTATIONS = 1000
+
 # Thinnest first: this is the order the evidence reads in, and roughly the order
 # of how much of it there is.
 EVIDENCE_LAYERS = ("plot", "themes", "reception", "subtitles")
@@ -256,9 +261,75 @@ def _evidence_index(con) -> dict[str, list[dict[str, Any]]]:
     return out
 
 
+def _film_axes(con, film_id: str, dim_version: str, bank_version: str) -> list[dict[str, Any]]:
+    """Why this film sits where it does, axis by axis.
+
+    A position on an axis is a mean over item verdicts, and a mean is not an
+    argument. This returns the verdicts it was made of: the proposition, whether
+    the film affirmed or denied it, and the grounding the scorer gave — so the
+    number on the page can be read back to the sentences that produced it.
+
+    Read from the widest scoring the film has, and that condition is named,
+    because a film scored on plot alone is making a thinner case than one scored
+    on its dialogue.
+    """
+    rows = con.execute(
+        "SELECT s.variant, s.item_id, s.value, s.confidence, s.evidence, "
+        "       b.text, d.dim_id, d.polarity, d.fit "
+        "FROM scores s "
+        "JOIN item_dimensions d ON d.item_id = s.item_id "
+        "     AND d.bank_version = s.bank_version AND d.pass_name = 'main' "
+        "     AND d.dim_version = ? "
+        "JOIN item_bank b ON b.item_id = s.item_id AND b.bank_version = s.bank_version "
+        "WHERE s.film_id = ? AND s.bank_version = ?",
+        [dim_version, film_id, bank_version],
+    ).fetchall()
+    if not rows:
+        return []
+
+    by_variant: dict[str, list] = defaultdict(list)
+    for row in rows:
+        by_variant[row["variant"]].append(row)
+    variant, widest = max(by_variant.items(), key=lambda kv: len(kv[1]))
+
+    by_dim: dict[int, list] = defaultdict(list)
+    for row in widest:
+        by_dim[row["dim_id"]].append(row)
+
+    out = []
+    for dim_id, scored in sorted(by_dim.items()):
+        # Signed toward the axis's high pole, which is what `net` means.
+        signed = [row["polarity"] * row["value"] for row in scored]
+        items = [
+            {
+                "item_id": row["item_id"],
+                "text": row["text"],
+                # What the film did with the proposition, before polarity is
+                # applied — "affirms" is about the statement, not the axis.
+                "verdict": "affirms" if row["value"] > 0 else
+                           "denies" if row["value"] < 0 else "not addressed",
+                "toward": "high" if row["polarity"] * row["value"] > 0 else
+                          "low" if row["polarity"] * row["value"] < 0 else None,
+                "confidence": row["confidence"],
+                "evidence": row["evidence"],
+                "fit": row["fit"],
+            }
+            for row in sorted(scored, key=lambda r: -abs(r["value"] * (r["confidence"] or 0)))
+        ]
+        out.append({
+            "dim_id": dim_id,
+            "net": round(sum(signed) / len(signed), 3),
+            "n_items": len(signed),
+            "variant": variant,
+            "variant_label": VARIANT_LABELS.get(variant, variant),
+            "items": items,
+        })
+    return out
+
+
 def film_evidence(film_id: str, dim_version: str = "d1",
                   bank_version: str = "b1") -> dict[str, Any] | None:
-    """One film's evidence in full — the text every claim about it was read from.
+    """One film in full: what it was read from, and why it sits where it does.
 
     Returned as its own document because it is large and only wanted when
     somebody asks for that film. `None` if the film does not exist; a film that
@@ -275,6 +346,7 @@ def film_evidence(film_id: str, dim_version: str = "d1",
             "SELECT layer, content, source_url, word_count FROM evidence "
             "WHERE film_id=?", [film_id],
         ).fetchall()
+        axes = _film_axes(con, film_id, dim_version, bank_version)
 
     order = {layer: i for i, layer in enumerate(EVIDENCE_LAYERS)}
     layers = sorted(
@@ -289,7 +361,215 @@ def film_evidence(film_id: str, dim_version: str = "d1",
     )
     return {
         "id": film["film_id"], "title": film["title"], "year": film["year"],
+        "axes": axes,
         "layers": layers,
+    }
+
+
+def _reduction(con, bank_version: str, n_dimensions: int) -> dict[str, Any]:
+    """The funnel from raw statements to axes, with the count at every step.
+
+    The headline of this project is a reduction — hundreds of propositions to a
+    handful of axes — and a reduction is only believable if you can see what was
+    dropped and where. Every number here is counted from the store rather than
+    quoted from a write-up.
+    """
+    propositions = con.execute("SELECT COUNT(*) n FROM propositions_raw").fetchone()["n"]
+    source_films = con.execute(
+        "SELECT COUNT(DISTINCT film_id) n FROM propositions_raw").fetchone()["n"]
+    bank_total = con.execute(
+        "SELECT COUNT(*) n FROM item_bank WHERE bank_version=?", [bank_version],
+    ).fetchone()["n"]
+    bank_active = con.execute(
+        "SELECT COUNT(*) n FROM item_bank WHERE bank_version=? AND active=1",
+        [bank_version]).fetchone()["n"]
+    scored = con.execute(
+        "SELECT COUNT(*) n FROM scores WHERE bank_version=?", [bank_version],
+    ).fetchone()["n"]
+    placed = con.execute(
+        "SELECT COUNT(*) n FROM item_dimensions WHERE bank_version=? AND pass_name='main'",
+        [bank_version]).fetchone()["n"]
+
+    # Only statements belong on this ladder. The scoring pass is a much larger
+    # number in a different unit — verdicts, not claims — and putting it on the
+    # same scale makes the reduction it is evidence for look trivial.
+    return {
+        "stages": [
+            {"key": "propositions", "n": propositions,
+             "label": "Propositions harvested",
+             "detail": f"free-text moral claims read out of {source_films} films, "
+                       f"before anything was merged"},
+            {"key": "bank", "n": bank_active,
+             "label": "Items in the bank",
+             "detail": "clustered, canonicalised and pruned to one statement per claim"
+                       + ("" if bank_active == bank_total
+                          else f"; {bank_total - bank_active} retired")},
+            {"key": "dimensions", "n": n_dimensions,
+             "label": "Axes",
+             "detail": f"{placed} items placed, each on exactly one axis"},
+        ],
+        "scored": scored,
+        "source_films": source_films,
+    }
+
+
+def _per_axis_agreement(con, dim_version: str, bank_version: str) -> dict[int, dict[str, Any]]:
+    """How often an independent pass put an axis's items back on that axis.
+
+    Overall kappa can look healthy while one axis quietly does all the work, so
+    the reliability of each axis is reported separately as well as in aggregate.
+    """
+    rows = con.execute(
+        "SELECT m.dim_id, m.item_id, m.fit, r.dim_id AS other_dim, "
+        "       m.polarity, r.polarity AS other_polarity "
+        "FROM item_dimensions m "
+        "LEFT JOIN item_dimensions r "
+        "  ON r.item_id = m.item_id AND r.dim_version = m.dim_version "
+        "     AND r.bank_version = m.bank_version AND r.pass_name != 'main' "
+        "WHERE m.dim_version=? AND m.bank_version=? AND m.pass_name='main'",
+        [dim_version, bank_version],
+    ).fetchall()
+
+    by_dim: dict[int, dict[str, Any]] = defaultdict(
+        lambda: {"n_items": 0, "fits": [], "rechecked": 0, "same_axis": 0,
+                 "same_polarity": 0})
+    for row in rows:
+        bucket = by_dim[row["dim_id"]]
+        bucket["n_items"] += 1
+        if row["fit"] is not None:
+            bucket["fits"].append(row["fit"])
+        if row["other_dim"] is not None:
+            bucket["rechecked"] += 1
+            if row["other_dim"] == row["dim_id"]:
+                bucket["same_axis"] += 1
+            if row["other_polarity"] == row["polarity"]:
+                bucket["same_polarity"] += 1
+
+    out: dict[int, dict[str, Any]] = {}
+    for dim_id, bucket in by_dim.items():
+        fits = sorted(bucket["fits"])
+        rechecked = bucket["rechecked"]
+        out[dim_id] = {
+            "n_items": bucket["n_items"],
+            "median_fit": fits[len(fits) // 2] if fits else None,
+            "rechecked": rechecked,
+            "same_axis": round(bucket["same_axis"] / rechecked, 3) if rechecked else None,
+            "same_polarity": (round(bucket["same_polarity"] / rechecked, 3)
+                              if rechecked else None),
+        }
+    return out
+
+
+def _split_half(settings_obj=None) -> dict[str, Any] | None:
+    """The two axis sets derived from disjoint halves of the corpus.
+
+    This is the audit that can most cleanly embarrass the taxonomy: derive twice
+    from film sets sharing no propositions, and if the two halves disagree the
+    axes came from the prompt rather than the corpus. `dimensions.split_half`
+    does not persist — it needs an LLM and is a test rather than a layer — so
+    this reads the run's output if it is on disk and says nothing if it is not.
+
+    No number is computed from it. Whether two axes named by different runs are
+    the same axis is a reading, and dressing a reading up as a correlation would
+    be worse than leaving the reader to do it themselves.
+    """
+    from ..config import settings
+
+    path = (settings_obj or settings()).data_dir / "dimensions-splithalf.json"
+    if not path.exists():
+        return None
+    try:
+        raw = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+    def axes(key_variants):
+        for key in key_variants:
+            value = raw.get(key)
+            if isinstance(value, list):
+                return [{"dim_id": str(a.get("dim_id", "")), "name": a.get("name", ""),
+                         "question": a.get("question", "")}
+                        for a in value if isinstance(a, dict)]
+        return []
+
+    half_a = axes(("half_a", "HALF A"))
+    half_b = axes(("half_b", "HALF B"))
+    if not half_a or not half_b:
+        return None
+    return {
+        "half_a": half_a,
+        "half_b": half_b,
+        "half_a_films": len(raw.get("half_a_films") or []),
+        "half_b_films": len(raw.get("half_b_films") or []),
+        "seed": raw.get("seed"),
+    }
+
+
+def _reliability(dim_version: str, bank_version: str,
+                 permutations: int | None = None) -> dict[str, Any] | None:
+    """The evidence that the axes are in the corpus rather than in the prompt.
+
+    Runs the same battery `atlas dimensions-validate` prints, so a number on the
+    page is the number that command produces — same seed, same result. It is a
+    few seconds of pure arithmetic with no API call, which is cheap enough to do
+    on every publish and keeps the page from quoting a stale figure.
+
+    Returns None when the pipeline has not got far enough to have an answer;
+    the page then simply does not claim one.
+    """
+    from . import dimensions as dim_mod
+
+    try:
+        report = dim_mod.validate(
+            dim_version, bank_version,
+            permutations=PERMUTATIONS if permutations is None else permutations,
+            seed=3)
+    except Exception:                 # a half-run pipeline, not a fault
+        return None
+
+    passes = []
+    for name, agreement in report.get("agreement", {}).items():
+        passes.append({
+            "pass": name,
+            "model": agreement.get("model"),
+            "n": agreement["n"],
+            "raw": agreement["raw"],
+            "chance": agreement["chance"],
+            "kappa": agreement["kappa"],
+            "polarity_agreement": agreement.get("polarity_agreement"),
+        })
+
+    tests = []
+    for key, label, reads in (
+        ("co_engagement", "Co-engagement",
+         "films that engage one item on an axis tend to engage its others"),
+        ("coherence", "Stance coherence",
+         "a film's verdicts within an axis point the same way rather than cancelling"),
+    ):
+        result = report.get(key)
+        if not result:
+            continue
+        tests.append({
+            "key": key, "label": label, "reads": reads,
+            "observed": result["observed"],
+            "null_mean": result["null_mean"],
+            "null_sd": result["null_sd"],
+            "z": result["z"],
+            "permutations": result["permutations"],
+            "n_at_least_observed": result["n_at_least_observed"],
+            "n_cells": result.get("n_cells"),
+        })
+
+    return {
+        "seed": report["seed"],
+        "n_items": report["n_items"],
+        "median_fit": report["coverage"]["median_fit"],
+        "share_fit_ge_0_4": report["coverage"]["share_fit_ge_0_4"],
+        "n_packets": report.get("n_packets"),
+        "n_engagements": report.get("n_engagements"),
+        "exclude_own_film": report.get("exclude_own_film"),
+        "passes": passes,
+        "tests": tests,
     }
 
 
@@ -305,6 +585,8 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
         profiles = _profiles(con, dim_version, bank_version)
         evidence = _evidence_index(con)
         coverage = _variant_coverage(con)
+        agreement = _per_axis_agreement(con, dim_version, bank_version)
+        reduction = _reduction(con, bank_version, len(dimensions))
         totals = {
             "films": len(films),
             "films_with_skeleton": len(skeletons),
@@ -323,6 +605,9 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
         }
         spend = con.execute(
             "SELECT COALESCE(SUM(cost_usd), 0) c FROM runs").fetchone()["c"]
+
+    for dimension in dimensions:
+        dimension["agreement"] = agreement.get(dimension["dim_id"])
 
     fate_rank = {fate: i for i, fate in enumerate(FATE_ORDER)}
     records = []
@@ -374,6 +659,9 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
         "fate_order": list(FATE_ORDER),
         "variant_order": list(VARIANT_ORDER),
         "variant_labels": dict(VARIANT_LABELS),
+        "reduction": reduction,
+        "reliability": _reliability(dim_version, bank_version),
+        "split_half": _split_half(),
         "dimensions": dimensions,
         "films": records,
     }

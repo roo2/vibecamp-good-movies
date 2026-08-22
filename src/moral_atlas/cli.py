@@ -564,6 +564,15 @@ def dataset_cmd(
     a document that says so rather than one that fails.
     """
     from .analysis import dataset as dataset_mod
+
+    # "Safe to run at any stage" means any stage of the pipeline, not "before
+    # there is a database". Without this the failure is a raw OperationalError
+    # about a missing table, which tells you nothing about what to do next.
+    if not settings().db_path.exists():
+        console.print(f"[red]no store at[/] {settings().db_path}")
+        console.print("[dim]run `atlas init`, then ingest, before building the dataset[/]")
+        raise typer.Exit(1)
+
     path, payload = dataset_mod.write(out, version, bank, evidence)
     totals = payload["totals"]
 

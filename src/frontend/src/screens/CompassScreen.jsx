@@ -1,27 +1,67 @@
 import React, { useEffect, useState } from 'react'
-import CompassMap from '../components/compass/CompassMap.jsx'
-import { loadCompassProfile } from '../services/profileService.js'
+import MoralAxes from '../components/compass/MoralAxes.jsx'
+import { loadMoralProfile } from '../services/profileService.js'
 
-function CompassScreen({ answers, onContinue }) {
+function readingOf({ films_rated: rated, pairs_answered: pairs }) {
+  const parts = []
+  if (rated) parts.push(`${rated} ${rated === 1 ? 'film you know' : 'films you know'}`)
+  if (pairs) parts.push(`${pairs} ${pairs === 1 ? 'story you chose' : 'stories you chose'} blind`)
+  return parts.join(' and ')
+}
+
+function CompassScreen({ access, onContinue }) {
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    loadCompassProfile({ answers }).then(setProfile).catch(() => setError('Your compass could not be loaded yet.'))
-  }, [answers])
+    if (!access) return
+    loadMoralProfile(access)
+      .then(setProfile)
+      .catch(() => setError('Your compass could not be loaded yet.'))
+  }, [access])
 
   if (error) return <main className="app-page"><p className="message">{error}</p></main>
   if (!profile) return <main className="app-page"><p className="message">Reading your compass…</p></main>
 
+  const reading = readingOf(profile.evidence)
+
   return (
     <main className="app-page">
       <section className="phone-screen compass-screen">
-        <header className="compass-header"><span>Your compass · the map</span><span className="compass-view-label">See the 6 bars</span></header>
-        <h1>Everything we read in you, flattened onto two questions.</h1>
-        <p className="compass-lede">These two directions came out of the films themselves — nobody chose them. Together they account for <strong>{profile.varianceExplained}%</strong> of what separates one story from another.</p>
-        <CompassMap profile={profile} />
-        <div className="compass-reading"><span aria-hidden="true">◇</span><p>{profile.interpretation}</p></div>
-        <div className="compass-action"><p>You’ll be able to refine this once live scoring is connected.</p><button className="peach-button" type="button" onClick={onContinue}>That’s me — find someone to watch with</button></div>
+        <header className="compass-header">
+          <span>Your compass · {profile.scores.length} axes</span>
+          <span className="compass-view-label">{profile.evidence.films_used} films read</span>
+        </header>
+
+        <h1>Where the films put you.</h1>
+        <p className="compass-lede">
+          These axes came out of the films themselves — nobody chose them.{' '}
+          {reading ? (
+            <>
+              We read <strong>{reading}</strong> against the moral propositions each
+              film argues for, and this is where that leaves you.
+            </>
+          ) : (
+            <>You have not told us about any films yet, so there is nothing to read you against.</>
+          )}
+        </p>
+
+        {profile.is_provisional && (
+          <p className="compass-provisional">
+            Still provisional — a few more films and these will settle.
+          </p>
+        )}
+
+        <div className="compass-reading"><span aria-hidden="true">◇</span><p>{profile.summary}</p></div>
+
+        <MoralAxes scores={profile.scores} />
+
+        <div className="compass-action">
+          <p>Tap an axis to see the question behind it.</p>
+          <button className="peach-button" type="button" onClick={onContinue}>
+            That’s me — find someone to watch with
+          </button>
+        </div>
       </section>
     </main>
   )

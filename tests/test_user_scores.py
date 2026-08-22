@@ -230,7 +230,9 @@ def test_rated_films_score_the_user_on_every_axis(scored_atlas):
     assert body["evidence"]["films_rated"] == len(films)
     assert body["evidence"]["films_used"] == len(films)
     assert body["is_provisional"] is False
-    assert payback["name"] in body["summary"]
+    # The reading quotes the axis they committed to hardest, in its own words.
+    strongest = max(body["scores"], key=lambda score: abs(score["score"]))
+    assert body["summary"] == f"{strongest['name']} — {strongest['stance']}"
 
 
 def test_unseen_films_are_counted_but_do_not_score(scored_atlas):

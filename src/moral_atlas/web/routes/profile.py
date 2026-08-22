@@ -3,17 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..deps import current_session
-from ..mock_data import COMPASS_PROFILE
 from ..profile_service import moral_profile
 from ..schemas import MoralProfile
 from ..store import Session
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
-
-
-@router.get("/compass")
-def get_compass_profile() -> dict[str, object]:
-    return COMPASS_PROFILE
 
 
 @router.get("/moral", response_model=MoralProfile)

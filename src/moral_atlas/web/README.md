@@ -24,7 +24,8 @@ Endpoints:
 - `GET /api/test/questions` — serves mock test questions.
 - `POST /api/test/results` — captures answers using `X-Session-Token`.
 - `GET /api/test/results` — returns the active user's captured results.
-- `GET /api/profile/compass` — serves a mock compass profile.
+- `GET /api/profile/moral` — the caller's score on each derived moral axis, read
+  from the films they reacted to and the story pairs they chose between.
 
 Users, sessions, movie reactions, and test results are stored in SQLite. The
 user record is intentionally limited to `id` and `name`; an SSO identity can be

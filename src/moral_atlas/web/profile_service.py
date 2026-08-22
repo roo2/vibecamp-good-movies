@@ -60,12 +60,17 @@ def _label(film_id: str) -> str:
 
 
 def _summary(scores: list[user_scores.DimensionScore]) -> str:
-    """The two axes the person committed to hardest, in the axis's own words."""
+    """The axis the person committed to hardest, in that axis's own words.
+
+    One axis rather than a ranked list: the pole texts are full sentences, and
+    two of them stacked is a wall rather than a reading. The rest of the profile
+    is right there underneath it.
+    """
     committed = sorted(
         (s for s in scores if s.leaning != "balanced"),
         key=lambda s: -abs(s.score),
-    )[:2]
+    )
     if not committed:
         return ("Nothing you have told us yet pushes hard on any one axis — "
                 "rate a few more films and the shape will sharpen.")
-    return " ".join(f"{s.name}: {s.stance}" for s in committed)
+    return f"{committed[0].name} — {committed[0].stance}"

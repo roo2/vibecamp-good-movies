@@ -20,7 +20,6 @@ function currentRoute() {
 
 function App() {
   const [route, setRoute] = useState(currentRoute)
-  const [result, setResult] = useState(null)
   const [access, setAccess] = useState(loadAccess)
   const [groupSession, setGroupSession] = useState(loadGroupSession)
   const [sessionStatus, setSessionStatus] = useState(null)
@@ -90,7 +89,6 @@ function App() {
       return
     }
     await submitTestResult(access, answers, groupSession?.shareToken)
-    setResult(answers)
     const status = await refreshSessionStatus()
     if (status?.host_user_id === access.user.id) await beginResultsWait(access, groupSession.shareToken)
     navigate('/waiting')
@@ -126,7 +124,7 @@ function App() {
   }
 
   if (route === '/complete') {
-    return <TestCompletePage answers={result} onStartOver={() => navigate('/')} />
+    return <TestCompletePage access={access} onStartOver={() => navigate('/')} />
   }
 
   return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />

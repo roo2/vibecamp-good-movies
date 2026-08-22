@@ -383,6 +383,84 @@ def profile(
         console.print(t)
 
 
+@app.command("user-profile")
+def user_profile(
+    user: str = typer.Option("", help="User id or name captured by the web app."),
+    loved: str = typer.Option("", help="Comma-separated titles, scored as if loved."),
+    disliked: str = typer.Option("", help="Comma-separated titles, scored as if rejected."),
+    version: str = typer.Option("d1"),
+    bank: str = typer.Option("b1"),
+) -> None:
+    """Where a viewer sits on the axes, from their film preferences.
+
+    With `--user` this reads what the person actually told the web app. With
+    `--loved`/`--disliked` it scores a hypothetical viewer instead, which is how
+    you sanity-check the instrument without needing a real session.
+    """
+    from .analysis import user_scores as us
+
+    dims = us.load_dimensions(version)
+    if not dims:
+        console.print(f"[yellow]no dimension set {version!r} — run `atlas dimensions` first[/]")
+        raise typer.Exit(1)
+
+    if user:
+        from .web.profile_service import moral_profile
+        user_id = _resolve_user(user)
+        profile = moral_profile(user_id, version, bank)
+        rows = profile.scores
+        header = f"{user} — {profile.evidence.films_used} films used"
+        if profile.is_provisional:
+            header += "  [yellow](provisional)[/]"
+    else:
+        prefs = ([us.Preference(f, 1.0, "rating", "loved_it") for f in _match_films(loved)]
+                 + [us.Preference(f, -1.0, "rating", "not_for_me") for f in _match_films(disliked)])
+        if not prefs:
+            console.print("[yellow]pass --user, or --loved/--disliked film titles[/]")
+            raise typer.Exit(1)
+        rows = us.score_preferences(prefs, dims, us.film_stances(version, bank))
+        header = f"hypothetical viewer — {len({p.film_id for p in prefs})} films"
+
+    console.print(f"\n[bold]{header}[/]")
+    t = Table("axis", "leaning", "score", "items", "films", "conf", box=None)
+    for r in rows:
+        colour = {"high": "green", "low": "magenta"}.get(r.leaning, "dim")
+        t.add_row(r.name, f"[{colour}]{r.leaning.upper()}[/]", f"{r.score:+.2f}",
+                  f"{r.evidence_items:g}", str(r.films), f"{r.confidence:.2f}")
+    console.print(t)
+    for r in rows:
+        if r.leaning != "balanced":
+            console.print(f"[dim]{r.name}:[/] {r.stance}")
+
+
+def _resolve_user(user: str) -> str:
+    with db.connect(read_only=True) as con:
+        row = con.execute(
+            "SELECT user_id FROM users WHERE user_id=? OR name=? ORDER BY created_at DESC",
+            [user, user],
+        ).fetchone()
+    if row is None:
+        console.print(f"[red]no user {user!r}[/]")
+        raise typer.Exit(1)
+    return row["user_id"]
+
+
+def _match_films(titles: str) -> list[str]:
+    """Film ids for a comma-separated list of titles, matched loosely on title."""
+    if not titles.strip():
+        return []
+    films = db.list_films()
+    out = []
+    for wanted in (t.strip() for t in titles.split(",") if t.strip()):
+        hit = next((f for f in films if f["film_id"] == wanted
+                    or wanted.lower() in f["title"].lower()), None)
+        if hit is None:
+            console.print(f"[yellow]no film matching {wanted!r} — skipped[/]")
+        else:
+            out.append(hit["film_id"])
+    return out
+
+
 @app.command()
 def score(
     version: str = typer.Option("b1", help="Bank version."),

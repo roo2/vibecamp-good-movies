@@ -65,10 +65,10 @@ def save_test_result(user_id: str, answers: dict[str, str], session_share_token:
     )
     with db.connect() as con:
         con.execute(
-            "INSERT INTO test_results (result_id, user_id, answers, answered_count, submitted_at) "
-            "VALUES (?,?,?,?,?)",
+            "INSERT INTO test_results (result_id, user_id, answers, answered_count, "
+            "submitted_at, session_share_token) VALUES (?,?,?,?,?,?)",
             [result.id, result.user_id, json.dumps(result.answers), result.answered_count,
-             result.submitted_at.isoformat()],
+             result.submitted_at.isoformat(), session_share_token],
         )
         if session_share_token:
             con.execute(
@@ -91,6 +91,64 @@ def list_test_results(user_id: str) -> list[TestResult]:
         id=row["result_id"], user_id=row["user_id"], answers=json.loads(row["answers"]),
         answered_count=row["answered_count"], submitted_at=row["submitted_at"],
     ) for row in rows]
+
+
+def user_rating_inputs(user_id: str) -> list[tuple[str, str]]:
+    """(film_id, reaction), newest first, for scoring the user's moral profile."""
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        rows = con.execute(
+            "SELECT film_id, reaction FROM movie_ratings WHERE user_id=? "
+            "ORDER BY submitted_at DESC", [user_id],
+        ).fetchall()
+    return [(row["film_id"], row["reaction"]) for row in rows]
+
+
+def user_pair_answers(user_id: str) -> list[tuple[str, list[str]]]:
+    """(choice, [film_a, film_b]) for every blind pair the user answered.
+
+    The answers only name pairs — "pair-3" — so each result is read against the
+    deck of the session it was submitted in. Results saved before that token was
+    recorded fall back to the decks of every session the user belongs to, which
+    resolves them whenever the pair ids are unambiguous across those decks.
+    """
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        results = con.execute(
+            "SELECT answers, session_share_token FROM test_results WHERE user_id=? "
+            "ORDER BY submitted_at DESC", [user_id],
+        ).fetchall()
+        decks = con.execute(
+            "SELECT s.share_token, s.deck_json FROM group_sessions s "
+            "JOIN session_members m ON m.session_id=s.session_id WHERE m.user_id=?",
+            [user_id],
+        ).fetchall()
+
+    by_token = {row["share_token"]: json.loads(row["deck_json"])
+                for row in decks if row["deck_json"]}
+    any_deck: dict[str, list[str]] = {}
+    for deck in by_token.values():
+        any_deck.update(_pair_lookup(deck))
+
+    answers: list[tuple[str, list[str]]] = []
+    seen: set[tuple[str, ...]] = set()
+    for result in results:
+        deck = by_token.get(result["session_share_token"])
+        pairs = _pair_lookup(deck) if deck else any_deck
+        for question_id, choice in json.loads(result["answers"]).items():
+            film_ids = pairs.get(question_id)
+            key = tuple(sorted(film_ids)) if film_ids else None
+            if key is None or key in seen:
+                continue
+            seen.add(key)
+            answers.append((choice, film_ids))
+    return answers
+
+
+def _pair_lookup(deck: dict[str, list[Any]]) -> dict[str, list[str]]:
+    """Pair id -> the two films behind it, numbered as `blind_session_pairs` does."""
+    return {f"pair-{index}": list(film_ids)
+            for index, film_ids in enumerate(deck.get("pairs") or [], start=1)}
 
 
 def save_movie_rating(user_id: str, film_id: str, reaction: str) -> MovieRating:

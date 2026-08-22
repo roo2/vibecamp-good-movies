@@ -89,24 +89,36 @@ button { cursor: pointer; }
 .compass-screen h1 { margin-bottom: 8px; font-size: 30px; line-height: 1.12; }
 .compass-lede { margin: 0 0 18px; color: #7e766c; font-size: 13px; line-height: 1.5; }
 .compass-lede strong { color: #b3aa9e; font-weight: 500; }
-.compass-map { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid #2d251f; border-radius: 14px; background: #1a1512; }
-.compass-cross { position: absolute; background: #241e19; }
-.compass-cross.vertical { top: 0; bottom: 0; left: 50%; width: 1px; }
-.compass-cross.horizontal { top: 50%; right: 0; left: 0; height: 1px; }
-.compass-axis { position: absolute; z-index: 1; color: #574f47; font-size: 9px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
-.compass-axis.north, .compass-axis.south { left: 50%; transform: translateX(-50%); white-space: nowrap; }
-.compass-axis.north { top: 10px; }.compass-axis.south { bottom: 10px; }
-.compass-axis.west, .compass-axis.east { top: 50%; writing-mode: vertical-rl; }
-.compass-axis.west { left: 10px; transform: translateY(-50%) rotate(180deg); }.compass-axis.east { right: 10px; transform: translateY(-50%); }
-.film-dot, .you-marker, .you-halo, .film-label, .you-label { position: absolute; z-index: 2; }
-.film-dot { width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #7e766c; }
-.film-label { transform: translate(9px, -50%); color: #8a8074; font-size: 9.5px; line-height: 1; white-space: nowrap; }
-.film-label.left-label { transform: translate(calc(-100% - 9px), -50%); text-align: right; }
-.you-halo { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(237, 163, 107, .13); }
-.you-marker { width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; border-radius: 50%; background: #eda36b; }
-.you-label { transform: translate(-50%, -42px); color: #eda36b; font-size: 11px; font-weight: 650; }
+.compass-screen { height: auto; overflow: visible; }
+.compass-provisional { margin: 0 0 14px; padding: 9px 12px; border-left: 2px solid #eda36b; border-radius: 4px; color: #b3aa9e; background: rgba(237, 163, 107, .07); font-size: 12px; line-height: 1.45; }
+
+.moral-axes { margin: 20px 0 0; padding: 0; list-style: none; }
+.moral-axis { padding: 12px 0; border-top: 1px solid #241e19; }
+.moral-axis:first-child { border-top: 0; padding-top: 4px; }
+.moral-axis-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; padding: 0 0 9px; border: 0; background: transparent; text-align: left; }
+.moral-axis-name { color: #f5efe6; font-size: 13px; font-weight: 600; }
+.moral-axis-strength { flex: none; color: #574f47; font-size: 10px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+.moral-axis.high .moral-axis-strength { color: #eda36b; }
+.moral-axis.low .moral-axis-strength { color: #5cc3c0; }
+
+.moral-axis-track { position: relative; height: 10px; }
+.moral-axis-track::before { position: absolute; top: 3.5px; right: 0; left: 0; height: 3px; border-radius: 2px; background: #241e19; content: ''; }
+.moral-axis-mid { position: absolute; top: 0; left: 50%; width: 1px; height: 10px; background: #3a312a; }
+.moral-axis-band { position: absolute; top: 3.5px; height: 3px; border-radius: 2px; background: #3a312a; }
+.moral-axis.high .moral-axis-band { background: rgba(237, 163, 107, .3); }
+.moral-axis.low .moral-axis-band { background: rgba(92, 195, 192, .3); }
+.moral-axis-marker { position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #b3aa9e; }
+.moral-axis.high .moral-axis-marker { background: #eda36b; }
+.moral-axis.low .moral-axis-marker { background: #5cc3c0; }
+
+.moral-axis-detail { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; }
+.moral-axis-question { margin: 0; color: #b3aa9e; font-family: Georgia, serif; font-size: 14.5px; line-height: 1.4; }
+.moral-axis-pole { margin: 0; padding-left: 10px; border-left: 1px solid #2d251f; color: #574f47; font-size: 11.5px; line-height: 1.45; }
+.moral-axis-pole.lit { border-left-color: #eda36b; color: #b3aa9e; }
+.moral-axis.low .moral-axis-pole.lit { border-left-color: #5cc3c0; }
+.moral-axis-empty, .moral-axis-evidence { margin: 0; color: #574f47; font-size: 11px; line-height: 1.45; font-variant-numeric: tabular-nums; }
 .compass-reading { display: flex; gap: 9px; align-items: flex-start; margin-top: 16px; }
-.compass-reading span { margin-top: 3px; color: #574f47; font-size: 16px; }.compass-reading p { margin: 0; color: #f5efe6; font-family: Georgia, serif; font-size: 19px; line-height: 1.3; }
+.compass-reading span { margin-top: 3px; color: #574f47; font-size: 16px; }.compass-reading p { margin: 0; color: #f5efe6; font-family: Georgia, serif; font-size: 17px; line-height: 1.35; }
 .compass-action { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding-top: 18px; }.compass-action p { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; text-align: center; }
 
 @media (max-width: 420px) { .phone-screen { width: 100%; } }

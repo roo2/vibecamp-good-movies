@@ -45,6 +45,39 @@ class MovieRating(BaseModel):
     submitted_at: datetime
 
 
+class MoralScore(BaseModel):
+    """Where one person sits on one derived moral axis."""
+    dim_id: int
+    name: str
+    question: str
+    pole_high: str
+    pole_low: str
+    score: float = Field(description="-1 (pole_low) to +1 (pole_high); 0 is uncommitted.")
+    leaning: str = Field(description="high, low, or balanced.")
+    stance: str = Field(description="What this leaning asserts, in the axis's own words.")
+    evidence_items: float = Field(description="Weighted bank items behind the score.")
+    films: int
+    confidence: float = Field(description="0-1; how far the score has escaped the shrinkage prior.")
+
+
+class ProfileEvidence(BaseModel):
+    films_rated: int
+    films_not_seen: int
+    pairs_answered: int
+    films_used: int
+    films_without_scores: list[str] = Field(default_factory=list)
+
+
+class MoralProfile(BaseModel):
+    user_id: str
+    dim_version: str
+    bank_version: str
+    scores: list[MoralScore]
+    evidence: ProfileEvidence
+    is_provisional: bool
+    summary: str
+
+
 class GroupSession(BaseModel):
     id: str
     share_token: str

@@ -44,7 +44,11 @@ class Settings:
     opensubtitles_password: str | None = _clean("OPENSUBTITLES_PASSWORD")
     subtitles_dir: str | None = _clean("SUBTITLES_DIR")
 
-    model: str = os.environ.get("ATLAS_MODEL", "claude-opus-5")
+    # `.env.example` has described Sonnet as the default for some time while this
+    # line still said Opus, so a checkout without ATLAS_MODEL set quietly ran the
+    # expensive model. Now that every derived row records the model that produced
+    # it, that kind of drift shows up in `atlas provenance` instead of in a bill.
+    model: str = os.environ.get("ATLAS_MODEL", "claude-sonnet-5")
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 

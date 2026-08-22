@@ -123,10 +123,11 @@ def generate_propositions(
             for prop in ps.propositions:
                 con.execute(
                     "INSERT OR REPLACE INTO propositions_raw "
-                    "(prop_id, film_id, variant, run_id, text, stance, evidence, created_at) "
-                    "VALUES (?,?,?,?,?,?,?,?)",
+                    "(prop_id, film_id, variant, run_id, text, stance, evidence, "
+                    "model, prompt_version, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     [uuid.uuid4().hex[:16], p.film_id, p.variant, run_id,
-                     prop.text, prop.stance, prop.evidence, db.now()],
+                     prop.text, prop.stance, prop.evidence, client.model,
+                     PROMPT_VERSION, db.now()],
                 )
         if progress:
             progress(f"propose   {p.film_id:<28} {len(ps.propositions)} statements")
@@ -186,9 +187,10 @@ def score_films(
                 con.execute(
                     "INSERT OR REPLACE INTO scores "
                     "(film_id, item_id, bank_version, variant, run_id, value, "
-                    "confidence, evidence) VALUES (?,?,?,?,?,?,?,?)",
+                    "confidence, evidence, model, prompt_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
                     [p.film_id, sc.item_id, bank_version, p.variant, run_id,
-                     1 if sc.verdict == "affirms" else -1, sc.confidence, sc.evidence],
+                     1 if sc.verdict == "affirms" else -1, sc.confidence, sc.evidence,
+                     client.model, PROMPT_VERSION],
                 )
                 kept += 1
         if progress:

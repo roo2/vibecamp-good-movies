@@ -3,13 +3,21 @@
 Two passes. First a cheap textual clustering that collapses near-duplicates —
 forty films will produce "the wicked must be punished" a dozen times over in
 slightly different words. Then an optional LLM pass that writes one canonical,
-non-loaded sentence per cluster and flags reversed pairs.
+non-loaded sentence per cluster.
 
-Reversed pairs earn their keep: no film can sincerely affirm both "becoming
-yourself means accepting a role you did not choose" and "becoming yourself means
-refusing a role that was chosen for you". Any scorer that affirms both is
-agreeing with whatever it is shown, and that is measurable rather than
-suspected.
+That second pass is the most consequential and least visible step in the whole
+pipeline. It rewrote the majority of the harvested propositions, so the sentences
+every film is scored against are the canonicaliser's wording, not the harvest's —
+and on b1 it inverted at least one outright ("violent response is never
+justified" became "the wronged are obliged to answer with violence"). It
+therefore opens a run like every other LLM stage, and each item records the model
+and prompt version that wrote it. Before this, the step most able to inject
+phrasing bias was the only step with no provenance at all.
+
+There was also a reversed-pair pass here, meant as an acquiescence check. It
+never populated a single row across 694 items, so the column recorded only that
+the check had not run — which reads, at a glance, exactly like "no inversions
+found". Removed rather than left to be trusted.
 """
 from __future__ import annotations
 
@@ -38,14 +46,6 @@ class CanonicalSet(BaseModel):
     items: list[CanonicalItem]
 
 
-class ReversalPair(BaseModel):
-    item_a: str
-    item_b: str
-    note: str
-
-
-class ReversalSet(BaseModel):
-    pairs: list[ReversalPair]
 
 
 def _normalise(text: str) -> str:
@@ -113,10 +113,22 @@ def build_bank(
     bank_version: str, clusters: list[dict[str, Any]],
     client=None, min_support: int = 1, batch_size: int = 40, progress=None,
 ) -> dict[str, Any]:
-    """Write an item bank. With a client, canonicalise and detect reversals."""
+    """Write an item bank, canonicalising the cluster representatives if a client is given.
+
+    A run is opened whenever a model is involved, so the wording of every item
+    is traceable to the model and prompt version that produced it. Without a
+    client the items are the harvest's own sentences and the run records that
+    too — "no model touched this" is a provenance answer, not a missing one.
+    """
     kept = [c for c in clusters if c["support"] >= min_support]
     canonical: dict[int, str] = {c["cluster_id"]: c["representative"] for c in kept}
     dropped: dict[int, str] = {}
+    model = getattr(client, "model", None)
+    run_id = db.start_run(
+        "bank", model, PROMPT_VERSION,
+        {"bank_version": bank_version, "n_clusters": len(clusters),
+         "min_support": min_support, "canonicalised": client is not None},
+    )
 
     if client is not None:
         from ..llm import prompts  # noqa: F401  (keeps prompt versioning in one place)
@@ -165,103 +177,39 @@ def build_bank(
             "text": canonical[cid],
             "cluster_id": cid,
             "support": c["support"],
-            "reversed_of": None,
             "active": True,
             "note": "",
         })
 
-    # Write the bank BEFORE the reversal pass. Canonicalisation is the expensive
-    # part — dozens of LLM calls — and reversal detection is a cheap nice-to-have
-    # on top. Doing the risky thing first and persisting afterwards meant one
-    # failed call discarded everything that had already been paid for.
-    _write_items(bank_version, items)
-
-    reversals: list[ReversalPair] = []
-    reversal_error: str | None = None
-    if client is not None and len(items) > 1:
-        try:
-            reversals = detect_reversals(items, client, batch_size=120,
-                                         progress=progress)
-            index = {it["item_id"]: it for it in items}
-            for pair in reversals:
-                if pair.item_a in index and pair.item_b in index:
-                    index[pair.item_b]["reversed_of"] = pair.item_a
-                    index[pair.item_b]["note"] = pair.note
-            _write_items(bank_version, items)
-        except Exception as e:  # noqa: BLE001
-            # The bank is already saved and usable; reversed pairs are an
-            # acquiescence check, not a prerequisite for scoring.
-            reversal_error = str(e)
-            if progress:
-                progress(f"[yellow]reversal detection failed, bank kept:[/] {e}")
+    _write_items(bank_version, items, model, run_id)
+    db.finish_run(run_id, getattr(client, "usage", None) and client.usage.as_dict() or {})
 
     return {
-        "reversal_error": reversal_error,
         "bank_version": bank_version,
         "prompt_version": PROMPT_VERSION,
+        "model": model,
+        "run_id": run_id,
         "n_clusters": len(clusters),
         "n_items": len(items),
         "n_dropped": len(dropped),
-        "n_reversed_pairs": len(reversals),
         "dropped": dropped,
     }
 
 
-def _write_items(bank_version: str, items: list[dict[str, Any]]) -> None:
+def _write_items(bank_version: str, items: list[dict[str, Any]],
+                 model: str | None = None, run_id: str | None = None) -> None:
     with db.connect() as con:
         con.execute("DELETE FROM item_bank WHERE bank_version=?", [bank_version])
         for it in items:
             con.execute(
                 "INSERT INTO item_bank (item_id, bank_version, text, cluster_id, "
-                "support, reversed_of, active, note) VALUES (?,?,?,?,?,?,?,?)",
+                "support, active, note, model, prompt_version, run_id, created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 [it["item_id"], bank_version, it["text"], it["cluster_id"],
-                 it["support"], it["reversed_of"], it["active"], it["note"]],
+                 it["support"], it["active"], it["note"], model, PROMPT_VERSION,
+                 run_id, db.now()],
             )
 
-
-def detect_reversals(
-    items: list[dict[str, Any]], client, batch_size: int = 120, progress=None,
-) -> list[ReversalPair]:
-    """Find near-inverted pairs in the bank.
-
-    The whole bank goes in the system block on every call so cross-batch pairs
-    are still visible, while the user turn names only the slice to report on.
-    That keeps the OUTPUT bounded — which is what actually ran out last time —
-    without giving up the global view an inversion check needs.
-    """
-    listing = "\n".join(f"{it['item_id']}. {it['text']}" for it in items)
-    system = (
-        "You are auditing a bank of moral propositions for REVERSED PAIRS: two "
-        "items that are near-inversions of each other, such that no single work "
-        "could sincerely affirm both.\n\n"
-        "These pairs are valuable — they are kept deliberately, as a check on "
-        "whether a scorer is reading the work or simply agreeing with whatever it "
-        "is shown. Report nothing that is merely related or adjacent; only true "
-        "inversions.\n\n"
-        f"THE COMPLETE BANK\n\n{listing}"
-    )
-
-    found: list[ReversalPair] = []
-    seen: set[tuple[str, str]] = set()
-    for i in range(0, len(items), batch_size):
-        batch = items[i:i + batch_size]
-        ids = ", ".join(it["item_id"] for it in batch)
-        res = client.parse(
-            system=system,
-            user=(f"Report reversed pairs where at least one member is in this "
-                  f"slice: {ids}\n\nThe other member may be anywhere in the bank."),
-            output_model=ReversalSet,
-            max_tokens=16000,
-        )
-        for pair in res.pairs:
-            key = tuple(sorted((pair.item_a, pair.item_b)))
-            if key not in seen:
-                seen.add(key)
-                found.append(pair)
-        if progress:
-            progress(f"reversals     items {i}-{i + len(batch) - 1}: "
-                     f"{len(found)} pairs so far")
-    return found
 
 
 def export_bank(bank_version: str, path: str) -> int:
@@ -273,7 +221,7 @@ def export_bank(bank_version: str, path: str) -> int:
     """
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT item_id, text, support, reversed_of, active, note FROM item_bank "
+            "SELECT item_id, text, support, active, note, model FROM item_bank "
             "WHERE bank_version=? ORDER BY support DESC, item_id",
             [bank_version],
         ).fetchall()
@@ -283,10 +231,10 @@ def export_bank(bank_version: str, path: str) -> int:
         "# Set active: false to retire an item, then: atlas bank-import <file>",
         "",
     ]
-    for item_id, text, support, rev, active, note in rows:
+    for item_id, text, support, active, note, model in rows:
         lines.append(json.dumps({
             "item_id": item_id, "text": text, "support": support,
-            "reversed_of": rev, "active": bool(active), "note": note,
+            "active": bool(active), "note": note, "written_by": model,
         }))
     with open(path, "w") as fh:
         fh.write("\n".join(lines) + "\n")

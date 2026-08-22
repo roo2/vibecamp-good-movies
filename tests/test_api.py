@@ -30,6 +30,15 @@ def isolated_web_database(monkeypatch, tmp_path):
     return db
 
 
+def test_health_is_reachable_under_the_api_prefix():
+    """/api/* is the only prefix CloudFront routes here, so /health alone is
+    answered by the bucket in the published environment and proves nothing."""
+    body = client.get("/api/health")
+    assert body.status_code == 200
+    assert body.json()["status"] == "ok"
+    assert body.json()["version"] == app.version
+
+
 def test_name_only_access_and_result_capture(isolated_web_database):
     access = client.post("/api/access", json={"name": "Ada"})
     assert access.status_code == 201

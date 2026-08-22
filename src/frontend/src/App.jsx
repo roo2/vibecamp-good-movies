@@ -39,8 +39,7 @@ function App() {
 
   const handleMovieReaction = useCallback(async (filmId, reaction) => {
     await submitMovieReaction(access, filmId, reaction)
-    navigate('/test-intro')
-  }, [access, navigate])
+  }, [access])
 
   const handleComplete = useCallback(async (answers) => {
     if (!access) {
@@ -57,7 +56,7 @@ function App() {
   }
 
   if (route === '/seen-it') {
-    return <SeenItPage onSubmit={handleMovieReaction} />
+    return <SeenItPage onSubmit={handleMovieReaction} onComplete={() => navigate('/test-intro')} />
   }
 
   if (route === '/test-intro') {

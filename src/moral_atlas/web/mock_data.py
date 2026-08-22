@@ -34,14 +34,3 @@ COMPASS_PROFILE = {
         {"x": 78, "y": 44}, {"x": 86, "y": 12}, {"x": 88, "y": 22, "label": "Maleficent", "align": "left"},
     ],
 }
-
-ONBOARDING_FILMS = [
-    {
-        "id": "the-lion-king-1994",
-        "title": "The Lion King",
-        "year": 1994,
-        "genre": "Animation",
-        "runtime_min": 88,
-        "poster_tone": "lion-king",
-    },
-]

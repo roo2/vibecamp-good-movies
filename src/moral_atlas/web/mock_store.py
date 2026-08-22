@@ -66,3 +66,6 @@ class MockStore:
         with self._lock:
             self._movie_ratings.append(rating)
         return rating
+
+
+store = MockStore()

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { loadOnboardingFilm } from '../services/movieService.js'
+import { loadOnboardingFilms } from '../services/movieService.js'
 
 const reactions = [
   { id: 'not_for_me', label: 'Not for me', icon: '×' },
@@ -11,14 +11,15 @@ function formatRuntime(minutes) {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-function SeenItPage({ onSubmit }) {
-  const [film, setFilm] = useState(null)
+function SeenItPage({ onSubmit, onComplete }) {
+  const [films, setFilms] = useState([])
+  const [filmIndex, setFilmIndex] = useState(0)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState(null)
 
   useEffect(() => {
     let active = true
-    loadOnboardingFilm().then((item) => active && setFilm(item)).catch(() => active && setError('That film could not be loaded. Please try again.'))
+    loadOnboardingFilms().then((items) => active && setFilms(items)).catch(() => active && setError('Those films could not be loaded. Please try again.'))
     return () => { active = false }
   }, [])
 
@@ -27,6 +28,11 @@ function SeenItPage({ onSubmit }) {
     setSelected(reaction)
     try {
       await onSubmit(film.id, reaction)
+      if (filmIndex === films.length - 1) onComplete()
+      else {
+        setFilmIndex((index) => index + 1)
+        setSelected(null)
+      }
     } catch (submissionError) {
       setSelected(null)
       setError(submissionError.message)
@@ -34,21 +40,23 @@ function SeenItPage({ onSubmit }) {
   }
 
   if (error) return <main className="app-page"><p className="message">{error}</p></main>
-  if (!film) return <main className="app-page"><p className="message">Finding a film you might know…</p></main>
+  if (films.length === 0) return <main className="app-page"><p className="message">Finding films you might know…</p></main>
+
+  const film = films[filmIndex]
 
   return (
     <main className="app-page">
       <section className="phone-screen seen-it-screen">
         <header className="seen-it-header">
           <button className="back-button" type="button" aria-label="Back" disabled>←</button>
-          <div className="segment-progress" aria-label="Step 4 of 12"><i className="active" /><i /><i /></div>
-          <span>4 / 12</span>
+          <div className="segment-progress" aria-label={`Film ${filmIndex + 1} of ${films.length}`}>{films.map((item, index) => <i className={index <= filmIndex ? 'active' : ''} key={item.id} />)}</div>
+          <span>{filmIndex + 1} / {films.length}</span>
         </header>
         <div className="seen-it-heading"><p className="screen-label">Step one · Gut reaction</p><h1>Seen it? Did you like it?</h1></div>
         <div className="seen-it-content">
-          <article className={`movie-card ${film.poster_tone}`}>
+          <article className="movie-card">
             <span>Poster placeholder</span>
-            <div><h2>{film.title}</h2><p>{film.year} · {film.genre} · {formatRuntime(film.runtime_min)}</p></div>
+            <div><h2>{film.title}</h2><p>{film.year || '—'} · {film.genre} · {film.runtime_min ? formatRuntime(film.runtime_min) : 'Runtime unavailable'}</p></div>
           </article>
           <div className="movie-reactions" aria-label={`Your reaction to ${film.title}`}>
             {reactions.map((reaction) => (

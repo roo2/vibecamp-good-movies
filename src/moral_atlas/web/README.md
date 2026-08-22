@@ -23,3 +23,10 @@ Endpoints:
 The session and answers are stored in memory, so restarting the API clears
 them. Replace `mock_store.py` with a persistent user/session store later;
 routes and the frontend contract do not need to change.
+
+Movie cards are read from the existing SQLite `films` table. Seed the curated
+40-film deck without any external calls before using the onboarding API:
+
+```powershell
+atlas seed-films
+```

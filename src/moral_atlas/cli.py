@@ -85,6 +85,14 @@ def ingest(
     console.print(table)
 
 
+@app.command("seed-films")
+def seed_films(seeds: str = typer.Option("seeds/phase0.yaml", help="Seed YAML file.")) -> None:
+    """Insert the curated seed films without downloading metadata or evidence."""
+    from .sources import seed as seed_mod
+    inserted = seed_mod.seed_films(seeds)
+    console.print(f"[green]ready[/] inserted {inserted} missing seed films")
+
+
 @app.command("opus-index")
 def opus_index(
     version: str = typer.Option("v2024", help="OPUS release: v2018 or v2024."),

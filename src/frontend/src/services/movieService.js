@@ -1,8 +1,8 @@
 import { apiClient } from './apiClient.js'
 
-export async function loadOnboardingFilm() {
+export async function loadOnboardingFilms() {
   const payload = await apiClient.get('/api/onboarding/films')
-  return payload.films[0]
+  return payload.films
 }
 
 export function submitMovieReaction(access, filmId, reaction) {

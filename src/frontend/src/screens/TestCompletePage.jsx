@@ -1,8 +1,8 @@
 import React from 'react'
 import CompassScreen from './CompassScreen.jsx'
 
-function TestCompletePage({ access, onStartOver }) {
-  return <CompassScreen access={access} onContinue={onStartOver} />
+function TestCompletePage({ access }) {
+  return <CompassScreen access={access} />
 }
 
 export default TestCompletePage

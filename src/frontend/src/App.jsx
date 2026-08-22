@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import LandingPage from './screens/LandingPage.jsx'
-import TestIntroPage from './screens/TestIntroPage.jsx'
 import QuickfireTestPage from './screens/QuickfireTestPage.jsx'
 import TestCompletePage from './screens/TestCompletePage.jsx'
 import SessionLobbyPage from './screens/SessionLobbyPage.jsx'
@@ -14,7 +13,7 @@ import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/results-intro', '/complete', '/shortlist', '/match', '/tiebreak', '/waiting'])
+const routes = new Set(['/', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/tiebreak', '/waiting'])
 
 function currentRoute() {
   const route = window.location.hash.slice(1) || '/'
@@ -70,7 +69,7 @@ function App() {
     async function updateStatus() {
       const nextStatus = await refreshSessionStatus()
       if (route === '/lobby' && nextStatus?.status === 'in_progress') navigate('/seen-it')
-      if (route === '/waiting' && nextStatus?.status === 'results_started') navigate('/results-intro')
+      if (route === '/waiting' && nextStatus?.status === 'results_started') navigate('/complete')
     }
     updateStatus()
     const timer = window.setInterval(updateStatus, 4000)
@@ -99,7 +98,7 @@ function App() {
 
   const handleContinue = useCallback(async () => {
     await continueWithoutMembers(access, groupSession.shareToken)
-    navigate('/results-intro')
+    navigate('/complete')
   }, [access, groupSession, navigate])
 
   if (!access && route !== '/' && !route.startsWith('/join/')) {
@@ -122,12 +121,8 @@ function App() {
     return <QuickfireTestPage access={access} shareToken={groupSession?.shareToken} onComplete={handleComplete} />
   }
 
-  if (route === '/results-intro') {
-    return <TestIntroPage onContinue={() => navigate('/complete')} />
-  }
-
   if (route === '/complete') {
-    return <TestCompletePage access={access} onStartOver={() => navigate('/shortlist')} />
+    return <TestCompletePage access={access} />
   }
   if (route === '/shortlist') {
     return <ShortlistPage access={access} onDone={() => navigate('/match')} />

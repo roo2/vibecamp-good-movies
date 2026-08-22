@@ -118,6 +118,22 @@ Three helpers are installed:
 | `atlas-publish <file.json>` | push a session payload to `/api/session.json` and invalidate the edge cache |
 | `atlas-update [branch]` | pull, reinstall, re-init — what CI runs after a push |
 
+Three services run on the runner: `atlas-api` on 8000 (what the interface
+calls), `atlas-datasette` on 8001, and `atlas-sqliteweb` on 8002. After an
+`atlas-update` the API is still running the old code until it is restarted:
+
+```bash
+sudo systemctl restart atlas-api
+```
+
+**The idle-stop alarm stops the runner after 4 idle hours, and the API goes with
+it.** The static site keeps serving, so the demo loads and then fails on its
+first call. Start the instance again before showing it to anyone:
+
+```bash
+aws ec2 start-instances --instance-ids <RunnerInstanceId>
+```
+
 `atlas-update` discards local changes. The runner is a deployment target, not
 somewhere to edit code.
 

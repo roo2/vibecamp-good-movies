@@ -882,11 +882,35 @@ Resources:
           WantedBy=multi-user.target
           UNIT
 
+          # ---- the API ---------------------------------------------------------
+          # The interface is static files in S3, but every screen after the first
+          # calls this. Without it the site loads and then fails on its first
+          # request, which is a worse failure than not deploying at all because
+          # it looks like it worked.
+          cat > /etc/systemd/system/atlas-api.service <<'UNIT'
+          [Unit]
+          Description=Moral Atlas API
+          After=network-online.target
+          [Service]
+          User=ec2-user
+          WorkingDirectory=/opt/atlas/app
+          # 0.0.0.0 for the same reason as sqlite-web above: the ApiSecurityGroup
+          # admits port 8000 from CloudFront's origin-facing prefix list only, so
+          # the port is not open to the internet.
+          ExecStart=/opt/atlas/app/.venv/bin/uvicorn moral_atlas.api:app \
+            --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*'
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
           systemctl daemon-reload
           # The store may not exist until the first sweep or an S3 pull; the
           # units restart until it does rather than failing the bootstrap.
           systemctl enable --now atlas-datasette.service || true
           systemctl enable --now atlas-sqliteweb.service || true
+          systemctl enable --now atlas-api.service || true
 
           cat > /etc/cron.d/atlas-snapshot <<'CRON'
           0 3 * * * ec2-user /usr/local/bin/atlas-snapshot >> /var/log/atlas-snapshot.log 2>&1

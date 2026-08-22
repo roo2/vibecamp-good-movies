@@ -191,9 +191,11 @@ Resources:
   RunnerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      # ASCII only: EC2 rejects a GroupDescription containing anything else,
-      # and the error arrives at create time rather than from validate-template.
-      GroupDescription: >
+      # EC2 accepts only `a-zA-Z0-9. _-:/()#,@[]+=&;{}!$*` here — no non-ASCII
+      # and, less obviously, no newline. YAML's `>` keeps a trailing one, which
+      # is why this is `>-`. Neither rule is checked by validate-template; both
+      # surface as a failed create.
+      GroupDescription: >-
         Outbound only. There is deliberately no ingress rule and no SSH - shell
         access is via SSM Session Manager, which dials out.
       VpcId: !Ref Vpc
@@ -213,7 +215,7 @@ Resources:
     Type: AWS::SecretsManager::Secret
     Properties:
       Name: !Sub "${ProjectName}/${EnvironmentName}/config"
-      Description: >
+      Description: >-
         API credentials for the atlas pipeline. Keys mirror .env.example:
         ANTHROPIC_API_KEY, TMDB_READ_TOKEN, TMDB_API_KEY, OPENSUBTITLES_API_KEY,
         OPENSUBTITLES_USERNAME, OPENSUBTITLES_PASSWORD, plus an optional
@@ -236,7 +238,12 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub "${ProjectName}-${EnvironmentName}-data-${AWS::AccountId}"
+      # Deliberately unnamed, so CloudFormation generates a unique name.
+      # `Retain` means a rolled-back create leaves the bucket behind; a fixed
+      # name would then collide with the next attempt and every retry would
+      # fail until someone deleted it by hand. Retaining the data is worth
+      # keeping — being unable to redeploy because of it is not. Read the real
+      # name from the DataBucketName output, which is what the scripts do.
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
@@ -537,8 +544,11 @@ Resources:
           trap 'signal FAILURE' ERR
 
           dnf -y update
-          dnf -y install git jq python3.11 python3.11-pip python3.11-devel \
-                         gcc amazon-cloudwatch-agent
+          # Split from the rest: the CloudWatch agent is a convenience, and a
+          # repository hiccup fetching it should not cost the whole stack.
+          dnf -y install git jq python3.11 python3.11-pip python3.11-devel gcc
+          dnf -y install amazon-cloudwatch-agent || \
+            echo "cloudwatch agent unavailable - continuing without log shipping"
 
           # ---- data volume: attach, format once, then mount by UUID forever --
           for i in $(seq 1 60); do
@@ -674,6 +684,20 @@ Resources:
           # not somewhere to edit code.
           set -euxo pipefail
           BRANCH="${!1:-main}"
+
+          # Clone if the first boot had no github_token to clone with. That is
+          # the normal order of events: the stack comes up, someone adds the
+          # token to the secret, and this is the one command that catches the
+          # machine up without rebuilding it.
+          if [ ! -d /opt/atlas/app/.git ]; then
+            sudo -u ec2-user git clone __REPO_URL__ /opt/atlas/app.clone
+            mv /opt/atlas/app.clone/.git /opt/atlas/app/.git
+            rm -rf /opt/atlas/app.clone
+            sudo -u ec2-user git -C /opt/atlas/app checkout -f "$BRANCH"
+            sudo -u ec2-user python3.11 -m venv /opt/atlas/app/.venv
+            sudo -u ec2-user /opt/atlas/app/.venv/bin/pip install -q --upgrade pip
+          fi
+
           cd /opt/atlas/app
           sudo -u ec2-user git fetch --all --prune
           sudo -u ec2-user git reset --hard "origin/$BRANCH"
@@ -682,6 +706,7 @@ Resources:
           sudo -u ec2-user /opt/atlas/app/.venv/bin/atlas init
           echo "updated to $(git rev-parse --short HEAD)"
           SCRIPT
+          sed -i "s|__REPO_URL__|${RepoUrl}|" /usr/local/bin/atlas-update
           chmod 755 /usr/local/bin/atlas-update
 
           cat > /etc/cron.d/atlas-snapshot <<'CRON'
@@ -689,6 +714,11 @@ Resources:
           CRON
 
           # ---- ship the bootstrap and snapshot logs to CloudWatch -------------
+          # Entirely optional, and written so that a missing agent skips the
+          # section rather than failing the boot. /var/log/atlas-bootstrap.log
+          # is on the instance regardless, which is what you actually read when
+          # something goes wrong.
+          if [ -d /opt/aws/amazon-cloudwatch-agent/etc ]; then
           cat > /opt/aws/amazon-cloudwatch-agent/etc/atlas.json <<'CWA'
           {
             "agent": { "run_as_user": "root" },
@@ -713,6 +743,7 @@ Resources:
           /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
             -a fetch-config -m ec2 -s \
             -c file:/opt/aws/amazon-cloudwatch-agent/etc/atlas.json || true
+          fi
 
           # ---- clone and install, if we were given a token --------------------
           GH=$(aws secretsmanager get-secret-value --secret-id ${Secret} \
@@ -883,7 +914,7 @@ Resources:
     Condition: IdleShutdown
     Properties:
       AlarmName: !Sub "${ProjectName}-${EnvironmentName}-runner-idle"
-      AlarmDescription: >
+      AlarmDescription: >-
         Stops the runner after a sustained idle period. A pipeline sweep keeps
         CPU above the threshold; an abandoned SSM session does not.
       Namespace: AWS/EC2

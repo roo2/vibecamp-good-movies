@@ -74,12 +74,23 @@ aws cloudformation validate-template --region "$REGION" \
   --template-body "file://$TEMPLATE" >/dev/null
 
 echo "→ deploying $STACK to $REGION"
+# DISABLE_ROLLBACK=1 keeps failed resources alive so you can read the logs.
+# Worth knowing about: when the runner's bootstrap fails, rollback terminates
+# the instance and deletes its log group, which destroys the only evidence of
+# why. Debug with this on, then deploy normally once it is fixed.
+ROLLBACK_ARGS=()
+if [ -n "${DISABLE_ROLLBACK:-}" ]; then
+  echo "  (rollback disabled - failed resources will be left running)"
+  ROLLBACK_ARGS=(--disable-rollback)
+fi
+
 aws cloudformation deploy \
   --region "$REGION" \
   --stack-name "$STACK" \
   --template-file "$TEMPLATE" \
   --capabilities CAPABILITY_NAMED_IAM \
   --no-fail-on-empty-changeset \
+  "${ROLLBACK_ARGS[@]+"${ROLLBACK_ARGS[@]}"}" \
   --parameter-overrides "${PARAMS[@]}"
 
 echo

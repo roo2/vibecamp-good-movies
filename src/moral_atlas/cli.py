@@ -547,7 +547,7 @@ def migrate_db(
 @app.command("dataset")
 def dataset_cmd(
     out: str = typer.Option(
-        "src/frontend/public/api/atlas.json",
+        "src/frontend/public/data/atlas.json",
         help="Where to write. The default is the path the interface reads, and "
              "is copied into the published site by `vite build`."),
     version: str = typer.Option("d1", help="Dimension version."),
@@ -600,7 +600,7 @@ def dataset_cmd(
             "[yellow]No axes or no placements[/] — the interface will show the "
             "extraction stage only, which is honest but not the whole story. "
             "Run `atlas dimensions` and `atlas score` to fill it in.")
-    console.print("[dim]the interface reads this at /api/atlas.json[/]")
+    console.print("[dim]the interface reads this at /data/atlas.json[/]")
 
 
 @app.command("export")

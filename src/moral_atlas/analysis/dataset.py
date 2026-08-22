@@ -4,10 +4,12 @@ One JSON document, derived from the store, shaped for reading rather than for
 transfer — `export.py` is the transfer format and keeps the tables as they are;
 this is the opposite trade, denormalised so the browser does no joins.
 
-It is built to be published. The demo site is static S3 behind CloudFront and
-`/api/*` is served from the bucket, not from this API, so the visualisation
-cannot query anything at run time: whatever it shows has to be on disk before
-the deploy. Two consequences follow, and both are deliberate.
+It is built to be published. The demo site's pages come from an S3 bucket, and
+the visualisation cannot query anything at run time: whatever it shows has to be
+on disk before the deploy. It is written under `/data` rather than `/api`,
+because CloudFront routes `/api/*` to the runner — a published file under that
+prefix would be answered by an API with no route for it. Two consequences
+follow, and both are deliberate.
 
 **The index is small; evidence is beside it.** Every claim in the corpus is
 supposed to be checkable against the text it was read from, so the evidence

@@ -61,11 +61,12 @@ else
   cp "$ROOT/design/parable-screen-flow.html" "$STAGE/index.html"
 fi
 
-# Everything the interface reads at run time lives under /api: the session
-# payload, and the dataset the explorer draws — `atlas.json` plus one evidence
-# file per film, which `vite build` copies out of src/frontend/public. Seed the
-# session from the fixture so the site is never serving a 404 there;
-# `atlas-publish` on the runner overwrites it with real output later.
+# /api/session.json is the one payload the bucket still answers — CloudFront
+# sends the rest of /api/* to the runner. Seed it from the fixture so the site
+# is never serving a 404 there; `atlas-publish` on the runner overwrites it with
+# real output later. The explorer's dataset is NOT here: it is published under
+# /data, which the sync above carries, precisely so it is served by the bucket
+# rather than by an API that has no route for it.
 mkdir -p "$STAGE/api"
 if [ ! -f "$STAGE/api/session.json" ]; then
   cp "$ROOT/design/fixtures/session.json" "$STAGE/api/session.json"

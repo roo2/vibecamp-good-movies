@@ -81,8 +81,8 @@ JSON document rather than the store, because the demo site is static S3 behind
 CloudFront and cannot query a database:
 
 ```bash
-atlas dataset                      # -> src/frontend/public/api/atlas.json
-cd src/frontend && npm run build   # copies it into dist/api/atlas.json
+atlas dataset                      # -> src/frontend/public/data/atlas.json
+cd src/frontend && npm run build   # copies it into dist/data/atlas.json
 SITE_DIR=src/frontend/dist ./infra/deploy-site.sh
 ```
 
@@ -104,7 +104,7 @@ user data.
 
 The source text travels with it, so every claim is checkable against what it was
 read from: plot, themes, reception and the dialogue track. That is 3MB against a
-240KB index, so it is written as one file per film — `api/atlas/<film_id>.json`
+240KB index, so it is written as one file per film — `data/atlas/<film_id>.json`
 — and fetched only when somebody opens that film. `--no-evidence` leaves it out.
 Locally the same page also reads a live `GET /api/atlas`, so a pipeline run shows
 up on reload without a rebuild.

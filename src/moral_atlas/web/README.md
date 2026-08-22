@@ -32,12 +32,14 @@ Endpoints:
 - `GET /api/atlas` — the whole dataset the explorer at `#/atlas` draws: corpus
   totals, the derived axes, every film's skeleton and its position on each axis.
   Rebuilt when the store's mtime changes, so a pipeline run shows up on reload.
-  The published demo does not use this endpoint — that site is static and reads
-  `/api/atlas.json`, which `atlas dataset` writes into `src/frontend/public/`.
+  The published demo does not use this endpoint — it reads `/data/atlas.json`,
+  which `atlas dataset` writes into `src/frontend/public/`. That path is outside
+  `/api` on purpose: CloudFront sends `/api/*` here, so a published file under
+  that prefix would reach this application rather than the bucket.
 - `GET /api/atlas/films/{film_id}` — one film's source text in full: plot,
   themes, reception and dialogue. Separate from the index because it is ~80KB
   per film and only wanted for the film someone opened. The static site serves
-  the same documents from `/api/atlas/<film_id>.json`.
+  the same documents from `/data/atlas/<film_id>.json`.
 
 Users, sessions, movie reactions, and test results are stored in SQLite. The
 user record is intentionally limited to `id` and `name`; an SSO identity can be

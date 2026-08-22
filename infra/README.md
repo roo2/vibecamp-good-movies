@@ -141,6 +141,34 @@ aws s3 cp data/atlas.sqlite "s3://$BUCKET/latest/atlas.sqlite"
 That is the whole local setup for someone picking up the front end or the
 analysis — real scores, no API key, no sweep of their own.
 
+## Browsing the database
+
+Two views of the same SQLite file, both running on the runner and bound to
+localhost. SSM port forwarding reaches them with no inbound security-group
+rule, which is less setup than opening a port, not more.
+
+```bash
+IID=$(aws cloudformation describe-stacks --stack-name moral-atlas-dev \
+  --query 'Stacks[0].Outputs[?OutputKey==`RunnerInstanceId`].OutputValue' --output text)
+
+# Datasette on :8001 - browse, facet, query, chart. Read-only.
+aws ssm start-session --target $IID \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["8001"],"localPortNumber":["8001"]}'
+
+# sqlite-web on :8002 - full CRUD admin, for when a row needs editing.
+aws ssm start-session --target $IID \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["8002"],"localPortNumber":["8002"]}'
+```
+
+Then open http://localhost:8001 (or :8002). Datasette also serves JSON, so
+`curl --get http://localhost:8001/atlas.json --data-urlencode "sql=..."` works
+for scripted queries.
+
+The exact commands are stack outputs: `DatasetteTunnelCommand` and
+`SqliteWebTunnelCommand`.
+
 ## Publishing the interface
 
 ```bash

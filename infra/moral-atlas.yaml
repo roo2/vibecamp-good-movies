@@ -193,7 +193,10 @@ Resources:
     Properties:
       # ASCII only: EC2 rejects a GroupDescription containing anything else,
       # and the error arrives at create time rather than from validate-template.
-      GroupDescription: >
+      # Note `>-` and not `>`: a folded scalar keeps a trailing newline, and a
+      # newline is not in EC2's permitted set either. The text being pure ASCII
+      # is not sufficient.
+      GroupDescription: >-
         Outbound only. There is deliberately no ingress rule and no SSH - shell
         access is via SSM Session Manager, which dials out.
       VpcId: !Ref Vpc
@@ -236,7 +239,12 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      BucketName: !Sub "${ProjectName}-${EnvironmentName}-data-${AWS::AccountId}"
+      # Deliberately unnamed. An early rollback left a bucket squatting
+      # "${ProjectName}-${EnvironmentName}-data-${AWS::AccountId}", and because
+      # this resource carries DeletionPolicy: Retain that name was never freed —
+      # so every subsequent update failed with AlreadyExists. CloudFormation
+      # generates the name instead; read it from the DataBucketName output
+      # rather than constructing it.
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
@@ -684,6 +692,62 @@ Resources:
           SCRIPT
           chmod 755 /usr/local/bin/atlas-update
 
+          # ---- SQLite admin UI ------------------------------------------------
+          # Two views of the same file, because they answer different questions:
+          #   datasette   :8001  browse, query, facet, chart. Read-only.
+          #   sqlite-web  :8002  full CRUD admin, for when something needs editing.
+          #
+          # Both bind to 127.0.0.1 deliberately. Not for secrecy — this is a
+          # hackathon box — but because SSM port forwarding reaches them with no
+          # inbound security-group rule at all, which is less setup than opening
+          # a port, not more:
+          #
+          #   aws ssm start-session --target <instance-id> \
+          #     --document-name AWS-StartPortForwardingSession \
+          #     --parameters '{"portNumber":["8001"],"localPortNumber":["8001"]}'
+          #
+          # then open http://localhost:8001
+          sudo -u ec2-user /opt/atlas/app/.venv/bin/pip install -q \
+            datasette sqlite-web || echo "admin UI install failed, continuing"
+
+          cat > /etc/systemd/system/atlas-datasette.service <<'UNIT'
+          [Unit]
+          Description=Datasette over the atlas store
+          After=network-online.target
+          [Service]
+          User=ec2-user
+          WorkingDirectory=/opt/atlas/app
+          # --reload picks up a store rewritten by a sweep without a restart.
+          ExecStart=/opt/atlas/app/.venv/bin/datasette serve data/atlas.sqlite \
+            --host 127.0.0.1 --port 8001 --setting sql_time_limit_ms 10000 \
+            --setting max_returned_rows 5000 --reload
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
+          cat > /etc/systemd/system/atlas-sqliteweb.service <<'UNIT'
+          [Unit]
+          Description=sqlite-web admin over the atlas store
+          After=network-online.target
+          [Service]
+          User=ec2-user
+          WorkingDirectory=/opt/atlas/app
+          ExecStart=/opt/atlas/app/.venv/bin/sqlite_web data/atlas.sqlite \
+            --host 127.0.0.1 --port 8002 --no-browser
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
+          systemctl daemon-reload
+          # The store may not exist until the first sweep or an S3 pull; the
+          # units restart until it does rather than failing the bootstrap.
+          systemctl enable --now atlas-datasette.service || true
+          systemctl enable --now atlas-sqliteweb.service || true
+
           cat > /etc/cron.d/atlas-snapshot <<'CRON'
           0 3 * * * ec2-user /usr/local/bin/atlas-snapshot >> /var/log/atlas-snapshot.log 2>&1
           CRON
@@ -941,6 +1005,22 @@ Outputs:
   ConnectCommand:
     Description: Shell access — no SSH key, no bastion, no open port.
     Value: !Sub "aws ssm start-session --region ${AWS::Region} --target ${Runner}"
+
+  DatasetteTunnelCommand:
+    Description: >-
+      Browse and chart the SQLite store at http://localhost:8001 once this is
+      running. Needs no inbound security-group rule.
+    Value: !Sub >-
+      aws ssm start-session --region ${AWS::Region} --target ${Runner}
+      --document-name AWS-StartPortForwardingSession
+      --parameters '{"portNumber":["8001"],"localPortNumber":["8001"]}'
+
+  SqliteWebTunnelCommand:
+    Description: Same, for the CRUD admin at http://localhost:8002.
+    Value: !Sub >-
+      aws ssm start-session --region ${AWS::Region} --target ${Runner}
+      --document-name AWS-StartPortForwardingSession
+      --parameters '{"portNumber":["8002"],"localPortNumber":["8002"]}'
 
   StartRunnerCommand:
     Description: After the idle alarm has stopped it.

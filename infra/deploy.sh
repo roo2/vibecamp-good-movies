@@ -28,15 +28,15 @@ REGION="${AWS_REGION:-ap-southeast-2}"
 STACK="${STACK:-$PROJECT-$ENVIRONMENT}"
 TEMPLATE="$(cd "$(dirname "$0")" && pwd)/moral-atlas.yaml"
 
-SITE_AUTH="${SITE_AUTH:-true}"
-SITE_USERNAME="${SITE_USERNAME:-parable}"
+# Unset, not defaulted. The rule below has to tell "the caller asked for this"
+# apart from "the caller said nothing", and a default erases the difference.
+SITE_AUTH="${SITE_AUTH:-}"
+SITE_USERNAME="${SITE_USERNAME:-}"
 SITE_PASSWORD="${SITE_PASSWORD:-}"
 
 PARAMS=(
   "ProjectName=$PROJECT"
   "EnvironmentName=$ENVIRONMENT"
-  "EnableSiteAuth=$SITE_AUTH"
-  "SiteUsername=$SITE_USERNAME"
 )
 
 stack_exists() {
@@ -44,20 +44,41 @@ stack_exists() {
     >/dev/null 2>&1
 }
 
+if stack_exists; then EXISTS=true; else EXISTS=false; fi
+
+# SitePassword has always worked this way — an omitted parameter keeps the
+# value the stack already has — and the other two now match it. They did not,
+# and CI deploys with neither variable set, so passing the defaults every time
+# silently turned basic auth back on for a demo whose owner had deliberately
+# turned it off, and would have reverted a changed username the same way. A
+# deploy nobody asked to change the front door should not change the front door.
+if [ -n "$SITE_AUTH" ]; then
+  PARAMS+=("EnableSiteAuth=$SITE_AUTH")
+elif [ "$EXISTS" = false ]; then
+  SITE_AUTH=true
+  PARAMS+=("EnableSiteAuth=$SITE_AUTH")
+  echo "→ first deploy: enabling basic auth"
+else
+  echo "→ keeping the existing basic-auth setting"
+fi
+
+if [ -n "$SITE_USERNAME" ]; then
+  PARAMS+=("SiteUsername=$SITE_USERNAME")
+elif [ "$EXISTS" = false ]; then
+  PARAMS+=("SiteUsername=parable")
+fi
+
 if [ -n "$SITE_PASSWORD" ]; then
   PARAMS+=("SitePassword=$SITE_PASSWORD")
+elif [ "$EXISTS" = true ]; then
+  echo "→ keeping the existing site password"
 elif [ "$SITE_AUTH" = "true" ]; then
-  # Omitting the parameter keeps the stack's current value. On a first deploy
-  # there is no current value, and the default is empty — which would publish
+  # No current value to keep, and the default is empty — which would publish
   # unfinished work behind a lock that opens on the return key. Refuse instead.
-  if stack_exists; then
-    echo "→ keeping the existing site password"
-  else
-    echo "SITE_PASSWORD is required on the first deploy while SITE_AUTH=true." >&2
-    echo "  SITE_PASSWORD='something' $0" >&2
-    echo "  SITE_AUTH=false $0        # to publish the demo openly instead" >&2
-    exit 1
-  fi
+  echo "SITE_PASSWORD is required on the first deploy while SITE_AUTH=true." >&2
+  echo "  SITE_PASSWORD='something' $0" >&2
+  echo "  SITE_AUTH=false $0        # to publish the demo openly instead" >&2
+  exit 1
 fi
 
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)

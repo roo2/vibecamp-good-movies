@@ -46,7 +46,7 @@ function QuickfireTestPage({ access, shareToken, onComplete }) {
           <div className="segment-progress" aria-label={`Question ${questionIndex + 1} of ${questions.length}`}>{questions.map((item, index) => <i className={index <= questionIndex ? 'active' : ''} key={item.id} />)}</div>
           <div className="quiz-meta"><span>{questionIndex + 1} / {questions.length}</span></div>
         </header>
-        <div className="fork-heading"><p className="screen-label">Quick reaction</p><h1>Two stories. Which one would you rather watch?</h1></div>
+        <div className="fork-heading"><p className="screen-label">Quick reaction</p><h1>Which one would you rather watch?</h1></div>
         <div className="choice-stack" aria-label="Choose a story">
           {question.choices.map((choice, index) => (
             <React.Fragment key={choice.id}>

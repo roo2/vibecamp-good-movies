@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { loadOnboardingFilms } from '../services/movieService.js'
+import { preloadTestQuestions } from '../services/testService.js'
 
 const reactions = [
   { id: 'not_for_me', label: 'Not for me', icon: '×' },
@@ -20,19 +21,21 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   useEffect(() => {
     let active = true
     loadOnboardingFilms(access, shareToken).then((items) => active && setFilms(items)).catch(() => active && setError('Those films could not be loaded. Please try again.'))
+    preloadTestQuestions(access, shareToken)
     return () => { active = false }
   }, [access, shareToken])
 
   async function choose(reaction) {
     if (!film || selected) return
+    const isLastFilm = filmIndex === films.length - 1
     setSelected(reaction)
+    if (!isLastFilm) {
+      setFilmIndex((index) => index + 1)
+      setSelected(null)
+    }
     try {
       await onSubmit(film.id, reaction, shareToken)
-      if (filmIndex === films.length - 1) onComplete()
-      else {
-        setFilmIndex((index) => index + 1)
-        setSelected(null)
-      }
+      if (isLastFilm) onComplete()
     } catch (submissionError) {
       setSelected(null)
       setError(submissionError.message)

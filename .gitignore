@@ -23,3 +23,8 @@ dist/
 # Claude Code local worktrees and session scratch
 .claude/
 .pytest_cache/
+
+# Built by `atlas dataset`. The explorer reads the API directly now, so this
+# is an optional export rather than something the page depends on — and a
+# committed copy is wrong by default between pipeline runs.
+src/frontend/public/data/

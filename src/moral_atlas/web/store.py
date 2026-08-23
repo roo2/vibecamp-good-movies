@@ -66,12 +66,23 @@ def save_test_result(user_id: str, answers: dict[str, str], session_share_token:
         submitted_at=db.now(),
     )
     with db.connect() as con:
-        con.execute(
-            "INSERT INTO test_results (result_id, user_id, answers, answered_count, "
-            "submitted_at, session_share_token) VALUES (?,?,?,?,?,?)",
-            [result.id, result.user_id, json.dumps(result.answers), result.answered_count,
-             result.submitted_at.isoformat(), session_share_token],
-        )
+        existing = con.execute(
+            "SELECT result_id FROM test_results WHERE user_id=? AND session_share_token=? "
+            "ORDER BY submitted_at DESC LIMIT 1", [user_id, session_share_token],
+        ).fetchone() if session_share_token else None
+        if existing:
+            result.id = existing["result_id"]
+            con.execute(
+                "UPDATE test_results SET answers=?, answered_count=?, submitted_at=? WHERE result_id=?",
+                [json.dumps(result.answers), result.answered_count, result.submitted_at.isoformat(), result.id],
+            )
+        else:
+            con.execute(
+                "INSERT INTO test_results (result_id, user_id, answers, answered_count, "
+                "submitted_at, session_share_token) VALUES (?,?,?,?,?,?)",
+                [result.id, result.user_id, json.dumps(result.answers), result.answered_count,
+                 result.submitted_at.isoformat(), session_share_token],
+            )
         if session_share_token:
             con.execute(
                 "UPDATE session_members SET completed_at=? WHERE user_id=? AND completed_at IS NULL "
@@ -79,6 +90,22 @@ def save_test_result(user_id: str, answers: dict[str, str], session_share_token:
                 [result.submitted_at.isoformat(), user_id, session_share_token],
             )
     return result
+
+
+def current_test_result(user_id: str, session_share_token: str) -> TestResult | None:
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        row = con.execute(
+            "SELECT result_id, user_id, answers, answered_count, submitted_at FROM test_results "
+            "WHERE user_id=? AND session_share_token=? ORDER BY submitted_at DESC LIMIT 1",
+            [user_id, session_share_token],
+        ).fetchone()
+    if row is None:
+        return None
+    return TestResult(
+        id=row["result_id"], user_id=row["user_id"], answers=json.loads(row["answers"]),
+        answered_count=row["answered_count"], submitted_at=row["submitted_at"],
+    )
 
 
 def list_test_results(user_id: str) -> list[TestResult]:
@@ -229,6 +256,20 @@ def shortlist_selection(share_token: str, user_id: str) -> dict[str, Any] | None
     return {"state": "pending"}
 
 
+def reopen_shortlist(share_token: str, user_id: str) -> dict[str, str] | None:
+    _ensure_db()
+    with db.connect() as con:
+        session = con.execute(
+            "SELECT s.session_id FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
+            "WHERE s.share_token=? AND m.user_id=?",
+            [share_token, user_id],
+        ).fetchone()
+        if session is None:
+            return None
+        con.execute("UPDATE group_sessions SET selected_film_id=NULL WHERE session_id=?", [session["session_id"]])
+    return {"state": "pending"}
+
+
 def save_shortlist_reaction(share_token: str, user_id: str, film_id: str, reaction: str) -> dict[str, Any] | None:
     _ensure_db()
     with db.connect() as con:
@@ -316,6 +357,23 @@ def start_group_session(share_token: str, host_user_id: str) -> GroupSession | N
 
 def begin_waiting_for_results(share_token: str, host_user_id: str) -> GroupSession | None:
     return _update_group_session(share_token, host_user_id, "waiting_started_at=COALESCE(waiting_started_at, ?)", [db.now()])
+
+
+def mark_session_member_unready(share_token: str, user_id: str) -> GroupSession | None:
+    _ensure_db()
+    with db.connect() as con:
+        row = con.execute(
+            "SELECT s.* FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
+            "WHERE s.share_token=? AND s.status='in_progress' AND m.user_id=?",
+            [share_token, user_id],
+        ).fetchone()
+        if row is None:
+            return None
+        con.execute(
+            "UPDATE session_members SET completed_at=NULL WHERE session_id=? AND user_id=?",
+            [row["session_id"], user_id],
+        )
+    return _group_session_from_row(row)
 
 
 def continue_group_session(share_token: str, host_user_id: str) -> GroupSession | None:

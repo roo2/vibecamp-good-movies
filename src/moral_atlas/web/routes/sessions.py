@@ -7,7 +7,7 @@ from ..deps import current_session
 from ..schemas import GroupSession, GroupSessionStatus
 from ..store import (Session, begin_waiting_for_results, continue_group_session,
                      create_group_session, get_group_session_status, join_group_session,
-                     start_group_session)
+                     mark_session_member_unready, start_group_session)
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -57,4 +57,12 @@ def continue_without_members(share_token: str, session: Annotated[Session, Depen
     group_session = continue_group_session(share_token, session.user.id)
     if group_session is None:
         raise HTTPException(status_code=403, detail="The host can continue after the ten-minute wait.")
+    return group_session
+
+
+@router.post("/{share_token}/unready", response_model=GroupSession)
+def unready(share_token: str, session: Annotated[Session, Depends(current_session)]) -> GroupSession:
+    group_session = mark_session_member_unready(share_token, session.user.id)
+    if group_session is None:
+        raise HTTPException(status_code=409, detail="This session can no longer be changed.")
     return group_session

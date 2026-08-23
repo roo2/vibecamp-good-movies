@@ -5,3 +5,9 @@ export function submitTestResult(access, answers, sessionShareToken) {
     headers: { 'X-Session-Token': access.token },
   })
 }
+
+export function loadCurrentTestResult(access, sessionShareToken) {
+  return apiClient.get(`/api/test/results/current?share_token=${encodeURIComponent(sessionShareToken)}`, {
+    headers: { 'X-Session-Token': access.token },
+  })
+}

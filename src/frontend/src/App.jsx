@@ -10,8 +10,8 @@ import MatchPage from './screens/MatchPage.jsx'
 import AtlasPage from './screens/AtlasPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
 import { submitMovieReaction } from './services/movieService.js'
-import { submitTestResult } from './services/resultService.js'
-import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
+import { loadCurrentTestResult, submitTestResult } from './services/resultService.js'
+import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, markSessionMemberUnready, startGroupSession } from './services/groupSessionService.js'
 
 const routes = new Set(['/', '/atlas', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/waiting'])
 
@@ -33,6 +33,8 @@ function App() {
   const [groupSession, setGroupSession] = useState(loadGroupSession)
   const [sessionStatus, setSessionStatus] = useState(null)
   const [selectedFilm, setSelectedFilm] = useState(null)
+  const [testAnswers, setTestAnswers] = useState({})
+  const [editingLastAnswer, setEditingLastAnswer] = useState(false)
 
   const navigate = useCallback((nextRoute) => {
     window.location.hash = nextRoute
@@ -98,16 +100,39 @@ function App() {
       navigate('/')
       return
     }
+    setTestAnswers(answers)
     await submitTestResult(access, answers, groupSession?.shareToken)
+    setEditingLastAnswer(false)
     const status = await refreshSessionStatus()
     if (status?.host_user_id === access.user.id) await beginResultsWait(access, groupSession.shareToken)
     navigate('/waiting')
+  }, [access, groupSession, navigate, refreshSessionStatus])
+
+  const handleEditLastAnswer = useCallback(async () => {
+    const currentResult = await loadCurrentTestResult(access, groupSession.shareToken)
+    await markSessionMemberUnready(access, groupSession.shareToken)
+    setTestAnswers(currentResult.answers)
+    setEditingLastAnswer(true)
+    await refreshSessionStatus()
+    navigate('/quickfire')
   }, [access, groupSession, navigate, refreshSessionStatus])
 
   const handleContinue = useCallback(async () => {
     await continueWithoutMembers(access, groupSession.shareToken)
     navigate('/complete')
   }, [access, groupSession, navigate])
+
+  const handleKeepLooking = useCallback(() => {
+    setSelectedFilm(null)
+    navigate('/shortlist')
+  }, [navigate])
+
+  const handleStartOver = useCallback(() => {
+    setSelectedFilm(null)
+    setTestAnswers({})
+    setEditingLastAnswer(false)
+    navigate('/')
+  }, [navigate])
 
   if (route === '/atlas') {
     return <AtlasPage onBack={() => navigate('/')} />
@@ -126,11 +151,12 @@ function App() {
   }
 
   if (route === '/waiting' && sessionStatus) {
-    return <SessionWaitingPage status={sessionStatus} isHost={sessionStatus.host_user_id === access.user.id} onContinue={handleContinue} />
+    const currentMember = sessionStatus.members.find((member) => member.user.id === access.user.id)
+    return <SessionWaitingPage status={sessionStatus} isHost={sessionStatus.host_user_id === access.user.id} canEditAnswer={Boolean(currentMember?.completed_at)} onBack={handleEditLastAnswer} onContinue={handleContinue} />
   }
 
   if (route === '/quickfire') {
-    return <QuickfireTestPage access={access} shareToken={groupSession?.shareToken} onComplete={handleComplete} />
+    return <QuickfireTestPage access={access} shareToken={groupSession?.shareToken} initialAnswers={testAnswers} startAtLast={editingLastAnswer} onComplete={handleComplete} />
   }
 
   if (route === '/complete') {
@@ -140,7 +166,7 @@ function App() {
     return <ShortlistPage access={access} shareToken={groupSession?.shareToken} onDone={(film) => { setSelectedFilm(film); navigate('/match') }} />
   }
   if (route === '/match') {
-    return <MatchPage access={access} shareToken={groupSession?.shareToken} film={selectedFilm} onContinue={() => navigate('/')} />
+    return <MatchPage access={access} shareToken={groupSession?.shareToken} film={selectedFilm} onKeepLooking={handleKeepLooking} onStartOver={handleStartOver} />
   }
 
   return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />

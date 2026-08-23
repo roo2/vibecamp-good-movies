@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
+import FlowProgress from '../components/FlowProgress.jsx'
 
-function SessionWaitingPage({ status, isHost, onContinue }) {
+function SessionWaitingPage({ status, isHost, canEditAnswer, onBack, onContinue }) {
   const [error, setError] = useState(null)
   const complete = status.members.filter((member) => member.completed_at)
   const pending = status.members.filter((member) => !member.completed_at)
@@ -10,9 +11,15 @@ function SessionWaitingPage({ status, isHost, onContinue }) {
     try { await onContinue() } catch (requestError) { setError(requestError.message) }
   }
 
+  async function handleBack() {
+    setError(null)
+    try { await onBack() } catch (requestError) { setError(requestError.message) }
+  }
+
   return (
-    <main className="app-page">
-      <section className="phone-screen session-screen" aria-label="Waiting for session results">
+    <main className="app-page waiting-page">
+      <section className="phone-screen session-screen waiting-screen" aria-label="Waiting for session results">
+        <FlowProgress current={11} onBack={canEditAnswer ? handleBack : undefined} backLabel="Change your last answer" />
         <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Moral Atlas</span></div>
         <div className="session-content">
           <p className="screen-label">Shared session</p>

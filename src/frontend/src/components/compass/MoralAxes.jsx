@@ -95,23 +95,17 @@ function MoralAxis({ axis, others, expanded, onToggle }) {
 }
 
 function MoralAxes({ scores, companions = [] }) {
-  // With someone else in the session, the axis worth opening first is the one
-  // you disagree on hardest — that is the conversation. Alone, it stays the one
-  // you committed to hardest, so the screen says something before anyone taps.
   const byId = companions.map((companion) => ({
     user_id: companion.user_id,
     name: companion.name,
     scores: new Map((companion.profile?.scores || []).map((axis) => [axis.dim_id, axis])),
   }))
-  const gapOn = (axis) => Math.max(0, ...byId
-    .map((companion) => companion.scores.get(axis.dim_id))
-    .filter((other) => other && other.evidence_items)
-    .map((other) => Math.abs(other.score - axis.score)))
 
-  const rank = byId.length ? gapOn : (axis) => Math.abs(axis.score)
-  const opening = scores.reduce(
-    (best, axis) => (rank(axis) > rank(best) ? axis : best), scores[0])
-  const [openId, setOpenId] = useState(opening ? opening.dim_id : null)
+  // Everything starts closed. Opening one axis for the reader made the list
+  // arrive already half-unpacked, and an expanded panel reads as something the
+  // reader did rather than something the screen chose — the first impression
+  // should be the whole shape of the compass, not one axis of it.
+  const [openId, setOpenId] = useState(null)
 
   return (
     <>

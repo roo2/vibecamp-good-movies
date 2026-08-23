@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import FlowProgress from '../components/FlowProgress.jsx'
 import useSwipeDecision from '../hooks/useSwipeDecision.js'
 import { loadOnboardingFilms } from '../services/movieService.js'
-import { preloadTestQuestions } from '../services/testService.js'
 
 const reactions = [
   { id: 'not_for_me', label: 'Not for me', icon: '×' },
@@ -23,7 +22,6 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   useEffect(() => {
     let active = true
     loadOnboardingFilms(access, shareToken).then((items) => active && setFilms(items)).catch(() => active && setError('Those films could not be loaded. Please try again.'))
-    preloadTestQuestions(access, shareToken)
     return () => { active = false }
   }, [access, shareToken])
 

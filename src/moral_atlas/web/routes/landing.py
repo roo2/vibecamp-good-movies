@@ -121,7 +121,7 @@ def _coverage(variants: list[tuple[str, int]], films: int) -> str:
 PAGE = """<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Moral Atlas</title>
+<title>Something Good To Watch</title>
 <style>
   * {{ box-sizing: border-box; }}
   body {{
@@ -183,11 +183,12 @@ PAGE = """<!doctype html>
 </style>
 </head><body><div class="wrap">
 
-<div class="brand"><span>&#9678;</span> Moral Atlas</div>
-<h1>What a film <em>believes</em>,<br>measured rather than argued about.</h1>
-<p class="lede">Forty films, read for the moral positions they actually take, scored
-against a fixed bank of propositions under four different evidence conditions.
-This page is the way in.</p>
+<div class="brand"><span>&#9678;</span> Something Good To Watch</div>
+<h1>Find something <em>good</em> to watch,<br>with someone whose taste is not yours.</h1>
+<p class="lede">Every film argues for something. Ninety seconds of films you already
+know is enough to read what two people each believe &mdash; measured from what the
+films themselves say, not from what anyone says about them &mdash; and to find one
+whose moral message resonates with both of you. This page is the way in.</p>
 
 <section>
   <h2>Three doors</h2>

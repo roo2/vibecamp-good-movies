@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from moral_atlas.web.app import app
+from moral_atlas.web.film_service import DIRECT_CARDS
 
 
 client = TestClient(app)
@@ -80,7 +81,7 @@ def test_movie_reaction_is_captured_for_the_active_user():
     share_token = group_session["share_token"]
     films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=headers)
     assert films.status_code == 200
-    assert len(films.json()["films"]) == 5
+    assert len(films.json()["films"]) == DIRECT_CARDS
     assert all(film["artwork_url"] for film in films.json()["films"])
     film_id = films.json()["films"][0]["id"]
 
@@ -101,21 +102,35 @@ def test_session_direct_deck_uses_only_films_with_artwork(isolated_web_database)
     from moral_atlas.web.film_service import build_session_deck
 
     films = isolated_web_database.list_films()
+    eligible = films[:DIRECT_CARDS]
     with isolated_web_database.connect() as con:
         con.execute("UPDATE films SET artwork_url=NULL")
-        for film in films[:5]:
+        for film in eligible:
             con.execute(
                 "UPDATE films SET artwork_url=? WHERE film_id=?",
                 [f"https://example.test/posters/{film['film_id']}.jpg", film["film_id"]],
             )
 
     deck = build_session_deck()
-    assert len(deck["direct"]) == 5
-    assert set(deck["direct"]) == {film["film_id"] for film in films[:5]}
-    assert set(deck["direct"]).isdisjoint({film_id for pair in deck["pairs"] for film_id in pair})
+    assert len(deck["direct"]) == DIRECT_CARDS
+    assert set(deck["direct"]) == {film["film_id"] for film in eligible}
 
 
-def test_session_members_receive_the_same_named_and_blind_film_deck(isolated_web_database):
+def test_session_deck_needs_enough_eligible_films(isolated_web_database):
+    """One short of a full deck is no deck, rather than a short one."""
+    from moral_atlas.web.film_service import build_session_deck
+
+    films = isolated_web_database.list_films()
+    with isolated_web_database.connect() as con:
+        con.execute("UPDATE films SET artwork_url=NULL")
+        for film in films[:DIRECT_CARDS - 1]:
+            con.execute("UPDATE films SET artwork_url=? WHERE film_id=?",
+                        ["https://example.test/p.jpg", film["film_id"]])
+
+    assert build_session_deck() == {"direct": [], "pairs": []}
+
+
+def test_session_members_receive_the_same_named_film_deck(isolated_web_database):
     from moral_atlas.web.store import group_session_deck
     host = client.post("/api/access", json={"name": "Ada"}).json()
     guest = client.post("/api/access", json={"name": "Sam"}).json()
@@ -127,20 +142,16 @@ def test_session_members_receive_the_same_named_and_blind_film_deck(isolated_web
     host_films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=host_headers).json()["films"]
     guest_films = client.get(f"/api/onboarding/films?share_token={share_token}", headers=guest_headers).json()["films"]
     assert host_films == guest_films
-    assert len(host_films) == 5
+    assert len(host_films) == DIRECT_CARDS
+    assert all(film["title"] and film["artwork_url"] for film in host_films)
 
-    host_pairs = client.get(f"/api/test/questions?share_token={share_token}", headers=host_headers).json()["questions"]
-    guest_pairs = client.get(f"/api/test/questions?share_token={share_token}", headers=guest_headers).json()["questions"]
-    assert host_pairs == guest_pairs
-    assert len(host_pairs) == 5
-    assert all(choice["label"] in {"Story A", "Story B"} for pair in host_pairs for choice in pair["choices"])
     deck = group_session_deck(share_token, host["user"]["id"])
     assert deck is not None
-    direct_ids = set(deck["direct"])
-    blind_ids = {film_id for pair in deck["pairs"] for film_id in pair}
-    assert len(direct_ids) == 5
-    assert len(blind_ids) == 10
-    assert direct_ids.isdisjoint(blind_ids)
+    assert len(set(deck["direct"])) == DIRECT_CARDS
+    # The blind story pairs were removed from the product: every question now
+    # names its film and shows its poster. The key survives so that decks written
+    # before the change still read.
+    assert deck["pairs"] == []
 
 
 def test_group_session_tracks_members_and_unlocks_when_everyone_completes(isolated_web_database):
@@ -157,7 +168,9 @@ def test_group_session_tracks_members_and_unlocks_when_everyone_completes(isolat
 
     for headers in (host_headers, guest_headers):
         response = client.post("/api/test/results", headers=headers, json={
-            "answers": {"pair-1": "a"}, "session_share_token": share_token,
+            # No pair answers exist any more; finishing the film reactions is
+            # what submits, and the submission is what marks a member ready.
+            "answers": {}, "session_share_token": share_token,
         })
         assert response.status_code == 201
 
@@ -168,17 +181,17 @@ def test_group_session_tracks_members_and_unlocks_when_everyone_completes(isolat
 
     current = client.get(f"/api/test/results/current?share_token={share_token}", headers=guest_headers)
     assert current.status_code == 200
-    assert current.json()["answers"] == {"pair-1": "a"}
     assert client.post(f"/api/sessions/{share_token}/unready", headers=guest_headers).status_code == 200
     reopened_status = client.get(f"/api/sessions/{share_token}", headers=host_headers).json()
     assert reopened_status["members"][1]["completed_at"] is None
     assert client.post(f"/api/sessions/{share_token}/continue", headers=host_headers).status_code == 403
 
+    # Submitting again for the same session updates the row rather than adding
+    # one, which is what the count below is checking.
     revised = client.post("/api/test/results", headers=guest_headers, json={
-        "answers": {"pair-1": "b"}, "session_share_token": share_token,
+        "answers": {}, "session_share_token": share_token,
     })
     assert revised.status_code == 201
-    assert client.get(f"/api/test/results/current?share_token={share_token}", headers=guest_headers).json()["answers"] == {"pair-1": "b"}
     with isolated_web_database.connect(read_only=True) as con:
         assert con.execute(
             "SELECT count(*) FROM test_results WHERE user_id=? AND session_share_token=?",

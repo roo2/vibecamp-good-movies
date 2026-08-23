@@ -18,6 +18,14 @@ export async function loadModels() {
   return body.models || []
 }
 
+// One film on the axes the product itself reads. No scorer argument on purpose:
+// which model backs the product is a server setting, and a phone screen that
+// hard-coded 'deepseek' would silently keep reading the old model the day that
+// setting changed.
+export async function loadProductFilmAxes(filmId) {
+  return get(`/api/factors/product/films/${encodeURIComponent(filmId)}`)
+}
+
 export async function loadFactors(scorer, variant = 'subs', bank = '') {
   const query = new URLSearchParams({ variant })
   if (bank) query.set('bank', bank)

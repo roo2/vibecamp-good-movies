@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from ... import db
 from ...analysis import factor_detail, factor_names, latent
+from ...config import settings
 
 router = APIRouter(prefix="/api/factors", tags=["factors"])
 
@@ -123,6 +124,20 @@ def get_factors(
     }
     _cache[key] = {"fingerprint": fingerprint, "payload": payload}
     return payload
+
+
+@router.get("/product/films/{film_id}")
+def product_film_axes(film_id: str) -> dict[str, Any]:
+    """One film on the axes the PRODUCT reads, without naming the model.
+
+    The app shows a person where a recommendation stands morally, and which
+    model produced those axes is a deployment decision — `ATLAS_PRODUCT_SCORER`
+    — not something a phone screen should hard-code. Declared above the
+    `/{scorer}/...` route on purpose: otherwise "product" is read as the name of
+    a model and 404s.
+    """
+    return film_on_factors(settings().product_scorer, film_id,
+                           variant=settings().product_variant)
 
 
 @router.get("/{scorer}/films/{film_id}")

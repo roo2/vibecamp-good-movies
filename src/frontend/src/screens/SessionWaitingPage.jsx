@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import FlowProgress from '../components/FlowProgress.jsx'
+import FlowProgress, { WAITING_STEP } from '../components/FlowProgress.jsx'
 
 function SessionWaitingPage({ status, isHost, canEditAnswer, onBack, onContinue }) {
   const [error, setError] = useState(null)
@@ -19,8 +19,8 @@ function SessionWaitingPage({ status, isHost, canEditAnswer, onBack, onContinue 
   return (
     <main className="app-page waiting-page">
       <section className="phone-screen session-screen waiting-screen" aria-label="Waiting for session results">
-        <FlowProgress current={11} onBack={canEditAnswer ? handleBack : undefined} backLabel="Change your last answer" />
-        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Moral Atlas</span></div>
+        <FlowProgress current={WAITING_STEP} onBack={canEditAnswer ? handleBack : undefined} backLabel="Change your last answer" />
+        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="session-content">
           <p className="screen-label">Shared session</p>
           <h1>{pending.length ? <>Waiting for<br /><em>the others.</em></> : <>Everyone’s<br /><em>ready.</em></>}</h1>

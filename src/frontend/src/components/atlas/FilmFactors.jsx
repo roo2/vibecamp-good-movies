@@ -28,9 +28,16 @@ function Bar({ score }) {
 function Row({ factor }) {
   const [open, setOpen] = React.useState(false)
   const scored = factor.score != null
+  const side = factor.score >= 0 ? 'high' : 'low'
+  // Which end of the axis the film actually landed on, said in the axis's own
+  // words. A score of −1.00 under a name like "Moral relativism vs. absolute
+  // values" tells the reader the film is at one extreme and nothing whatever
+  // about which extreme: the sign only means something to someone who knows how
+  // the propositions were worded. The pole sentence is that knowledge.
+  const stance = factor.score >= 0 ? factor.pole_high : factor.pole_low
 
   return (
-    <li className={scored ? 'film-factor' : 'film-factor absent'}>
+    <li className={scored ? `film-factor ${side}` : 'film-factor absent'}>
       <button type="button" onClick={() => scored && setOpen(!open)} aria-expanded={open}
               disabled={!scored}>
         <span className="film-factor-name">{factor.name}</span>
@@ -39,26 +46,53 @@ function Row({ factor }) {
             <Bar score={factor.score} />
             <span className="film-factor-score">
               {factor.score >= 0 ? '+' : ''}{factor.score.toFixed(2)}
-              <em>{factor.items} items</em>
+              <em>{factor.items} item{factor.items === 1 ? '' : 's'}</em>
             </span>
+            {stance && (
+              <span className={`film-factor-lean ${side}`}>
+                <b>reads as</b> {stance}
+              </span>
+            )}
           </>
         ) : (
           <span className="film-factor-absent">did not raise this</span>
         )}
       </button>
 
-      {open && !!factor.verdicts?.length && (
+      {open && (
         <div className="film-factor-why">
           <p className="film-factor-question">{factor.question}</p>
-          <ul>
-            {factor.verdicts.map((verdict) => (
-              <li key={verdict.item_id} className={verdict.verdict}>
-                <b>{verdict.verdict === 'affirms' ? 'affirms' : 'denies'}</b>
-                <span>{verdict.text}</span>
-                {verdict.evidence && <em>{verdict.evidence}</em>}
-              </li>
-            ))}
-          </ul>
+
+          {/* Both ends, with the film's own marked. Showing only the side it
+              landed on reads as a verdict; showing both makes it a position —
+              the reader can see what the other answer would have been. */}
+          <div className="film-factor-poles">
+            <p className={side === 'low' ? 'pole low here' : 'pole low'}>
+              <b>−</b> {factor.pole_low}
+            </p>
+            <p className={side === 'high' ? 'pole high here' : 'pole high'}>
+              <b>+</b> {factor.pole_high}
+            </p>
+          </div>
+
+          {factor.items === 1 && (
+            <p className="film-factor-thin">
+              One proposition put it here, so the position is as extreme as a
+              single answer can make it rather than a settled reading.
+            </p>
+          )}
+
+          {!!factor.verdicts?.length && (
+            <ul>
+              {factor.verdicts.map((verdict) => (
+                <li key={verdict.item_id} className={verdict.verdict}>
+                  <b>{verdict.verdict === 'affirms' ? 'affirms' : 'denies'}</b>
+                  <span>{verdict.text}</span>
+                  {verdict.evidence && <em>{verdict.evidence}</em>}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </li>

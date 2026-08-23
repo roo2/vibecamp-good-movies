@@ -23,11 +23,15 @@ function LandingPage({ onSignIn, joining = false }) {
   return (
     <main className="app-page login-page">
       <section className="phone-screen login-screen" aria-label="Sign in">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Moral Atlas</span></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="login-content">
-          <p className="screen-label">{joining ? 'Joining a shared session' : 'Welcome back'}</p>
-          <h1>{joining ? <>Join your<br /><em>movie people.</em></> : <>Find your way<br />back to the <em>stories.</em></>}</h1>
-          <p className="screen-copy">{joining ? 'Start with your name, then you’ll enter their session.' : 'Start with a name. You can add a fuller sign-in method later.'}</p>
+          <p className="screen-label">{joining ? 'Joining a shared session' : 'A 90-second quiz'}</p>
+          {/* Only the word that carries the promise is lit. Emphasis on a whole
+              phrase is emphasis on nothing — the eye needs one place to land. */}
+          <h1>{joining ? <>Join your<br /><em>movie people.</em></> : <>Find something<br /><em>good</em> to watch.</>}</h1>
+          <p className="screen-copy">{joining
+            ? 'Start with your name, then you’ll enter their session.'
+            : 'Every film argues for something. Ninety seconds of films you already know is enough to read what you each believe — and to find one whose moral message resonates with both you and your partner.'}</p>
         </div>
         <form className="login-form" onSubmit={handleSubmit}>
           <label htmlFor="name">Your name</label>

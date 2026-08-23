@@ -56,7 +56,7 @@ def _titles() -> dict[str, str]:
 
 def detail(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
-    texts: dict[str, str], per_pole: int = 6, per_factor_items: int = 40,
+    texts: dict[str, str], per_pole: int = 10, per_factor_items: int = 40,
 ) -> dict[int, dict[str, Any]]:
     """Per factor: where the corpus sits, which films anchor each pole, and why."""
     rows = _verdicts(scorer, bank_version, variant)
@@ -101,11 +101,17 @@ def detail(
             "films_positioned": len(positions),
             "affirmations": affirms,
             "denials": denies,
-            # Every positioned film's score, for a distribution the reader can
-            # look at. Top-and-bottom lists flatter an axis: they always look
-            # decisive, even when the middle is a shapeless pile and the axis is
-            # separating almost nothing.
-            "distribution": [row["score"] for row in positions],
+            # Every positioned film, for a distribution the reader can look at.
+            # Top-and-bottom lists flatter an axis: they always look decisive,
+            # even when the middle is a shapeless pile and the axis is separating
+            # almost nothing.
+            #
+            # The films are sent whole rather than as bare scores. A histogram of
+            # anonymous numbers can be doubted but not checked — the reader who
+            # thinks a bin looks wrong has no way to ask which films are in it.
+            # Carrying the titles costs a few tens of KB and turns the shape into
+            # something you can open.
+            "distribution": positions,
             "high": positions[:per_pole],
             "low": list(reversed(positions[-per_pole:])) if positions else [],
             "propositions": sorted(

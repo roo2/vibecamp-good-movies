@@ -5,6 +5,7 @@ import random
 from typing import Any
 
 from .. import db
+from ..config import settings
 
 
 def random_onboarding_films(limit: int = 5) -> list[dict[str, Any]]:
@@ -26,49 +27,81 @@ def random_onboarding_films(limit: int = 5) -> list[dict[str, Any]]:
     ]
 
 
+# How many named films a person is asked about. The session used to ask five and
+# then put five blind story pairs on top; the pairs are gone, so the whole read
+# now comes from films the person recognises, and there need to be enough of them
+# to place someone on more than a couple of axes.
+DIRECT_CARDS = 12
+
+
+def _films_the_scorer_has_read() -> set[str]:
+    """Film ids the product's scorer has actually returned verdicts on."""
+    config = settings()
+    bank = f"{config.product_scorer}-{config.product_variant}"
+    with db.connect(read_only=True) as con:
+        return {row["film_id"] for row in con.execute(
+            "SELECT DISTINCT film_id FROM model_verdicts WHERE scorer=? "
+            "AND bank_version=? AND variant=?",
+            [config.product_scorer, bank, config.product_variant])}
+
+
 def deck_eligible_films() -> list[dict[str, Any]]:
-    """Films the product may show a person.
+    """Films worth asking a person about.
 
-    The research corpus is far larger than the curated one and grows by
-    enumeration, so its films have no hand-written blind-story description. The
-    blind pairs are nothing BUT that description — without one every pair would
-    read "A story about the choices people make", which is not a choice between
-    two stories.
+    Three conditions, and the third is the one that was missing. A poster,
+    because the card is mostly poster. A hand-written description, which nothing
+    displays any more now that the blind pairs are gone but which still marks the
+    ~50 curated titles out of 570 that arrived by enumeration — recognisable is
+    the property, and having been written about by hand is its proxy.
 
-    Artwork is deliberately NOT required here. The named cards need a poster and
-    `build_session_deck` enforces that separately, but the blind pairs show no
-    title and no image by design — they are two paragraphs of text — so an
-    artwork requirement would shrink the pair pool to no visible benefit.
+    And a film the scorer has read. Asking whether someone liked a film the
+    instrument has never scored costs them a question and teaches the profile
+    nothing: their answer has no propositions to be read against. Ten of the
+    fifty curated films were in that state, so a twelve-card deck could spend a
+    fifth of itself learning nothing.
+
+    If too few films clear all three — a fresh database, a scorer mid-run — the
+    scored requirement is dropped rather than handing back an empty deck. A
+    session that reads a person imperfectly beats one that cannot start.
     """
-    return [film for film in db.list_films() if (film.get("description") or "").strip()]
+    curated = [film for film in db.list_films()
+               if (film.get("description") or "").strip()
+               and (film.get("artwork_url") or "").strip()]
+    read = _films_the_scorer_has_read()
+    scored = [film for film in curated if film["film_id"] in read]
+    return scored if len(scored) >= DIRECT_CARDS else curated
 
 
 def build_session_deck() -> dict[str, list[Any]]:
-    """Create one shared, non-overlapping deck for a group session."""
+    """Create one shared deck of named films for a group session.
+
+    `pairs` stays in the shape, empty. Existing sessions carry decks that have
+    it, the reader of a deck is entitled to expect the key, and a session started
+    before this change should keep working rather than raise a KeyError halfway
+    through somebody's evening.
+    """
     db.init_db()
     films = deck_eligible_films()
-    films_with_artwork = [film for film in films if (film.get("artwork_url") or "").strip()]
-    if len(films) < 15:
+    if len(films) < DIRECT_CARDS:
         return {"direct": [], "pairs": []}
 
-    # The first five cards are named films, so they should always have their
-    # poster available. The later blind-story cards deliberately conceal their
-    # titles and can use the wider eligible corpus.
     chooser = random.SystemRandom()
-    direct = chooser.sample(films_with_artwork if len(films_with_artwork) >= 5 else films, k=5)
-    direct_ids = {film["film_id"] for film in direct}
-    blind = chooser.sample([film for film in films if film["film_id"] not in direct_ids], k=10)
-    return {
-        "direct": [film["film_id"] for film in direct],
-        "pairs": [[blind[index]["film_id"], blind[index + 1]["film_id"]] for index in range(0, 10, 2)],
-    }
+    direct = chooser.sample(films, k=DIRECT_CARDS)
+    return {"direct": [film["film_id"] for film in direct], "pairs": []}
 
 
 def film_card(film_id: str, include_title: bool = True) -> dict[str, Any] | None:
     film = db.get_film(film_id)
     if film is None:
         return None
-    card = {"id": film["film_id"], "description": film.get("description") or "A story about the choices people make when what matters is at stake."}
+    # No stand-in sentence. Most of the corpus has no hand-written description,
+    # and "A story about the choices people make when what matters is at stake."
+    # fitted every one of them equally — which is what made it worse than saying
+    # nothing: it read as a description of THIS film and described none.
+    description = (film.get("description") or "").strip()
+    card = {"id": film["film_id"]}
+    if description:
+        card["description"] = description
     if include_title:
         card.update({
             "title": film["title"], "year": film.get("year"),

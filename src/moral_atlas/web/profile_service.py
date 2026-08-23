@@ -7,6 +7,7 @@ and describe what came back.
 """
 from __future__ import annotations
 
+from ..config import settings
 from ..analysis import user_scores
 from .film_service import film_card
 from .schemas import MoralProfile, MoralScore, ProfileEvidence
@@ -18,19 +19,30 @@ from .store import user_pair_answers, user_rating_inputs
 MIN_FILMS_FOR_A_READ = 3
 
 
-def moral_profile(
-    user_id: str,
-    dim_version: str = user_scores.DEFAULT_DIM_VERSION,
-    bank_version: str = user_scores.DEFAULT_BANK_VERSION,
-) -> MoralProfile:
+def moral_profile(user_id: str) -> MoralProfile:
+    """One person against the axes the films produced.
+
+    No version arguments: they used to choose between LLM-derived dimension
+    sets, and there is only one source now — the axes the configured scorer
+    discovered from its own verdicts. `dim_version` and `bank_version` survive
+    in the RESPONSE because the interface displays them as provenance, and are
+    reported as what was actually read.
+    """
     ratings = user_rating_inputs(user_id)
     pairs = user_pair_answers(user_id)
-    dimensions = user_scores.load_dimensions(dim_version)
+    # The product reads ONE model's discovered axes. The old eight were a model's
+    # answer to "give me eight moral dimensions", never checked against how films
+    # actually behave; these are groups of propositions that films answer
+    # together, with the count decided by a permutation null. The response shape
+    # is unchanged on purpose — the compass screen renders whatever axes it is
+    # handed, so swapping the source is a server-side change.
+    scorer = settings().product_scorer
+    variant = settings().product_variant
+    factor_bank = f"{scorer}-{variant}"
+    dimensions = user_scores.factor_axes(scorer, variant, factor_bank)
     if not dimensions:
-        if dim_version != user_scores.DEFAULT_DIM_VERSION:
-            raise LookupError(f"No dimension set {dim_version!r} has been derived.")
         return MoralProfile(
-            user_id=user_id, dim_version=dim_version, bank_version=bank_version, scores=[],
+            user_id=user_id, dim_version=scorer, bank_version=factor_bank, scores=[],
             evidence=ProfileEvidence(
                 films_rated=sum(1 for _film_id, reaction in ratings if reaction != "havent_seen"),
                 films_not_seen=sum(1 for _film_id, reaction in ratings if reaction == "havent_seen"),
@@ -38,21 +50,22 @@ def moral_profile(
                 films_used=0, films_without_scores=[],
             ),
             is_provisional=True,
-            summary="Your film choices are saved. The shared moral map is still being prepared.",
+            summary="Your film choices are saved. The moral axes are still being "
+                    "derived from how films answer them.",
         )
 
     preferences = user_scores.rating_preferences(ratings)
     for choice, film_ids in pairs:
         preferences.extend(user_scores.pair_preferences(choice, film_ids))
 
-    stances = user_scores.film_stances(dim_version, bank_version)
+    stances = user_scores.factor_stances(scorer, variant, factor_bank)
     scored = user_scores.score_preferences(preferences, dimensions, stances)
 
     unscored = sorted({p.film_id for p in preferences if p.film_id not in stances})
     return MoralProfile(
         user_id=user_id,
-        dim_version=dim_version,
-        bank_version=bank_version,
+        dim_version=scorer,
+        bank_version=factor_bank,
         scores=[MoralScore(**vars(score)) for score in scored],
         evidence=ProfileEvidence(
             films_rated=sum(1 for _f, reaction in ratings if reaction != "havent_seen"),

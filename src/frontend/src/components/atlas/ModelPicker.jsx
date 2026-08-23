@@ -12,10 +12,13 @@ export function ModelPicker({ models, selected, onSelect }) {
       <span className="model-picker-label">Read by</span>
       <div className="model-picker-options" role="tablist">
         {models.map((model) => {
+          // Compared on scorer alone, two runs by the same model both read as
+          // selected. The endpoint now returns one row per model, and this
+          // matches the same way, so the two cannot drift apart again.
           const active = model.scorer === selected
           return (
             <button
-              key={`${model.scorer}-${model.variant}`}
+              key={model.scorer}
               type="button"
               role="tab"
               aria-selected={active}
@@ -33,6 +36,10 @@ export function ModelPicker({ models, selected, onSelect }) {
                 {' · '}
                 {model.films} films
               </span>
+              {/* A model with verdicts but no names has been scored and not yet
+                  analysed, which is a different state from having no data — the
+                  button stays, because picking it should say so rather than
+                  hide the run. */}
             </button>
           )
         })}

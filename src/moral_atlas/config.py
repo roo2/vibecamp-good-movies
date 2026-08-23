@@ -49,6 +49,14 @@ class Settings:
     # expensive model. Now that every derived row records the model that produced
     # it, that kind of drift shows up in `atlas provenance` instead of in a bill.
     model: str = os.environ.get("ATLAS_MODEL", "claude-sonnet-5")
+
+    # Which model's discovered axes the PRODUCT reads. The atlas page can show
+    # any scorer side by side, but a person taking the test gets one reading of
+    # themselves, so one has to be chosen. DeepSeek by default: it is the only
+    # model whose pipeline has run end to end, and by a wide margin the cheapest
+    # to re-run when the corpus grows.
+    product_scorer: str = os.environ.get("ATLAS_PRODUCT_SCORER", "deepseek")
+    product_variant: str = os.environ.get("ATLAS_PRODUCT_VARIANT", "subs")
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 

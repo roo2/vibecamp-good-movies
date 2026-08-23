@@ -1,4 +1,5 @@
 import React from 'react'
+import FilmFactors from './FilmFactors.jsx'
 import { loadFilmEvidence } from '../../services/atlasService.js'
 
 // This panel used to lead with the moral skeleton: legitimacy source, who holds
@@ -11,7 +12,7 @@ import { loadFilmEvidence } from '../../services/atlasService.js'
 //
 // What is left is what a reader actually needs to argue with a verdict: the film,
 // and the words it was scored from.
-function FilmDetail({ film, onClose }) {
+function FilmDetail({ film, scorer, onClose }) {
   const [state, setState] = React.useState({ status: 'loading' })
 
   React.useEffect(() => {
@@ -39,6 +40,11 @@ function FilmDetail({ film, onClose }) {
       </div>
 
       {film.description && <p className="detail-blurb">{film.description}</p>}
+
+      {/* Positions first: the reader opened a film to see what the
+          instrument made of it, and the source text below is the evidence
+          for disagreeing with that. */}
+      {scorer && <FilmFactors scorer={scorer} filmId={film.id} />}
 
       {state.status === 'loading' && <p className="detail-muted">Fetching the source text…</p>}
       {state.status === 'failed' && <p className="detail-muted">{state.message}</p>}

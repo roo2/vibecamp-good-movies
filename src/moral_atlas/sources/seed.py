@@ -94,5 +94,12 @@ def seed_films(path: str = "seeds/phase0.yaml") -> int:
             existing.add(key)
             inserted += 1
         else:
-            db.set_film_description(film_id, _description_for(seed["title"]))
+            # Only fill a gap, never overwrite. These descriptions are edited by
+            # hand — they are the entire content of a blind pair, so they get
+            # rewritten as the product's voice changes — and re-running the
+            # seeder to pick up a new film should not silently revert that work
+            # to whatever this file happened to say.
+            current = (db.get_film(film_id) or {}).get("description") or ""
+            if not current.strip():
+                db.set_film_description(film_id, _description_for(seed["title"]))
     return inserted

@@ -919,7 +919,7 @@ def user_profile(
     if user:
         from .web.profile_service import moral_profile
         user_id = _resolve_user(user)
-        profile = moral_profile(user_id, version, bank)
+        profile = moral_profile(user_id)
         rows = profile.scores
         header = f"{user} — {profile.evidence.films_used} films used"
         if profile.is_provisional:

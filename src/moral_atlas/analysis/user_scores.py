@@ -216,3 +216,55 @@ def score_preferences(
             confidence=round(evidence / (evidence + PRIOR_ITEMS), 4),
         ))
     return out
+
+
+# --------------------------------------------------------------------------
+# The discovered axes, in the shape the scoring above already expects
+# --------------------------------------------------------------------------
+#
+# `film_stances` above reads the LLM-derived dimension set: a model was asked
+# for eight axes, and `item_dimensions` records which axis each bank item was
+# assigned to AND a polarity, because the model was also asked which pole
+# affirming the item points to.
+#
+# The discovered factors carry no polarity, and the omission is not an
+# oversight. An axis produced by asking a model for one has a direction because
+# the model declared one; a factor produced by grouping items that films answer
+# together has whatever direction its propositions have when read as a set,
+# which is precisely what the naming step was shown. Inventing a polarity here
+# would be re-imposing the judgement this whole route exists to remove — so a
+# film's position on a factor is simply the mean of its verdicts on that
+# factor's items.
+
+
+def factor_axes(scorer: str, variant: str, bank_version: str) -> list[dict[str, Any]]:
+    """Named factors, shaped like `dimensions` rows so scoring is unchanged."""
+    with db.connect(read_only=True) as con:
+        rows = con.execute(
+            "SELECT factor_id, name, question, pole_high, pole_low FROM latent_factors "
+            "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
+            [scorer, variant, bank_version],
+        ).fetchall()
+    return [{"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
+             "pole_high": r["pole_high"], "pole_low": r["pole_low"]} for r in rows]
+
+
+def factor_stances(
+    scorer: str, variant: str, bank_version: str,
+) -> dict[str, dict[int, list[float]]]:
+    """{film_id: {factor_id: [verdict per item]}} from one model's own verdicts."""
+    with db.connect(read_only=True) as con:
+        assignments = {r["item_id"]: r["factor_id"] for r in con.execute(
+            "SELECT item_id, factor_id FROM latent_factor_items WHERE scorer=? "
+            "AND variant=? AND bank_version=?", [scorer, variant, bank_version])}
+        rows = con.execute(
+            "SELECT film_id, item_id, value FROM model_verdicts WHERE scorer=? "
+            "AND variant=? AND bank_version=?", [scorer, variant, bank_version],
+        ).fetchall()
+
+    stances: dict[str, dict[int, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        factor = assignments.get(row["item_id"])
+        if factor is not None:
+            stances[row["film_id"]][factor].append(float(row["value"]))
+    return {film: dict(by_factor) for film, by_factor in stances.items()}

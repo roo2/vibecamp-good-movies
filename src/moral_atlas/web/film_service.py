@@ -33,7 +33,12 @@ def deck_eligible_films() -> list[dict[str, Any]]:
     enumeration, so its films have no hand-written blind-story description. The
     blind pairs are nothing BUT that description — without one every pair would
     read "A story about the choices people make", which is not a choice between
-    two stories. Having a description is therefore the eligibility test.
+    two stories.
+
+    Artwork is deliberately NOT required here. The named cards need a poster and
+    `build_session_deck` enforces that separately, but the blind pairs show no
+    title and no image by design — they are two paragraphs of text — so an
+    artwork requirement would shrink the pair pool to no visible benefit.
     """
     return [film for film in db.list_films() if (film.get("description") or "").strip()]
 

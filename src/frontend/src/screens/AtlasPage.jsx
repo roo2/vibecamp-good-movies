@@ -141,6 +141,7 @@ function AtlasPage({ onBack }) {
       {selectedId && (
         <FilmDetail
           film={(corpus?.films || []).find((f) => f.id === selectedId)}
+          scorer={selected?.scorer}
           onClose={() => setSelectedId(null)}
         />
       )}

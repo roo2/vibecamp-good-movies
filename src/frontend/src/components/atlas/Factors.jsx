@@ -1,4 +1,5 @@
 import React from 'react'
+import { FactorDistribution, FactorPropositions, FilmAnchors } from './FactorDistribution.jsx'
 import { isClear } from '../../services/factorService.js'
 
 const pct = (value) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
@@ -60,16 +61,15 @@ function Factor({ factor }) {
         <div className="factor-detail">
           <p className="factor-pole"><b>Affirming</b> {factor.pole_high}</p>
           <p className="factor-pole"><b>Denying</b> {factor.pole_low}</p>
-          {!!factor.examples?.length && (
-            <>
-              <p className="factor-examples-label">
-                Propositions the films grouped here — judge the name against them:
-              </p>
-              <ul className="factor-examples">
-                {factor.examples.map((text) => <li key={text}>{text}</li>)}
-              </ul>
-            </>
-          )}
+
+          <FactorDistribution scores={factor.distribution} poleLow poleHigh />
+          <FilmAnchors high={factor.high} low={factor.low} />
+
+          <p className="factor-examples-label">
+            The propositions this factor is made of. Films answered these together —
+            that co-movement is the axis; the name above is only a description of it.
+          </p>
+          <FactorPropositions propositions={factor.propositions} />
         </div>
       )}
     </li>

@@ -598,6 +598,100 @@ def dimension_count(
                       "two scorers can both say eight and cut the material differently.[/]")
 
 
+@app.command("model-bank")
+def model_bank(
+    scorers: str = typer.Option("deepseek", help="Comma-separated aliases."),
+    variant: str = typer.Option("subs", help="Which harvest to cut from."),
+    threshold: float = typer.Option(0.45, help="Clustering distance threshold."),
+    prefix: str = typer.Option("", help="Bank version prefix; defaults to the alias."),
+) -> None:
+    """Cut a model's OWN propositions into its OWN item bank.
+
+    The shared b1 bank is Claude's: Claude wrote those propositions and Claude
+    canonicalised them, so every model scored against it is answering Claude's
+    questions. A model that writes its own bank, scores films against it and
+    then has the factors named from its own verdicts is measured end to end in
+    its own terms — which is the only way a difference between models can be a
+    difference about films rather than about whose questions were asked.
+
+    The bank lands in `item_bank` under its own version, so everything
+    downstream — scoring, the response matrix, the factor analysis — works on it
+    unchanged.
+    """
+    from .analysis import bank as bank_module
+    from .llm.providers import client_for
+
+    for alias in _ready_scorers(scorers):
+        rows = bank_module.model_propositions(alias, variant)
+        if not rows:
+            console.print(f"[yellow]{alias} has no {variant!r} harvest — "
+                          f"run `atlas model-propose --variant {variant}` first[/]")
+            continue
+
+        version = f"{prefix or alias}-{variant}"
+        clusters = bank_module.cluster_propositions(threshold, rows)
+        console.print(f"\n[bold]{alias}[/] {len(rows)} propositions → "
+                      f"{len(clusters)} clusters")
+        result = bank_module.build_bank(version, clusters, client_for(alias),
+                                        progress=console.print)
+        console.print(f"  bank [bold]{version}[/]: {result['n_items']} items, "
+                      f"{result['n_dropped']} dropped, "
+                      f"{result['n_inversions_split']} inversions split")
+
+
+@app.command("name-factors")
+def name_factors_cmd(
+    scorers: str = typer.Option("deepseek", help="Comma-separated aliases."),
+    variant: str = typer.Option("subs", help="Evidence condition to read. One, not a mix."),
+    bank: str = typer.Option("b1"),
+    iterations: int = typer.Option(200, help="Permutations for the parallel-analysis null."),
+    min_films: int = typer.Option(3, help="Drop items scored on fewer films than this."),
+) -> None:
+    """Name the axes the FILMS produced, rather than asking a model for eight.
+
+    The statistics decide how many factors there are and which propositions load
+    onto each; a model is then asked only to read a finished group and say what
+    it is about. Names will differ between scorers, and should: two models that
+    engaged different items measured different corpora, so the groups handed to
+    the namer are not the same groups.
+    """
+    from .analysis import factor_names, latent
+
+    texts = factor_names.bank_texts(bank)
+    for alias in _ready_scorers(scorers):
+        try:
+            report = latent.analyse(None if alias == "opus" else alias, bank,
+                                    n_iter=iterations, min_films=min_films, variant=variant)
+        except RuntimeError as error:
+            console.print(f"[yellow]{alias}: {error}[/]")
+            continue
+
+        console.print(f"\n[bold]{alias}[/] — {report['films']} films × {report['items']} items "
+                      f"({variant}) → [bold]{report['n_clear_factors']}[/] factors clearing "
+                      f"the null by >=5% (of {report['n_factors']} clearing it at all)")
+        client = None
+        from .llm.providers import client_for
+        client = client_for(alias)
+        named = factor_names.name_factors(report, texts, client=client, alias=alias,
+                                          progress=console.print)
+        factor_names.persist(alias, report, named, bank, usage=client.usage.as_dict())
+
+        table = Table("axis", "items", "margin", "question", box=None)
+        for row in named:
+            colour = "green" if row["margin"] and row["margin"] >= 0.05 else "yellow"
+            name = row["name"] if row["coherent"] else f"[dim]{row['name']}?[/]"
+            table.add_row(name, str(row["n_items"]),
+                          f"[{colour}]{row['margin']:+.1%}[/]" if row["margin"] else "-",
+                          row["question"][:70])
+        console.print(table)
+        incoherent = [r["name"] for r in named if not r["coherent"]]
+        if incoherent:
+            console.print(f"[yellow]{len(incoherent)} factor(s) the namer would not call "
+                          f"coherent:[/] {', '.join(incoherent)}")
+            console.print("[dim]A statistical factor that resists naming is a result, not a "
+                          "failure — it means those items co-occur without sharing a question.[/]")
+
+
 @app.command("model-propose")
 def model_propose(
     scorers: str = typer.Option("deepseek", help="Comma-separated aliases. DeepSeek by default, on cost."),

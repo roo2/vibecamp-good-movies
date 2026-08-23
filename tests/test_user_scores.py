@@ -193,6 +193,9 @@ def scored_atlas(monkeypatch, tmp_path):
         db.upsert_film({
             "film_id": f"film-{index}", "title": f"Film {index}", "year": 2000 + index,
             "description": f"A spoiler-free story prompt number {index}.",
+            # The named cards carry a poster, so the deck now requires five
+            # eligible films to have one before it will deal a session.
+            "artwork_url": f"https://example.invalid/{index}.jpg",
         })
     with db.connect() as con:
         for index in range(20):
@@ -416,7 +419,8 @@ def test_default_profile_falls_back_when_the_shared_map_has_not_been_derived(mon
         # A description is what makes a film deck-eligible now that the research
         # corpus is far larger than the curated one, and this test needs a session.
         db.upsert_film({"film_id": f"film-{index}", "title": f"Film {index}",
-                        "description": f"A spoiler-free story prompt number {index}."})
+                        "description": f"A spoiler-free story prompt number {index}.",
+                        "artwork_url": f"https://example.invalid/{index}.jpg"})
     headers, _ = _start_session()
     response = client.get("/api/profile/moral", headers=headers)
     assert response.status_code == 200

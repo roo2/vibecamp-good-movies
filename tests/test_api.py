@@ -143,7 +143,7 @@ def test_session_members_receive_the_same_named_and_blind_film_deck(isolated_web
     assert direct_ids.isdisjoint(blind_ids)
 
 
-def test_group_session_tracks_members_and_unlocks_when_everyone_completes():
+def test_group_session_tracks_members_and_unlocks_when_everyone_completes(isolated_web_database):
     host = client.post("/api/access", json={"name": "Ada"}).json()
     guest = client.post("/api/access", json={"name": "Sam"}).json()
     host_headers = {"X-Session-Token": host["token"]}
@@ -165,6 +165,26 @@ def test_group_session_tracks_members_and_unlocks_when_everyone_completes():
     session_status = client.get(f"/api/sessions/{share_token}", headers=host_headers).json()
     assert [member["user"]["name"] for member in session_status["members"]] == ["Ada", "Sam"]
     assert all(member["completed_at"] for member in session_status["members"])
+
+    current = client.get(f"/api/test/results/current?share_token={share_token}", headers=guest_headers)
+    assert current.status_code == 200
+    assert current.json()["answers"] == {"pair-1": "a"}
+    assert client.post(f"/api/sessions/{share_token}/unready", headers=guest_headers).status_code == 200
+    reopened_status = client.get(f"/api/sessions/{share_token}", headers=host_headers).json()
+    assert reopened_status["members"][1]["completed_at"] is None
+    assert client.post(f"/api/sessions/{share_token}/continue", headers=host_headers).status_code == 403
+
+    revised = client.post("/api/test/results", headers=guest_headers, json={
+        "answers": {"pair-1": "b"}, "session_share_token": share_token,
+    })
+    assert revised.status_code == 201
+    assert client.get(f"/api/test/results/current?share_token={share_token}", headers=guest_headers).json()["answers"] == {"pair-1": "b"}
+    with isolated_web_database.connect(read_only=True) as con:
+        assert con.execute(
+            "SELECT count(*) FROM test_results WHERE user_id=? AND session_share_token=?",
+            [guest["user"]["id"], share_token],
+        ).fetchone()[0] == 1
+
     continued = client.post(f"/api/sessions/{share_token}/continue", headers=host_headers)
     assert continued.status_code == 200
     assert continued.json()["status"] == "results_started"
@@ -226,3 +246,11 @@ def test_shortlist_no_hides_a_film_from_other_members_and_unanimous_yes_selects_
 
     persisted_selection = client.get(f"/api/shortlist/selection?share_token={share_token}", headers=host_headers)
     assert persisted_selection.json() == guest_vote.json()
+
+    reopened = client.post("/api/shortlist/reopen", headers=guest_headers, json={"share_token": share_token})
+    assert reopened.json() == {"state": "pending"}
+    assert client.get(f"/api/shortlist/selection?share_token={share_token}", headers=host_headers).json() == {"state": "pending"}
+    host_replacement = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers).json()
+    guest_replacement = client.get(f"/api/shortlist/next?share_token={share_token}", headers=guest_headers).json()
+    assert host_replacement["film"]["id"] == guest_replacement["film"]["id"]
+    assert host_replacement["film"]["id"] != selected_id

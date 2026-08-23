@@ -42,6 +42,10 @@ export function beginResultsWait(access, shareToken) {
   return apiClient.post(`/api/sessions/${shareToken}/wait`, {}, headers(access))
 }
 
+export function markSessionMemberUnready(access, shareToken) {
+  return apiClient.post(`/api/sessions/${shareToken}/unready`, {}, headers(access))
+}
+
 export function continueWithoutMembers(access, shareToken) {
   return apiClient.post(`/api/sessions/${shareToken}/continue`, {}, headers(access))
 }

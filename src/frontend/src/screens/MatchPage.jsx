@@ -1,56 +1,70 @@
-import FilmAxisStrip from '../components/FilmAxisStrip.jsx'
 import React, { useEffect, useState } from 'react'
-import { loadShortlistSelection, reopenShortlist } from '../services/shortlistService.js'
+import FilmAxisStrip from '../components/FilmAxisStrip.jsx'
+import { loadShortlistSelection } from '../services/shortlistService.js'
 
-export default function MatchPage({ access, shareToken, film, onKeepLooking, onStartOver }) {
-  const [selectedFilm, setSelectedFilm] = useState(film)
+// The three films you both said yes to.
+//
+// It used to be one, announced the moment it appeared, which decided the evening
+// for a couple who were enjoying deciding it. Three is enough to choose between
+// and few enough that choosing is not a second argument — and the choosing is
+// deliberately left to them: nothing here picks a winner.
+export default function MatchPage({ access, shareToken, films: initial, onKeepLooking, onStartOver }) {
+  const [films, setFilms] = useState(initial || [])
+  const [openId, setOpenId] = useState(null)
   const [error, setError] = useState(null)
-  const [reopening, setReopening] = useState(false)
 
   useEffect(() => {
     if (!access || !shareToken) return undefined
     let active = true
-    function refreshSelection() {
-      loadShortlistSelection(access, shareToken).then((result) => {
+    loadShortlistSelection(access, shareToken)
+      .then((result) => {
         if (!active) return
-        setError(null)
-        if (result.state === 'selected') setSelectedFilm((current) => current?.id === result.film.id ? current : result.film)
-        else if (selectedFilm) onKeepLooking()
-      }).catch((requestError) => active && setError(requestError.message))
-    }
-    refreshSelection()
-    const poll = window.setInterval(refreshSelection, 1500)
-    return () => {
-      active = false
-      window.clearInterval(poll)
-    }
-  }, [access, onKeepLooking, selectedFilm, shareToken])
+        if (result.state === 'shortlist') setFilms(result.films)
+      })
+      .catch((requestError) => active && setError(requestError.message))
+    return () => { active = false }
+  }, [access, shareToken])
 
-  async function handleSomethingElse() {
-    if (reopening) return
-    setReopening(true)
-    setError(null)
-    try {
-      await reopenShortlist(access, shareToken)
-      onKeepLooking()
-    } catch (requestError) {
-      setError(requestError.message)
-      setReopening(false)
-    }
-  }
+  if (!films.length) return <main className="app-page"><p className="message">Gathering your shortlist…</p></main>
 
-  if (!selectedFilm) return <main className="app-page"><p className="message">Loading tonight’s film…</p></main>
-  const watchUrl = `https://www.justwatch.com/au/search?q=${encodeURIComponent(selectedFilm.title)}`
   return <main className="app-page match-page"><section className="match-sheet">
     <div className="sheet-handle" />
     <p className="screen-label"><i /> <i /> You both said yes</p>
-    <h1>Tonight’s<br /><em>shared pick.</em></h1>
-    <div className="match-film"><div className="match-poster">Shared<br />match</div><div><h2>{selectedFilm.title}</h2>{selectedFilm.description && <p>{selectedFilm.description}</p>}<p>You all chose it independently.</p></div></div>
-    <FilmAxisStrip filmId={selectedFilm.id} />
+    <h1>Your <em>shortlist.</em></h1>
+    <p className="match-lede">
+      {films.length} {films.length === 1 ? 'film' : 'films'} you each said yes to, without seeing
+      what the other one picked. Pick whichever you fancy tonight.
+    </p>
     {error && <p className="message" role="alert">{error}</p>}
+
+    <ul className="match-list">
+      {films.map((film) => (
+        <li key={film.id} className={openId === film.id ? 'match-item open' : 'match-item'}>
+          <button type="button" onClick={() => setOpenId(openId === film.id ? null : film.id)}
+                  aria-expanded={openId === film.id}>
+            <span className="match-art" style={film.artwork_url
+              ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.55), transparent), url(${film.artwork_url})` }
+              : {}} aria-hidden="true" />
+            <span className="match-title">
+              <b>{film.title}</b>
+              <em>{film.year}</em>
+              {film.note && <small>{film.note}</small>}
+            </span>
+          </button>
+          {openId === film.id && (
+            <div className="match-detail">
+              {film.description && <p>{film.description}</p>}
+              <FilmAxisStrip filmId={film.id} />
+              <a className="peach-button" href={`https://www.justwatch.com/au/search?q=${encodeURIComponent(film.title)}`}
+                 target="_blank" rel="noreferrer">See where to watch <span aria-hidden="true">↗</span></a>
+            </div>
+          )}
+        </li>
+      ))}
+    </ul>
+
     <div className="match-actions">
-      <a className="peach-button" href={watchUrl} target="_blank" rel="noreferrer">See where to watch <span aria-hidden="true">↗</span></a>
-      <button className="match-secondary-button" type="button" disabled={reopening} onClick={handleSomethingElse}>Something else</button>
+      <button className="match-secondary-button" type="button" onClick={onKeepLooking}>Keep looking</button>
       <button className="match-text-button" type="button" onClick={onStartOver}>Start over</button>
     </div>
   </section></main>

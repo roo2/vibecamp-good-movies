@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from moral_atlas.web.app import app
-from moral_atlas.web.film_service import DIRECT_CARDS
+from moral_atlas.web.film_service import DIRECT_CARDS, MIN_CARDS
 
 
 client = TestClient(app)
@@ -117,13 +117,13 @@ def test_session_direct_deck_uses_only_films_with_artwork(isolated_web_database)
 
 
 def test_session_deck_needs_enough_eligible_films(isolated_web_database):
-    """One short of a full deck is no deck, rather than a short one."""
+    """A short deck is fine; a deck too short to read anybody is not."""
     from moral_atlas.web.film_service import build_session_deck
 
     films = isolated_web_database.list_films()
     with isolated_web_database.connect() as con:
         con.execute("UPDATE films SET artwork_url=NULL")
-        for film in films[:DIRECT_CARDS - 1]:
+        for film in films[:MIN_CARDS - 1]:
             con.execute("UPDATE films SET artwork_url=? WHERE film_id=?",
                         ["https://example.test/p.jpg", film["film_id"]])
 
@@ -224,7 +224,15 @@ def test_host_can_continue_after_waiting_ten_minutes_with_incomplete_members(iso
     assert continued.json()["status"] == "results_started"
 
 
-def test_shortlist_no_hides_a_film_from_other_members_and_unanimous_yes_selects_it():
+def test_shortlist_no_hides_a_film_and_three_shared_yeses_make_a_shortlist():
+    """A no removes a film for everyone; three mutual yeses end the swiping.
+
+    The product used to stop at the first film both people wanted, which decided
+    the evening for a couple who were enjoying deciding it. Agreement now
+    accumulates, and the swiping ends with a shortlist to choose between.
+    """
+    from moral_atlas.web.store import MATCHES_WANTED
+
     host = client.post("/api/access", json={"name": "Ada"}).json()
     guest = client.post("/api/access", json={"name": "Sam"}).json()
     host_headers = {"X-Session-Token": host["token"]}
@@ -240,30 +248,66 @@ def test_shortlist_no_hides_a_film_from_other_members_and_unanimous_yes_selects_
         "share_token": share_token, "film_id": rejected_id, "reaction": "no",
     }).json()["state"] == "continue"
 
+    # One person's no takes the film off both decks.
     guest_next = client.get(f"/api/shortlist/next?share_token={share_token}", headers=guest_headers).json()
     assert guest_next["state"] == "card"
     assert guest_next["film"]["id"] != rejected_id
-    selected_id = guest_next["film"]["id"]
     host_next = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers).json()
-    assert host_next["film"]["id"] == selected_id
+    assert host_next["film"]["id"] == guest_next["film"]["id"]
 
-    host_vote = client.post("/api/shortlist/reactions", headers=host_headers, json={
-        "share_token": share_token, "film_id": selected_id, "reaction": "yes",
-    })
-    assert host_vote.json()["state"] == "continue"
-    guest_vote = client.post("/api/shortlist/reactions", headers=guest_headers, json={
-        "share_token": share_token, "film_id": selected_id, "reaction": "yes",
-    })
-    assert guest_vote.json()["state"] == "selected"
-    assert guest_vote.json()["film"]["id"] == selected_id
+    agreed = []
+    while len(agreed) < MATCHES_WANTED:
+        card = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers).json()
+        assert card["state"] == "card", "the deck ran out before the shortlist filled"
+        film_id = card["film"]["id"]
+        host_vote = client.post("/api/shortlist/reactions", headers=host_headers, json={
+            "share_token": share_token, "film_id": film_id, "reaction": "yes",
+        }).json()
+        # One person wanting it is never enough, however many they have wanted.
+        assert host_vote["state"] == "continue"
+        guest_vote = client.post("/api/shortlist/reactions", headers=guest_headers, json={
+            "share_token": share_token, "film_id": film_id, "reaction": "yes",
+        }).json()
+        agreed.append(film_id)
+        expected = "shortlist" if len(agreed) == MATCHES_WANTED else "continue"
+        assert guest_vote["state"] == expected, (
+            f"{len(agreed)} mutual yes(es) should read as {expected}")
+        if expected == "continue":
+            assert guest_vote["matches"] == len(agreed)
 
-    persisted_selection = client.get(f"/api/shortlist/selection?share_token={share_token}", headers=host_headers)
-    assert persisted_selection.json() == guest_vote.json()
+    assert [film["id"] for film in guest_vote["films"]] == agreed
+    assert all("artwork_url" in film for film in guest_vote["films"])
 
-    reopened = client.post("/api/shortlist/reopen", headers=guest_headers, json={"share_token": share_token})
-    assert reopened.json() == {"state": "pending"}
-    assert client.get(f"/api/shortlist/selection?share_token={share_token}", headers=host_headers).json() == {"state": "pending"}
-    host_replacement = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers).json()
-    guest_replacement = client.get(f"/api/shortlist/next?share_token={share_token}", headers=guest_headers).json()
-    assert host_replacement["film"]["id"] == guest_replacement["film"]["id"]
-    assert host_replacement["film"]["id"] != selected_id
+    # Both of them see the same shortlist, and asking for another card returns it
+    # rather than handing out a film nobody needs to judge.
+    for headers in (host_headers, guest_headers):
+        assert client.get(f"/api/shortlist/selection?share_token={share_token}",
+                          headers=headers).json() == guest_vote
+        assert client.get(f"/api/shortlist/next?share_token={share_token}",
+                          headers=headers).json()["state"] == "shortlist"
+
+
+def test_a_removed_yes_takes_a_film_back_off_the_shortlist(isolated_web_database):
+    """The shortlist is derived from the votes, so it cannot disagree with them."""
+    from moral_atlas.web.store import _agreed_films
+
+    host = client.post("/api/access", json={"name": "Ada"}).json()
+    guest = client.post("/api/access", json={"name": "Sam"}).json()
+    host_headers = {"X-Session-Token": host["token"]}
+    share_token = client.post("/api/sessions", headers=host_headers).json()["share_token"]
+    client.post(f"/api/sessions/{share_token}/join", headers={"X-Session-Token": guest["token"]})
+
+    card = client.get(f"/api/shortlist/next?share_token={share_token}", headers=host_headers).json()
+    film_id = card["film"]["id"]
+    for token in (host["token"], guest["token"]):
+        client.post("/api/shortlist/reactions", headers={"X-Session-Token": token}, json={
+            "share_token": share_token, "film_id": film_id, "reaction": "yes",
+        })
+
+    with isolated_web_database.connect() as con:
+        session_id = con.execute("SELECT session_id FROM group_sessions WHERE share_token=?",
+                                 [share_token]).fetchone()["session_id"]
+        assert _agreed_films(con, session_id) == [film_id]
+        con.execute("DELETE FROM shortlist_reactions WHERE session_id=? AND user_id=?",
+                    [session_id, guest["user"]["id"]])
+        assert _agreed_films(con, session_id) == []

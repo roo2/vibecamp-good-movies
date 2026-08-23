@@ -41,8 +41,18 @@ def films(
 
 
 @router.get("/next")
-def next_film(share_token: str, session: Annotated[Session, Depends(current_session)]) -> dict[str, object]:
-    result = next_shortlist_film(share_token, session.user.id)
+def next_film(
+    share_token: str,
+    session: Annotated[Session, Depends(current_session)],
+    since: int = 0,
+) -> dict[str, object]:
+    """`since`: how many shortlisted films the caller has already been shown.
+
+    Left at zero this returns the shortlist as soon as there is one. Passed the
+    count they have seen, the deck keeps dealing until the shortlist has grown —
+    which is what "keep looking" means.
+    """
+    result = next_shortlist_film(share_token, session.user.id, since=max(0, since))
     if result is None:
         raise HTTPException(status_code=404, detail="Session not found.")
     return result

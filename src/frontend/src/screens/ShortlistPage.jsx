@@ -34,7 +34,7 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
     if (fetching.current) return
     fetching.current = true
     try {
-      const result = await loadNextShortlistFilm(access, shareToken)
+      const result = await loadNextShortlistFilm(access, shareToken, matchesSeen)
       if (result.state === 'shortlist') { finish(result.films); return }
       if (result.state === 'exhausted') { setState('exhausted'); return }
       // Anything already swiped locally is dropped: the server has not heard
@@ -51,7 +51,7 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
     } finally {
       fetching.current = false
     }
-  }, [access, shareToken, finish])
+  }, [access, shareToken, finish, matchesSeen])
 
   useEffect(() => { refill() }, [refill])
 
@@ -60,8 +60,10 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
     const poll = window.setInterval(() => {
       loadShortlistSelection(access, shareToken)
         .then((selection) => {
-          if (selection.state === 'shortlist') finish(selection.films)
-          else if (typeof selection.matches === 'number') setMatches(selection.matches)
+          if (selection.state === 'shortlist') {
+            setMatches(selection.films.length)
+            finish(selection.films)
+          } else if (typeof selection.matches === 'number') setMatches(selection.matches)
         })
         .catch(() => {})
     }, 3000)
@@ -96,13 +98,19 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
   }
   if (!film) return <main className="app-page"><p className="message">{solo ? 'Finding films for you…' : 'Finding films for the two of you…'}</p></main>
 
-  const remaining = Math.max(0, 3 - matches)
+  // Past the target the count is no longer a countdown: they came back through
+  // "keep looking", and "0 to go" would read as a finished job they are somehow
+  // still doing.
+  const WANTED = 3
+  const progress = matches === 0
+    ? (solo ? 'Say yes to shortlist it' : 'Both say yes to shortlist it')
+    : matches < WANTED
+      ? `${matches} shortlisted · ${WANTED - matches} to go`
+      : `${matches} shortlisted · looking for more`
   return <main className="app-page"><section className="phone-screen deck-screen">
     <header className="deck-header">
       <span>{solo ? 'Picked for you' : 'Films for the two of you'}</span>
-      <span>{matches
-        ? `${matches} shortlisted · ${remaining} to go`
-        : solo ? 'Say yes to shortlist it' : 'Both say yes to shortlist it'}</span>
+      <span>{progress}</span>
     </header>
     <article className="deck-card swipe-card" key={film.id} {...swipe.handlers} style={swipe.style}>
       <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× No</span>

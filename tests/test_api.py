@@ -363,3 +363,50 @@ def test_someone_can_take_it_alone_and_without_giving_a_name(isolated_web_databa
     companions = client.get(f"/api/profile/moral/session/{share_token}", headers=headers)
     assert companions.status_code == 200
     assert companions.json()["companions"] == []
+
+
+def test_keep_looking_deals_more_cards_instead_of_the_same_shortlist(isolated_web_database):
+    """"Keep looking" was a dead end that hung the screen.
+
+    A full shortlist ended the deck, so a person who closed it and asked for
+    another card got the same three films back — and the screen, waiting for a
+    card it would never be given, sat on "Finding films for you…" forever.
+    Telling the server what you have already seen turns that terminal state into
+    a threshold.
+    """
+    from moral_atlas.web.store import MATCHES_WANTED
+
+    me = client.post("/api/access", json={}).json()
+    headers = {"X-Session-Token": me["token"]}
+    share_token = client.post("/api/sessions", headers=headers).json()["share_token"]
+    client.post(f"/api/sessions/{share_token}/start", headers=headers)
+
+    for _ in range(MATCHES_WANTED):
+        card = client.get(f"/api/shortlist/next?share_token={share_token}", headers=headers).json()
+        assert card["state"] == "card"
+        client.post("/api/shortlist/reactions", headers=headers, json={
+            "share_token": share_token, "film_id": card["film"]["id"], "reaction": "yes",
+        })
+
+    # Asking with no `since` still ends the deck, which is what fills the screen
+    # the first time the shortlist completes.
+    closed = client.get(f"/api/shortlist/next?share_token={share_token}", headers=headers).json()
+    assert closed["state"] == "shortlist"
+    assert len(closed["films"]) == MATCHES_WANTED
+
+    # Having seen those three, the deck carries on rather than repeating itself.
+    resumed = client.get(
+        f"/api/shortlist/next?share_token={share_token}&since={MATCHES_WANTED}",
+        headers=headers).json()
+    assert resumed["state"] == "card", "keep looking must deal a card, not the shortlist again"
+    assert resumed["film"]["id"] not in {film["id"] for film in closed["films"]}
+
+    # And a fourth agreement is what ends it the second time.
+    client.post("/api/shortlist/reactions", headers=headers, json={
+        "share_token": share_token, "film_id": resumed["film"]["id"], "reaction": "yes",
+    })
+    grown = client.get(
+        f"/api/shortlist/next?share_token={share_token}&since={MATCHES_WANTED}",
+        headers=headers).json()
+    assert grown["state"] == "shortlist"
+    assert len(grown["films"]) == MATCHES_WANTED + 1

@@ -7,8 +7,12 @@ export async function loadShortlist(access, shareToken) {
   })).films
 }
 
-export function loadNextShortlistFilm(access, shareToken) {
-  return apiClient.get(`/api/shortlist/next?share_token=${encodeURIComponent(shareToken)}`, { headers: { 'X-Session-Token': access.token } })
+// `since` is how many shortlisted films this person has already been shown. Zero
+// means "tell me the moment there is a shortlist"; passing the count they have
+// seen keeps the deck dealing until it has grown, which is what "keep looking"
+// asks for.
+export function loadNextShortlistFilm(access, shareToken, since = 0) {
+  return apiClient.get(`/api/shortlist/next?share_token=${encodeURIComponent(shareToken)}&since=${since}`, { headers: { 'X-Session-Token': access.token } })
 }
 
 export function loadShortlistSelection(access, shareToken) {

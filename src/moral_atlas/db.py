@@ -225,6 +225,46 @@ CREATE INDEX IF NOT EXISTS idx_model_axis_items_lookup
 CREATE INDEX IF NOT EXISTS idx_model_propositions_film
     ON model_propositions (scorer, film_id);
 
+-- Axes discovered rather than requested. `dimensions` holds the other kind: a
+-- model was asked for eight and returned eight, so the count and the grouping
+-- were both its judgement. These come the other way round — the films' own
+-- responses decide how many factors there are and which items load together,
+-- and a model is asked only to read a finished group and say what it is about.
+--
+-- Keyed by scorer AND variant, because both change the answer. A model that
+-- engages 272 items per film and one that engages 6 are not measuring the same
+-- corpus, and a film read from its dialogue is not answering the same
+-- instrument as one read from an encyclopaedia's plot summary.
+CREATE TABLE IF NOT EXISTS latent_factors (
+    scorer       TEXT,
+    variant      TEXT,
+    bank_version TEXT,
+    factor_id    INTEGER,
+    name         TEXT,
+    question     TEXT,
+    pole_high    TEXT,
+    pole_low     TEXT,
+    n_items      INTEGER,
+    eigenvalue   REAL,
+    margin       REAL,   -- how far it cleared the parallel-analysis null
+    model        TEXT,   -- who named it, not who found it
+    run_id       TEXT,
+    created_at   TEXT,
+    PRIMARY KEY (scorer, variant, bank_version, factor_id)
+);
+
+CREATE TABLE IF NOT EXISTS latent_factor_items (
+    scorer       TEXT,
+    variant      TEXT,
+    bank_version TEXT,
+    item_id      TEXT,
+    factor_id    INTEGER,
+    PRIMARY KEY (scorer, variant, bank_version, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_latent_factor_items_lookup
+    ON latent_factor_items (scorer, variant, bank_version, factor_id);
+
 -- A scorer declining to judge is a finding, so it is recorded rather than lost
 -- in a log: guardrails that fire are exactly what the study is measuring.
 CREATE TABLE IF NOT EXISTS model_refusals (

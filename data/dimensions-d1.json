@@ -1,0 +1,5128 @@
+{
+  "dimensions": [
+    {
+      "dim_id": 1,
+      "name": "Payback or Mercy",
+      "question": "When someone has done grave harm, should they be answered with retribution and force, or with restraint and forgiveness?",
+      "pole_high": "Wrongs demand an answer: vengeance, punishment and even killing are legitimate and sometimes obligatory responses, and sparing a wrongdoer betrays those they hurt.",
+      "pole_low": "Mercy, restraint and forgiveness are the higher response; unearned pardon transforms people, while retribution only extends the cycle of harm."
+    },
+    {
+      "dim_id": 2,
+      "name": "Own Fault or Circumstance",
+      "question": "Is a wrongdoer the author of their own acts, or the product of injury, deprivation and coercion that mitigate their guilt?",
+      "pole_high": "People remain responsible for what they do whatever their history, orders or pressures; character shows itself in the deed and excuses do not dissolve guilt.",
+      "pole_low": "Those who harm were first harmed, deprived or coerced, so wrongdoing is explicable and partly excused, and people can be genuinely remade rather than fixed by their worst act."
+    },
+    {
+      "dim_id": 3,
+      "name": "Conscience Against the Rules",
+      "question": "When private conscience collides with law, orders and official institutions, which should give way?",
+      "pole_high": "Conscience is the higher court: laws, oaths of office and superiors' orders never absolve a person, silence and complicity are betrayals, and institutions cannot be trusted to find truth or do justice.",
+      "pole_low": "Law, procedure and lawful command are the proper measure of right; obedience discharges one's responsibility, and established institutions can be relied on to establish guilt and protect people."
+    },
+    {
+      "dim_id": 4,
+      "name": "Rank or Equal Standing",
+      "question": "Does the existing ordering of people by birth, wealth, sex and class reflect real desert, or is it an injustice owed correction?",
+      "pole_high": "Standing should rest on merit, character and consent; hierarchies of blood, money, sex and race are arbitrary injuries, poverty is produced by how society is arranged, and the powerful owe the poor real obligations.",
+      "pole_low": "Rank, property and inherited position confer genuine authority and deference; the social order and the roles within it are natural or deserved, and people's condition largely reflects their own conduct."
+    },
+    {
+      "dim_id": 5,
+      "name": "My Own Path or My Given Place",
+      "question": "Should a person author a life of their own choosing, or take up the place, role and obligations they were born into?",
+      "pole_high": "A person's first duty is to their own calling, ambition and inner truth, even if that means leaving family, station and the life assigned to them.",
+      "pole_low": "Fulfilment and virtue lie in honouring the claims of family, community and inherited role; staying rooted and meeting one's obligations is the fuller life."
+    },
+    {
+      "dim_id": 6,
+      "name": "Each Other's Keeper or Each His Own",
+      "question": "Are we bound to trust, aid and sacrifice for others \u2014 including strangers \u2014 or is looking after oneself the honest way to live?",
+      "pole_high": "Obligation and trust reach beyond our own circle: helping strangers at real cost, keeping faith without enforcement, and standing with the persecuted are among the highest goods.",
+      "pole_low": "Self-interest is the truthful guide and clear-sighted cynicism the realistic view; care is for one's own, and risking oneself for others is naivety."
+    },
+    {
+      "dim_id": 7,
+      "name": "A World That Settles Accounts",
+      "question": "Does the world ultimately reward the good and punish the wicked, or is it indifferent to moral desert?",
+      "pole_high": "There is a moral order \u2014 providence, justice or fate \u2014 under which wrongdoers are caught, patient suffering is redeemed, and doing right is eventually vindicated.",
+      "pole_low": "The universe keeps no accounts: the wicked often prosper, the innocent suffer for nothing, and whatever meaning suffering has must be made by how people bear it."
+    },
+    {
+      "dim_id": 8,
+      "name": "Telling or Sparing",
+      "question": "Should the truth be spoken and exposed whatever it costs, or may it be concealed to protect people from harm?",
+      "pole_high": "Truth must be told and wrongdoing exposed even at ruinous cost; honesty repairs what deception damaged, and silence about what one knows is itself a wrong.",
+      "pole_low": "Concealment can be an act of love or decency: shielding the vulnerable, guarding another's dignity, and withholding devastating truths can matter more than disclosure."
+    }
+  ],
+  "assignments": [
+    {
+      "item_id": "I241",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I242",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I243",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I244",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I245",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I246",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I247",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I248",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I249",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I250",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I251",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I252",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I253",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I254",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I255",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I256",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I257",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I258",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I259",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I260",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I261",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I262",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I263",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I264",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I265",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I266",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I267",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I268",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I269",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I270",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I271",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I272",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I273",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I274",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I275",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I276",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I277",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I278",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I279",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I280",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I281",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I282",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I283",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I284",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I285",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I286",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I287",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I288",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I289",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I290",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I291",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I292",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I293",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I294",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I295",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I296",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I297",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I298",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I299",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I300",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I301",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I302",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I303",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I304",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I305",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I306",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I307",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I308",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I309",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I310",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I311",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I312",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I313",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I314",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I315",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I316",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I317",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I318",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I319",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I320",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I321",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I322",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I323",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I324",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I325",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I326",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I327",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I328",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I329",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I330",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I331",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I332",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I333",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I334",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I335",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I336",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I337",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I338",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I339",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I340",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I341",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I342",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I343",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I344",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I345",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I346",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I347",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I348",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I349",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I350",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I351",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I352",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I353",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I354",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I355",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I356",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I357",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I358",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I359",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I360",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I181",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I182",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I183",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I184",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I185",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I186",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I187",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I188",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I189",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I190",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I191",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I192",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I193",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I194",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I195",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I196",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I197",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I198",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I199",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I200",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I201",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I202",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I203",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I204",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I205",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I206",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I207",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I208",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I209",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I210",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I211",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I212",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I213",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I214",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I215",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I216",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I217",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I218",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I219",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I220",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I221",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I222",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I223",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I224",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I225",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I226",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I227",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I228",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I229",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I230",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I231",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I232",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I233",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I234",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I235",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I236",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I237",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I238",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I239",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I240",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I001",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.92
+    },
+    {
+      "item_id": "I002",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I003",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I004",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I005",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I006",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I007",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I008",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I009",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I010",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I011",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I012",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I013",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I014",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I015",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I016",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I017",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I018",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I019",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I020",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I021",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I022",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I023",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I024",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I025",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I026",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I027",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I028",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I029",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I030",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I031",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I032",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I033",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I034",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.2
+    },
+    {
+      "item_id": "I035",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I036",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I037",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I038",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I039",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I040",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I041",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I042",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I043",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I044",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I045",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I046",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I047",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I048",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I049",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I050",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I051",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I052",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I053",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I054",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I055",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I056",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I057",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I058",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I059",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I060",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I061",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I062",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I063",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I064",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I065",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I066",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I067",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I068",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I069",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I070",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I071",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I072",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I073",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I074",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I075",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I076",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I077",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I078",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I079",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I080",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I081",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I082",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I083",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I084",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I085",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I086",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I087",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I088",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I089",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I090",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I091",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I092",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I093",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I094",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I095",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I096",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I097",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I098",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I099",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I100",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I101",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I102",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I103",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I104",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I105",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I106",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I107",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I108",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I109",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I110",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I111",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I112",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I113",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I114",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I115",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I116",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I117",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I118",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I119",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I120",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I121",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I122",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I123",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I124",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I125",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I126",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I127",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I128",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I129",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I130",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I131",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I132",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I133",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I134",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I135",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I136",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I137",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I138",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I139",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I140",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I141",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I142",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I143",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I144",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I145",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I146",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I147",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I148",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I149",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I150",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I151",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I152",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I153",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I154",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I155",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I156",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I157",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I158",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I159",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I160",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I161",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I162",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I163",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I164",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I165",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I166",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I167",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I168",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I169",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I170",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I171",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I172",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I173",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I174",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I175",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I176",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I177",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I178",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I179",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I180",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I361",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I362",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I363",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I364",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I365",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I366",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I367",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I368",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I369",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I370",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I371",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I372",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I373",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I374",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I375",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I376",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I377",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I378",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I379",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I380",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I381",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I382",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I383",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I384",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I385",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I386",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I387",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I388",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.15
+    },
+    {
+      "item_id": "I389",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I390",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I391",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I392",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I393",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I394",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I395",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I396",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I397",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I398",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I399",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I400",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I401",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I402",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I403",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I404",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I405",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I406",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I407",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I408",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I409",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I410",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I411",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I412",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I413",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I414",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I415",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.25
+    },
+    {
+      "item_id": "I416",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I417",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I418",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I419",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I420",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I421",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I422",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I423",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I424",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I425",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I426",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I427",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I428",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I429",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I430",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I431",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I432",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I433",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I434",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I435",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I436",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I437",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I438",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I439",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I440",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I441",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I442",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I443",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I444",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I445",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I446",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I447",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I448",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I449",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I450",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I451",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I452",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I453",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I454",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I455",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I456",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I457",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I458",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I459",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I460",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I461",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I462",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I463",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I464",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I465",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I466",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I467",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I468",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I469",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I470",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I471",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I472",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I473",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I474",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I475",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I476",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I477",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I478",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I479",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I480",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I661",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I662",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I663",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I664",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I665",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I666",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I667",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I668",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I669",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I670",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I671",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I672",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I673",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I674",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I675",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I676",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I677",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I678",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I679",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I680",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I681",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I682",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I683",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I684",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I685",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I686",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I687",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I688",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I689",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I690",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I691",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I692",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I693",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I694",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I541",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I542",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I543",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I544",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I545",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I546",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I547",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I548",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I549",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I550",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I551",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I552",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I553",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I554",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I555",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I556",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I557",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I558",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I559",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I560",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I561",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I562",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I563",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I564",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I565",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I566",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I567",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I568",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I569",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I570",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I571",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I572",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I573",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I574",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I575",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I576",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I577",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I578",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I579",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I580",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I581",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I582",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I583",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I584",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I585",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I586",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I587",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I588",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I589",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I590",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I591",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I592",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I593",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I594",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I595",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I596",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I597",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I598",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I599",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I600",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I481",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I482",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I483",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I484",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I485",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I486",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I487",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I488",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I489",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I490",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I491",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I492",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I493",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I494",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I495",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I496",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I497",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I498",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I499",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I500",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I501",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I502",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I503",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I504",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I505",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I506",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I507",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I508",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I509",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I510",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I511",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I512",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I513",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I514",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I515",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I516",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I517",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I518",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I519",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I520",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I521",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I522",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I523",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I524",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I525",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I526",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I527",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I528",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I529",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I530",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I531",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I532",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I533",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I534",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I535",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I536",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I537",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I538",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I539",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I540",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I601",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I602",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I603",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I604",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I605",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I606",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I607",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I608",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I609",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I610",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I611",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I612",
+      "dim_id": 7,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I613",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I614",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I615",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I616",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I617",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I618",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I619",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I620",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I621",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I622",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I623",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I624",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I625",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I626",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I627",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I628",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I629",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I630",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I631",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I632",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I633",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I634",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I635",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I636",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I637",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I638",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I639",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I640",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I641",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I642",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I643",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I644",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I645",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I646",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I647",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I648",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I649",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I650",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I651",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I652",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I653",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I654",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I655",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I656",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I657",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I658",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I659",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I660",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.75
+    }
+  ],
+  "replicate": [
+    {
+      "item_id": "I158",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I103",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I639",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I016",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I031",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I139",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I062",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I670",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I610",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I216",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I081",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I236",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I204",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I458",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I192",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I611",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I120",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I219",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I090",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I088",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I574",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I411",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I463",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I086",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I625",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I522",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I645",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I459",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I532",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I404",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I265",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I150",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I001",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I312",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I665",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I012",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I393",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I452",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I573",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I077",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I660",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I398",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I345",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I430",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I256",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I135",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I335",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I253",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I302",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I072",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I477",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I677",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I188",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.92
+    },
+    {
+      "item_id": "I021",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I385",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.92
+    },
+    {
+      "item_id": "I396",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I138",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I692",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I341",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I201",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I304",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I496",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I512",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I629",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I146",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I482",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I069",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I005",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I615",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I406",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.42
+    },
+    {
+      "item_id": "I602",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I190",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I065",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I526",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I214",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I688",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I525",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I521",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I565",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I261",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I215",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I552",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I337",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I296",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I061",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I093",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I240",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I465",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I407",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I076",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I218",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I163",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I196",
+      "dim_id": 8,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I577",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I298",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I378",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.4
+    },
+    {
+      "item_id": "I488",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I162",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I666",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I191",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I606",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I632",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I182",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I202",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I043",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I248",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I614",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I628",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I285",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I453",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I499",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I631",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I417",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I104",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.65
+    },
+    {
+      "item_id": "I054",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I618",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I420",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I018",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I097",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I195",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I193",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I249",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I495",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I431",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I311",
+      "dim_id": 2,
+      "polarity": -1,
+      "fit": 0.7
+    },
+    {
+      "item_id": "I121",
+      "dim_id": 2,
+      "polarity": 1,
+      "fit": 0.8
+    },
+    {
+      "item_id": "I570",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I234",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I319",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I580",
+      "dim_id": 1,
+      "polarity": 1,
+      "fit": 0.9
+    },
+    {
+      "item_id": "I624",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I432",
+      "dim_id": 8,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I405",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I075",
+      "dim_id": 7,
+      "polarity": 1,
+      "fit": 0.95
+    },
+    {
+      "item_id": "I694",
+      "dim_id": 5,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I464",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I111",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I323",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I381",
+      "dim_id": 1,
+      "polarity": -1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I010",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.85
+    },
+    {
+      "item_id": "I609",
+      "dim_id": 5,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I657",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.55
+    },
+    {
+      "item_id": "I542",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.5
+    },
+    {
+      "item_id": "I469",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.3
+    },
+    {
+      "item_id": "I476",
+      "dim_id": 4,
+      "polarity": 1,
+      "fit": 0.6
+    },
+    {
+      "item_id": "I650",
+      "dim_id": 6,
+      "polarity": 1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I044",
+      "dim_id": 6,
+      "polarity": -1,
+      "fit": 0.35
+    },
+    {
+      "item_id": "I131",
+      "dim_id": 3,
+      "polarity": -1,
+      "fit": 0.45
+    },
+    {
+      "item_id": "I037",
+      "dim_id": 3,
+      "polarity": 1,
+      "fit": 0.75
+    },
+    {
+      "item_id": "I277",
+      "dim_id": 4,
+      "polarity": -1,
+      "fit": 0.5
+    }
+  ]
+}

@@ -91,6 +91,10 @@ SCORERS = {
     s.alias: s for s in [
         Scorer("opus", "anthropic", "claude-opus-5", "safety-trained",
                "The incumbent. Every existing score in the database is this model."),
+        Scorer("sonnet", "anthropic", "claude-sonnet-5", "safety-trained",
+               "The same house as the incumbent at a fifth of the price, which "
+               "makes it the affordable way to ask whether a Claude/DeepSeek gap "
+               "is about training or about capability."),
         Scorer("grok", "xai", "grok-4", "lightly-filtered",
                "xAI trains explicitly against what it calls moralising; the most "
                "interesting comparison to a safety-trained scorer."),

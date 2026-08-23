@@ -193,6 +193,9 @@ def scored_atlas(monkeypatch, tmp_path):
         db.upsert_film({
             "film_id": f"film-{index}", "title": f"Film {index}", "year": 2000 + index,
             "description": f"A spoiler-free story prompt number {index}.",
+            # The named cards carry a poster, so the deck now requires five
+            # eligible films to have one before it will deal a session.
+            "artwork_url": f"https://example.invalid/{index}.jpg",
         })
     with db.connect() as con:
         for index in range(20):
@@ -204,6 +207,36 @@ def scored_atlas(monkeypatch, tmp_path):
                     "value, confidence) VALUES (?,?, 'b1', 'spine', 'run-test', ?, 0.9)",
                     [f"film-{index}", f"I{item}",
                      1 if on_payback == high_on_payback else -1],
+                )
+
+        # The product reads DISCOVERED factors, not the LLM-derived dimension
+        # set, so the same structure is mirrored into the tables it actually
+        # queries: two factors over the same items, and the same verdicts under
+        # the scorer the product is configured to read.
+        for factor, dimension in ((1, DIMENSIONS[0]), (2, DIMENSIONS[1])):
+            con.execute(
+                "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, "
+                "name, question, pole_high, pole_low, n_items, created_at) "
+                "VALUES ('deepseek','subs','deepseek-subs',?,?,?,?,?,10,?)",
+                [factor, dimension["name"], dimension["question"],
+                 dimension["pole_high"], dimension["pole_low"], db.now()],
+            )
+        for item in range(20):
+            con.execute(
+                "INSERT INTO latent_factor_items (scorer, variant, bank_version, "
+                "item_id, factor_id) VALUES ('deepseek','subs','deepseek-subs',?,?)",
+                [f"I{item}", 1 if item < 10 else 2],
+            )
+        for index in range(20):
+            high_on_payback = index % 2 == 0
+            for item in range(20):
+                on_payback = item < 10
+                con.execute(
+                    "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
+                    "bank_version, variant, run_id, value, confidence, created_at) "
+                    "VALUES ('deepseek','deepseek-chat',?,?,'deepseek-subs','subs','r',?,0.9,?)",
+                    [f"film-{index}", f"I{item}",
+                     1 if on_payback == high_on_payback else -1, db.now()],
                 )
     return db
 
@@ -315,10 +348,15 @@ def test_blind_pair_answers_are_traced_back_to_their_films(scored_atlas, monkeyp
     assert telling["leaning"] == "low"
 
 
-def test_a_missing_dimension_set_is_a_404_not_a_blank_profile(scored_atlas):
+def test_the_profile_reports_which_model_read_the_films(scored_atlas):
+    """There is no dimension-set parameter any more: the axes are whichever the
+    configured scorer discovered, so the response says who that was instead of
+    echoing a version the caller asked for."""
     headers, _ = _start_session()
-    response = client.get("/api/profile/moral?dim_version=d99", headers=headers)
-    assert response.status_code == 404
+    body = client.get("/api/profile/moral", headers=headers).json()
+    assert body["dim_version"] == "deepseek"
+    assert body["bank_version"] == "deepseek-subs"
+    assert [score["name"] for score in body["scores"]] == [d["name"] for d in DIMENSIONS]
 
 
 # --------------------------------------------------------------------------
@@ -416,7 +454,8 @@ def test_default_profile_falls_back_when_the_shared_map_has_not_been_derived(mon
         # A description is what makes a film deck-eligible now that the research
         # corpus is far larger than the curated one, and this test needs a session.
         db.upsert_film({"film_id": f"film-{index}", "title": f"Film {index}",
-                        "description": f"A spoiler-free story prompt number {index}."})
+                        "description": f"A spoiler-free story prompt number {index}.",
+                        "artwork_url": f"https://example.invalid/{index}.jpg"})
     headers, _ = _start_session()
     response = client.get("/api/profile/moral", headers=headers)
     assert response.status_code == 200

@@ -22,7 +22,14 @@ import sqlite3
 import sys
 
 CORPUS_TABLES = ["dimensions", "evidence", "films", "item_bank", "item_dimensions",
-                 "propositions_raw", "runs", "scores", "skeletons"]
+                 "propositions_raw", "runs", "scores", "skeletons",
+                 # Everything the per-model pipeline derives. These carry the
+                 # axes the product now reads, so omitting them does not degrade
+                 # the site gracefully — it leaves the runner with no factors at
+                 # all while the app asks for them.
+                 "model_propositions", "model_verdicts", "model_refusals",
+                 "model_axes", "model_axis_items",
+                 "latent_factors", "latent_factor_items"]
 USER_TABLES = ["users", "user_sessions", "movie_ratings", "test_results",
                "group_sessions", "session_members", "shortlist_reactions",
                "session_shortlist_films"]
@@ -53,13 +60,41 @@ def main() -> int:
     for table in CORPUS_TABLES:
         live_cols = [r[1] for r in con.execute(f'PRAGMA main.table_info("{table}")')]
         corp_cols = [r[1] for r in con.execute(f'PRAGMA corpus.table_info("{table}")')]
-        if not live_cols or not corp_cols:
-            print(f"  skip {table}: on runner={bool(live_cols)} in snapshot={bool(corp_cols)}")
+        if not corp_cols:
+            print(f"  skip {table}: not in the snapshot")
             continue
+
+        # Bring the runner's schema up to the snapshot's before copying.
+        #
+        # This used to be a manual step, and it failed silently in both
+        # directions: a table the runner lacked was skipped with a one-line
+        # note, and a COLUMN it lacked was quietly dropped from the copy — so a
+        # snapshot carrying new derived data could load "successfully" and leave
+        # the site with none of it. Creating what is missing makes a schema
+        # change part of the deploy rather than something to remember.
+        if not live_cols:
+            ddl = con.execute(
+                "SELECT sql FROM corpus.sqlite_master WHERE type='table' AND name=?",
+                (table,)).fetchone()
+            if not ddl or not ddl[0]:
+                print(f"  skip {table}: no schema in the snapshot")
+                continue
+            con.execute(ddl[0])
+            live_cols = [r[1] for r in con.execute(f'PRAGMA main.table_info("{table}")')]
+            print(f"  created {table} on the runner")
+
+        for column in corp_cols:
+            if column not in live_cols:
+                kind = next((r[2] for r in con.execute(f'PRAGMA corpus.table_info("{table}")')
+                             if r[1] == column), "TEXT")
+                con.execute(f'ALTER TABLE main."{table}" ADD COLUMN "{column}" {kind}')
+                live_cols.append(column)
+                print(f"  added {table}.{column} on the runner")
+
         shared = [c for c in corp_cols if c in live_cols]
-        ignored = [c for c in corp_cols if c not in live_cols]
+        ignored = [c for c in live_cols if c not in corp_cols]
         if ignored:
-            print(f"  note {table}: snapshot has columns the runner does not, ignored: {ignored}")
+            print(f"  note {table}: runner has columns the snapshot does not: {ignored}")
         cols = ", ".join(f'"{c}"' for c in shared)
         con.execute(f'DELETE FROM main."{table}"')
         con.execute(f'INSERT INTO main."{table}" ({cols}) SELECT {cols} FROM corpus."{table}"')

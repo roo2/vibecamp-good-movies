@@ -34,6 +34,7 @@ import statistics as st
 from typing import Any
 
 from .. import db
+from ..config import settings
 from ..analysis import user_scores
 from .store import user_pair_answers, user_rating_inputs
 
@@ -45,6 +46,11 @@ PRIOR = 2.0
 NOTE_FLOOR = 0.05
 
 SEEN_REACTIONS = {"loved_it", "not_for_me"}
+
+
+def _factor_bank() -> str:
+    """The bank the product's scorer wrote for itself."""
+    return f"{settings().product_scorer}-{settings().product_variant}"
 
 
 def _alignment(scores: dict[int, float], stances: dict[int, list[float]]) -> tuple[float, dict[int, float]]:
@@ -101,11 +107,13 @@ def ranked_shortlist(
     dim_version: str = user_scores.DEFAULT_DIM_VERSION,
     bank_version: str = user_scores.DEFAULT_BANK_VERSION,
 ) -> list[dict[str, Any]]:
-    dimensions = user_scores.load_dimensions(dim_version)
+    dimensions = user_scores.factor_axes(
+        settings().product_scorer, settings().product_variant, _factor_bank())
     if not dimensions or not user_ids:
         return []
     names = {d["dim_id"]: d["name"] for d in dimensions}
-    stances = user_scores.film_stances(dim_version, bank_version)
+    stances = user_scores.factor_stances(
+        settings().product_scorer, settings().product_variant, _factor_bank())
     profiles = _member_profiles(user_ids, dimensions, stances)
     seen = _already_seen(user_ids)
 
@@ -115,6 +123,13 @@ def ranked_shortlist(
             continue
         film = db.get_film(film_id)
         if film is None:
+            continue
+        # A recommendation is a card with a poster on it. The research corpus is
+        # ten times the size of the curated one and carries no artwork, so
+        # without this the best-matching film is frequently one the deck can
+        # only render as an empty rectangle — a worse answer than the
+        # second-best film it can actually show.
+        if not (film.get("artwork_url") or "").strip():
             continue
         per_member = {user_id: _alignment(profiles[user_id], film_stances) for user_id in user_ids}
         alignments = [value for value, _parts in per_member.values()]

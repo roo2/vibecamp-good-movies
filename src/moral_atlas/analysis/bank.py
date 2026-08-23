@@ -71,21 +71,45 @@ def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
-def cluster_propositions(threshold: float = 0.45) -> list[dict[str, Any]]:
-    """Group raw propositions by textual similarity.
+def model_propositions(scorer: str, variant: str | None = None) -> list[Any]:
+    """One model's own harvest, shaped like `propositions_raw` rows.
+
+    The same four columns in the same order, so everything downstream — the
+    clustering, the representative choice, the inversion split — works on either
+    pool without knowing which it was handed.
+    """
+    where, args = ["scorer=?"], [scorer]
+    if variant:
+        where.append("variant=?")
+        args.append(variant)
+    with db.connect(read_only=True) as con:
+        return con.execute(
+            f"SELECT prop_id, film_id, text, stance FROM model_propositions "
+            f"WHERE {' AND '.join(where)}", args,
+        ).fetchall()
+
+
+def cluster_propositions(threshold: float = 0.45, rows: list[Any] | None = None) -> list[dict[str, Any]]:
+    """Group propositions by textual similarity.
 
     TF-IDF over word and character n-grams rather than embeddings: for
     near-duplicate detection over short, deliberately generic sentences it is
     about as good, costs nothing, and adds no dependency on an external service.
+
+    `rows` lets a model cluster its OWN harvest rather than the shared pool.
+    Defaulting to `propositions_raw` keeps `item_source_films` — which recovers
+    an item's origin by re-running this with the same threshold — pointing at
+    the same clustering it always did.
     """
     import numpy as np
     from sklearn.cluster import AgglomerativeClustering
     from sklearn.feature_extraction.text import TfidfVectorizer
 
-    with db.connect(read_only=True) as con:
-        rows = con.execute(
-            "SELECT prop_id, film_id, text, stance FROM propositions_raw"
-        ).fetchall()
+    if rows is None:
+        with db.connect(read_only=True) as con:
+            rows = con.execute(
+                "SELECT prop_id, film_id, text, stance FROM propositions_raw"
+            ).fetchall()
     if not rows:
         return []
 

@@ -227,14 +227,23 @@ def _ensure_shortlist(con, session_id: str) -> None:
     con.executemany("INSERT INTO session_shortlist_films (session_id, film_id, position) VALUES (?,?,?)", [(session_id, film_id, position) for position, film_id in enumerate(film_ids)])
 
 
-def next_shortlist_film(share_token: str, user_id: str) -> dict[str, Any] | None:
+def next_shortlist_film(share_token: str, user_id: str, since: int = 0) -> dict[str, Any] | None:
+    """The next cards to judge — or the shortlist, once it holds something new.
+
+    `since` is how many agreed films the asker has already been shown. It exists
+    because "keep looking" was a dead end: a full shortlist ended the deck, so
+    the screen asked for another card, was handed the same three films it had
+    just closed, and sat on "Finding films for you…" forever. Saying what you
+    have already seen turns a terminal state into a threshold — the deck keeps
+    dealing until there is a film in the shortlist you have not seen.
+    """
     _ensure_db()
     with db.connect() as con:
         session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
         if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
             return None
         full = _shortlist_state(con, session["session_id"])
-        if full["state"] == "shortlist":
+        if full["state"] == "shortlist" and len(full["films"]) > since:
             return full
         _ensure_shortlist(con, session["session_id"])
         # A queue, not a card. Swiping felt sluggish because each swipe posted a

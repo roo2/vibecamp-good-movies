@@ -3,8 +3,8 @@ import { loadOnboardingFilms } from '../services/movieService.js'
 
 const reactions = [
   { id: 'not_for_me', label: 'Not for me', icon: '×' },
-  { id: 'havent_seen', label: "Haven't seen it", icon: '−' },
   { id: 'loved_it', label: 'Loved it', icon: '♥' },
+  { id: 'havent_seen', label: "Haven't seen it", icon: '−' },
 ]
 
 function formatRuntime(minutes) {
@@ -45,7 +45,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   const film = films[filmIndex]
 
   return (
-    <main className="app-page">
+    <main className="app-page seen-it-page">
       <section className="phone-screen seen-it-screen">
         <header className="seen-it-header">
           <button className="back-button" type="button" aria-label="Back" disabled>←</button>
@@ -59,7 +59,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
           </article>
           <div className="movie-reactions" aria-label={`Your reaction to ${film.title}`}>
             {reactions.map((reaction) => (
-              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected)}>
+              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${reaction.id === 'havent_seen' ? 'unseen' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected)}>
                 <strong aria-hidden="true">{reaction.icon}</strong><span>{selected === reaction.id ? 'Saving…' : reaction.label}</span>
               </button>
             ))}

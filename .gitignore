@@ -2,18 +2,15 @@
 __pycache__/
 *.pyc
 .env
-# Fetched corpora and indexes: hundreds of MB, and reproducible from the
-# public sources on demand, so there is nothing to gain by carrying them.
-data/cache/
-# The store is a large binary that changes wholesale on every write, which is
-# not a thing to keep in git. It also holds user records — users, sessions and
-# test results — which is the reason that outlives the size one.
-data/*.duckdb
-data/*.duckdb.wal
-data/*.sqlite
-data/*.sqlite-wal
-data/*.sqlite-shm
-data/*.db
+# data/ is ignored whole, not file by file. Two reasons, and the second is the
+# one that bites: the store is a large binary that changes wholesale on every
+# write and holds the user records, and on the runner `data/` is a *symlink* to
+# the mounted volume. Git cannot check a tracked file out through a symlinked
+# directory — it deletes the symlink and puts a real directory there instead.
+# That silently splits the deployment in two: the API writes ROOT-relative to
+# the new empty directory while every loader still writes the volume. Tracking
+# anything under data/ is what causes it, so nothing under data/ is tracked.
+/data/
 *.egg-info/
 build/
 dist/

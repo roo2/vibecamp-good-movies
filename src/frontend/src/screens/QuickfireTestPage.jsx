@@ -39,7 +39,7 @@ function QuickfireTestPage({ access, shareToken, onComplete }) {
   }
 
   return (
-    <main className="app-page">
+    <main className="app-page quickfire-page">
       <section className="phone-screen fork-screen" aria-live="polite">
         <header className="fork-header">
           <button className="back-button" type="button" aria-label="Previous question" disabled={questionIndex === 0} onClick={() => setQuestionIndex((index) => Math.max(0, index - 1))}>←</button>

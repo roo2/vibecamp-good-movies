@@ -22,7 +22,7 @@ function SessionLobbyPage({ access, groupSession, onStart }) {
       <section className="phone-screen session-screen" aria-label="Invite your partner">
         <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="session-content">
-          <p className="screen-label">{isHost ? 'Step one of two' : `You’re with ${host?.user.name || 'them'}`}</p>
+          <p className="screen-label">{isHost ? 'Step one of two' : 'You’re in'}</p>
           {isHost ? <>
             <h1>Now get<br /><em>your partner.</em></h1>
             <p className="screen-copy">
@@ -34,13 +34,13 @@ function SessionLobbyPage({ access, groupSession, onStart }) {
             <button className="link-button" type="button" onClick={copyLink}>{copied ? 'Link copied' : 'Copy the link for them'}</button>
             <div className="lobby-members" aria-live="polite">
               <strong>{guestCount ? 'They’re in — you can start' : 'Waiting for them to join…'}</strong>
-              {groupSession.members?.map((member) => <span key={member.user.id}>{member.user.name}{member.user.id === access.user.id ? ' (you)' : ''}</span>)}
+              {groupSession.members?.map((member) => <span key={member.user.id}>{member.user.id === access.user.id ? 'You' : 'Your partner'}</span>)}
             </div>
           </> : <>
-            <h1>You’re in<br /><em>with {host?.user.name || 'them'}.</em></h1>
+            <h1>You’re in<br /><em>with them.</em></h1>
             <p className="screen-copy">
               You’ll each answer separately, then we find the films you both want to watch.
-              {host?.user.name ? ` ${host.user.name} starts you off.` : ' They start you off.'}
+              They start you off.
             </p>
           </>}
         </div>

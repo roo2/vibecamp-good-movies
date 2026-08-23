@@ -5,7 +5,12 @@ from pydantic import BaseModel, Field
 
 
 class AccessRequest(BaseModel):
-    name: str = Field(min_length=1, max_length=80)
+    # Optional, and usually absent. Asking two people on a sofa to type their
+    # names was a toll booth in front of a ninety-second quiz, and the interface
+    # never needed the answer — there are at most two of you and "you" and "your
+    # partner" tell you apart perfectly well. Kept in the shape because a name
+    # may be worth having later, and because clients still send one.
+    name: str = Field(default="", max_length=80)
 
 
 class User(BaseModel):

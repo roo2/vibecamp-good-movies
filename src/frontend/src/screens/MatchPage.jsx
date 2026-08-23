@@ -8,7 +8,7 @@ import { loadShortlistSelection } from '../services/shortlistService.js'
 // for a couple who were enjoying deciding it. Three is enough to choose between
 // and few enough that choosing is not a second argument — and the choosing is
 // deliberately left to them: nothing here picks a winner.
-export default function MatchPage({ access, shareToken, films: initial, onKeepLooking, onStartOver }) {
+export default function MatchPage({ access, shareToken, films: initial, solo = false, onKeepLooking, onStartOver }) {
   const [films, setFilms] = useState(initial || [])
   const [openId, setOpenId] = useState(null)
   const [error, setError] = useState(null)
@@ -29,11 +29,12 @@ export default function MatchPage({ access, shareToken, films: initial, onKeepLo
 
   return <main className="app-page match-page"><section className="match-sheet">
     <div className="sheet-handle" />
-    <p className="screen-label"><i /> <i /> You both said yes</p>
+    <p className="screen-label"><i /> <i /> {solo ? 'Your yeses' : 'You both said yes'}</p>
     <h1>Your <em>shortlist.</em></h1>
     <p className="match-lede">
-      {films.length} {films.length === 1 ? 'film' : 'films'} you each said yes to, without seeing
-      what the other one picked. Pick whichever you fancy tonight.
+      {solo
+        ? `${films.length} ${films.length === 1 ? 'film' : 'films'} that argue for what your taste says you believe. Pick whichever you fancy tonight.`
+        : `${films.length} ${films.length === 1 ? 'film' : 'films'} you each said yes to, without seeing what the other one picked. Pick whichever you fancy tonight.`}
     </p>
     {error && <p className="message" role="alert">{error}</p>}
 

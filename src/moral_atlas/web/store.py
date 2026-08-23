@@ -10,7 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from .. import db
-from .film_service import DIRECT_CARDS, build_session_deck, film_card
+from .film_service import MIN_CARDS, build_session_deck, film_card
 from .schemas import GroupSession, GroupSessionStatus, MovieRating, SessionMember, TestResult, User
 
 WAIT_TO_CONTINUE_SECONDS = 10 * 60
@@ -233,16 +233,65 @@ def next_shortlist_film(share_token: str, user_id: str) -> dict[str, Any] | None
         session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
         if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
             return None
-        if session["selected_film_id"]:
-            return {"state": "selected", "film": film_card(session["selected_film_id"])}
+        full = _shortlist_state(con, session["session_id"])
+        if full["state"] == "shortlist":
+            return full
         _ensure_shortlist(con, session["session_id"])
-        row = con.execute(
+        # A queue, not a card. Swiping felt sluggish because each swipe posted a
+        # vote and then asked for the next film, so the animation finished into a
+        # wait for two round trips. Handing over the next few lets the screen
+        # advance the moment a card leaves and send the vote behind it.
+        rows = con.execute(
             "SELECT q.film_id FROM session_shortlist_films q WHERE q.session_id=? "
             "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions n WHERE n.session_id=q.session_id AND n.film_id=q.film_id AND n.reaction='no') "
             "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions mine WHERE mine.session_id=q.session_id AND mine.film_id=q.film_id AND mine.user_id=?) "
-            "ORDER BY q.position LIMIT 1", [session["session_id"], user_id],
-        ).fetchone()
-    return {"state": "exhausted"} if row is None else {"state": "card", "film": film_card(row["film_id"])}
+            "ORDER BY q.position LIMIT ?", [session["session_id"], user_id, QUEUE_AHEAD],
+        ).fetchall()
+    films = [card for row in rows if (card := film_card(row["film_id"]))]
+    if not films:
+        return {"state": "exhausted"}
+    # `film` stays for anything still reading one card at a time.
+    return {"state": "card", "film": films[0], "queue": films}
+
+
+# How many films both of them have to want before the swiping stops.
+#
+# One was too few. Landing on a single title the moment it appears makes the
+# choice for a couple who were enjoying making it, and leaves them with a verdict
+# rather than an evening's options — the pair who tested this asked for a
+# shortlist. Three is small enough to choose between without a second argument.
+MATCHES_WANTED = 3
+
+# How many cards ahead the client is given, so a swipe never waits on a request.
+QUEUE_AHEAD = 6
+
+
+def _agreed_films(con, session_id: str) -> list[str]:
+    """Films every member said yes to and nobody said no to, oldest vote first.
+
+    Derived from the votes rather than stored. There is nothing to migrate, no
+    second source of truth to drift, and the answer is always consistent with the
+    reactions it is computed from — including after someone's vote is removed.
+    """
+    members = con.execute(
+        "SELECT count(*) FROM session_members WHERE session_id=?", [session_id]).fetchone()[0]
+    if not members:
+        return []
+    return [row["film_id"] for row in con.execute(
+        "SELECT film_id, MAX(submitted_at) agreed_at FROM shortlist_reactions "
+        "WHERE session_id=? GROUP BY film_id "
+        "HAVING COUNT(DISTINCT CASE WHEN reaction='yes' THEN user_id END)=? "
+        "AND SUM(reaction='no')=0 ORDER BY agreed_at",
+        [session_id, members])]
+
+
+def _shortlist_state(con, session_id: str) -> dict[str, Any]:
+    """What the pair should be seeing: still swiping, or a shortlist to choose from."""
+    agreed = _agreed_films(con, session_id)
+    if len(agreed) >= MATCHES_WANTED:
+        return {"state": "shortlist",
+                "films": [card for film_id in agreed if (card := film_card(film_id))]}
+    return {"state": "pending", "matches": len(agreed), "wanted": MATCHES_WANTED}
 
 
 def shortlist_selection(share_token: str, user_id: str) -> dict[str, Any] | None:
@@ -251,9 +300,7 @@ def shortlist_selection(share_token: str, user_id: str) -> dict[str, Any] | None
         session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
         if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
             return None
-    if session["selected_film_id"]:
-        return {"state": "selected", "film": film_card(session["selected_film_id"])}
-    return {"state": "pending"}
+        return _shortlist_state(con, session["session_id"])
 
 
 def reopen_shortlist(share_token: str, user_id: str) -> dict[str, str] | None:
@@ -267,14 +314,14 @@ def reopen_shortlist(share_token: str, user_id: str) -> dict[str, str] | None:
         if session is None:
             return None
         con.execute("UPDATE group_sessions SET selected_film_id=NULL WHERE session_id=?", [session["session_id"]])
-    return {"state": "pending"}
+        return _shortlist_state(con, session["session_id"])
 
 
 def save_shortlist_reaction(share_token: str, user_id: str, film_id: str, reaction: str) -> dict[str, Any] | None:
     _ensure_db()
     with db.connect() as con:
-        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
-        if session is None or session["selected_film_id"]:
+        session = con.execute("SELECT session_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        if session is None:
             return None
         _ensure_shortlist(con, session["session_id"])
         if not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone() or not con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=? AND film_id=?", [session["session_id"], film_id]).fetchone():
@@ -286,12 +333,13 @@ def save_shortlist_reaction(share_token: str, user_id: str, film_id: str, reacti
             return {"state": "continue"}
         con.execute("INSERT INTO shortlist_reactions (reaction_id, session_id, user_id, film_id, reaction, submitted_at) VALUES (?,?,?,?,?,?)", [f"short_{uuid4().hex[:12]}", session["session_id"], user_id, film_id, reaction, db.now()])
         if reaction == "yes":
-            members = con.execute("SELECT count(*) FROM session_members WHERE session_id=?", [session["session_id"]]).fetchone()[0]
-            yes_votes = con.execute("SELECT count(DISTINCT user_id) FROM shortlist_reactions WHERE session_id=? AND film_id=? AND reaction='yes'", [session["session_id"], film_id]).fetchone()[0]
-            no_votes = con.execute("SELECT count(*) FROM shortlist_reactions WHERE session_id=? AND film_id=? AND reaction='no'", [session["session_id"], film_id]).fetchone()[0]
-            if yes_votes == members and not no_votes:
-                con.execute("UPDATE group_sessions SET selected_film_id=? WHERE session_id=?", [film_id, session["session_id"]])
-                return {"state": "selected", "film": film_card(film_id)}
+            progress = _shortlist_state(con, session["session_id"])
+            if progress["state"] == "shortlist":
+                return progress
+            # Below the target this is still "keep swiping" as far as the deck is
+            # concerned; the counts ride along so the screen can say how close
+            # the two of them are.
+            return {"state": "continue", **{k: v for k, v in progress.items() if k != "state"}}
     return {"state": "continue"}
 
 
@@ -300,7 +348,7 @@ def create_group_session(host_user_id: str) -> GroupSession:
     deck = build_session_deck()
     if not deck["direct"]:
         raise ValueError(
-            f"At least {DIRECT_CARDS} curated films are required to start a shared session.")
+            f"At least {MIN_CARDS} showable films are required to start a shared session.")
     group_session = GroupSession(
         id=f"group_{uuid4().hex[:12]}", share_token=token_urlsafe(12), host_user_id=host_user_id,
         status="lobby", created_at=db.now(),

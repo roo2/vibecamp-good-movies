@@ -38,7 +38,13 @@ from typing import Any
 from .. import db
 from ..config import settings
 from ..analysis import user_scores
+from .film_service import _recency as _film_recency
 from .store import user_pair_answers, user_rating_inputs
+
+
+def _recency(year: int | None) -> float:
+    """0 for an old film, rising to 1 for the newest — shared with the deck."""
+    return _film_recency({"year": year})
 
 # Damps films judged on very little: without it, a single engaged axis could
 # hand back a perfect 1.0.
@@ -65,20 +71,45 @@ NOTE_FLOOR = 0.05
 # Set to 0 for a deterministic deck, which is what the ranking tests want.
 VARIATION = 0.05
 
+# How much a film being recent is worth, on the same scale as the agreement it
+# is added to.
+#
+# Two people testing this found the recommendations old, and nothing in the
+# ranking had an opinion about that: a 1954 film that fits is scored exactly like
+# a 2019 film that fits equally well, and there are decades more old films than
+# new ones for it to draw from.
+#
+# The size is measured rather than guessed. On a real profile the top six are
+# identical at 0.06, 0.12 and 0.20, and only move at 0.35 — where the best fit
+# falls from +0.49 to +0.39, which is buying a newer film with a worse one. So
+# this sits high enough to settle films that fit about equally and low enough
+# that fit still decides whenever fit actually differs. Most of the felt
+# improvement comes from the deck, where age is weighted at selection instead.
+RECENCY_WEIGHT = 0.15
+
 
 def _sampled_order(ranked: list[dict[str, Any]], variation: float) -> list[dict[str, Any]]:
-    """Rank order when variation is 0, a Plackett-Luce sample of it otherwise."""
+    """Rank order when variation is 0, a Plackett-Luce sample of it otherwise.
+
+    Recency is folded into the score either way, because preferring newer films
+    is a stated part of what a good recommendation is here, not noise on top of
+    one. With variation off, the order stays a deterministic function of fit and
+    age together.
+    """
+    def merit(row: dict[str, Any]) -> float:
+        return row["agreement"] + RECENCY_WEIGHT * _recency(row.get("year"))
+
     if variation <= 0:
-        return sorted(ranked, key=lambda row: (-row["agreement"], -row["mean_alignment"], row["id"]))
+        return sorted(ranked, key=lambda row: (-merit(row), -row["mean_alignment"], row["id"]))
     chooser = random.SystemRandom()
 
     def key(row: dict[str, Any]) -> float:
         # -log(-log(u)) is a standard Gumbel draw; adding it to a score and
         # taking the largest is the Gumbel-max trick, so the winner is drawn in
-        # proportion to exp(agreement / variation) rather than always being the
+        # proportion to exp(merit / variation) rather than always being the
         # maximum.
         gumbel = -math.log(-math.log(chooser.random()))
-        return row["agreement"] + variation * gumbel
+        return merit(row) + variation * gumbel
 
     return sorted(ranked, key=key, reverse=True)
 

@@ -55,8 +55,8 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   return (
     <main className="app-page seen-it-page">
       <section className="phone-screen seen-it-screen">
-        <FlowProgress current={filmIndex + 1} />
-        <div className="seen-it-heading"><p className="screen-label">Step one · Gut reaction</p><h1>Seen it? Did you like it?</h1></div>
+        <FlowProgress current={filmIndex + 1} total={films.length + 2} />
+        <div className="seen-it-heading"><p className="screen-label">Your half · {films.length} films</p><h1>Seen it? Did you like it?</h1></div>
         <div className="seen-it-content">
           <article className="movie-card swipe-card" {...swipe.handlers} style={{ ...(film.artwork_url ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.82), rgba(23,19,16,.08)), url(${film.artwork_url})` } : {}), ...swipe.style }}>
             <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× Not for me</span>
@@ -71,7 +71,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
             ))}
           </div>
         </div>
-        <aside className="seen-it-note"><span aria-hidden="true">ⓘ</span><p>Swipe right to like · left to pass. You can always use the buttons.</p></aside>
+        <aside className="seen-it-note"><span aria-hidden="true">ⓘ</span><p>Swipe right if you liked it · left if it wasn’t for you. Your partner never sees these.</p></aside>
       </section>
     </main>
   )

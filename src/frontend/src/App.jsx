@@ -31,7 +31,10 @@ function App() {
   const [access, setAccess] = useState(loadAccess)
   const [groupSession, setGroupSession] = useState(loadGroupSession)
   const [sessionStatus, setSessionStatus] = useState(null)
-  const [selectedFilm, setSelectedFilm] = useState(null)
+  const [shortlist, setShortlist] = useState([])
+  // How many agreed films they have already been shown, so "keep looking"
+  // returns to swiping instead of bouncing straight back to the same three.
+  const [matchesSeen, setMatchesSeen] = useState(0)
 
   const navigate = useCallback((nextRoute) => {
     window.location.hash = nextRoute
@@ -109,12 +112,13 @@ function App() {
   }, [access, groupSession, navigate])
 
   const handleKeepLooking = useCallback(() => {
-    setSelectedFilm(null)
+    setMatchesSeen(shortlist.length)
     navigate('/shortlist')
-  }, [navigate])
+  }, [navigate, shortlist])
 
   const handleStartOver = useCallback(() => {
-    setSelectedFilm(null)
+    setShortlist([])
+    setMatchesSeen(0)
     navigate('/')
   }, [navigate])
 
@@ -146,10 +150,11 @@ function App() {
     return <TestCompletePage access={access} shareToken={groupSession?.shareToken} onContinue={() => navigate('/shortlist')} />
   }
   if (route === '/shortlist') {
-    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} onDone={(film) => { setSelectedFilm(film); navigate('/match') }} />
+    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} matchesSeen={matchesSeen}
+                          onDone={(films) => { setShortlist(films); navigate('/match') }} />
   }
   if (route === '/match') {
-    return <MatchPage access={access} shareToken={groupSession?.shareToken} film={selectedFilm} onKeepLooking={handleKeepLooking} onStartOver={handleStartOver} />
+    return <MatchPage access={access} shareToken={groupSession?.shareToken} films={shortlist} onKeepLooking={handleKeepLooking} onStartOver={handleStartOver} />
   }
 
   return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />

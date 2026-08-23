@@ -51,6 +51,27 @@ STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 test -f "$LIVE" || { echo "no store at $LIVE" >&2; exit 1; }
 test -x "$PYTHON" || { echo "no interpreter at $PYTHON" >&2; exit 1; }
 
+# Load into the file the API actually opens, or refuse to load at all.
+#
+# The API resolves its store ROOT-relative, as /opt/atlas/app/data/atlas.sqlite,
+# and that path is a symlink to the mounted volume. A symlink is a fragile thing
+# to rest a deployment on: check out any tracked file under data/ and git
+# replaces the link with a real directory, after which `atlas init` quietly
+# makes a second, empty store there. Everything then still "works" — the loader
+# reports a successful swap of a file nobody reads, and the site serves an empty
+# corpus with a straight face.
+#
+# So compare the two by inode rather than trusting the layout, and stop if they
+# have come apart. Repairing it means merging the user rows written to the stray
+# store before removing it, which is a judgement call and not a loader's job.
+API_STORE=$("$PYTHON" -c 'from moral_atlas.config import settings; print(settings().db_path)' 2>/dev/null || true)
+if [ -n "$API_STORE" ] && ! [ "$API_STORE" -ef "$LIVE" ]; then
+  echo "the API reads $API_STORE, which is not $LIVE" >&2
+  echo "the data/ symlink has been replaced by a real directory; the deployment is split in two." >&2
+  echo "merge any user rows out of $API_STORE, delete it, then: ln -s /opt/atlas/data /opt/atlas/app/data" >&2
+  exit 1
+fi
+
 # Stop the API first. SQLite would serialise the writes anyway, but a request
 # that reads films halfway through the swap gets a coherent-looking answer that
 # is half of each, which is worse than a moment of downtime.

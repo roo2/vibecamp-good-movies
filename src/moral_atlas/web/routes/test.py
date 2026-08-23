@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..deps import current_session
 from ..mock_data import QUESTIONS
-from ..store import Session, blind_session_pairs, list_test_results, save_test_result as persist_test_result
+from ..store import (Session, blind_session_pairs, current_test_result, list_test_results,
+                     save_test_result as persist_test_result)
 from ..schemas import TestResult, TestResultRequest
 
 router = APIRouter(prefix="/api/test", tags=["test"])
@@ -39,3 +40,14 @@ def save_test_result(
 @router.get("/results", response_model=list[TestResult])
 def get_test_results(session: Annotated[Session, Depends(current_session)]) -> list[TestResult]:
     return list_test_results(session.user.id)
+
+
+@router.get("/results/current", response_model=TestResult)
+def get_current_test_result(
+    share_token: str,
+    session: Annotated[Session, Depends(current_session)],
+) -> TestResult:
+    result = current_test_result(session.user.id, share_token)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No result found for this session.")
+    return result

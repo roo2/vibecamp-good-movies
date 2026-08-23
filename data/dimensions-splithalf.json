@@ -1,0 +1,157 @@
+{
+  "half_a_films": [
+    "a-man-for-all-seasons-1966",
+    "billy-elliot-2000",
+    "casablanca-1942",
+    "dead-poets-society-1989",
+    "do-the-right-thing-1989",
+    "groundhog-day-1993",
+    "it-s-a-wonderful-life-1946",
+    "les-mis-rables-2012",
+    "maleficent-2014",
+    "seven-samurai-1954",
+    "sleeping-beauty-1959",
+    "spirited-away-2001",
+    "the-lord-of-the-rings-the-return-of-the-king-2003",
+    "the-wizard-of-oz-1939",
+    "the-wolf-of-wall-street-2013",
+    "v-for-vendetta-2005",
+    "wall-e-2008"
+  ],
+  "half_b_films": [
+    "a-separation-2011",
+    "arrival-2016",
+    "bicycle-thieves-1948",
+    "chariots-of-fire-1981",
+    "gladiator-2000",
+    "hacksaw-ridge-2016",
+    "joker-2019",
+    "no-country-for-old-men-2007",
+    "parasite-2019",
+    "princess-mononoke-1997",
+    "rashomon-1950",
+    "schindler-s-list-1993",
+    "starship-troopers-1997",
+    "the-godfather-1972",
+    "the-lion-king-1994",
+    "thelma-louise-1991",
+    "tokyo-story-1953",
+    "wicked-2024"
+  ],
+  "HALF A": [
+    {
+      "dim_id": 1,
+      "name": "Conscience versus authority",
+      "question": "When rules, orders, laws, or those in high position demand something a person believes is wrong, which claim wins?",
+      "pole_high": "Private conscience and a moral truth above office override commands; authority is legitimate only through consent and conduct, never through rank, birth, wealth, or procedure, and 'I was only obeying' excuses nothing.",
+      "pole_low": "Law, lawful office, inherited rank, and standing orders carry real moral authority; obedience is itself a virtue, and those who merely follow legitimate instruction bear no guilt for the results."
+    },
+    {
+      "dim_id": 2,
+      "name": "Standing up versus staying out",
+      "question": "How much must a person risk to confront injustice, and may force be used to do it?",
+      "pole_high": "Neutrality, silence, and self-protective withdrawal are betrayals; one is obliged to resist, even hopelessly, even at the cost of one's life, and armed rebellion against tyranny is justified.",
+      "pole_low": "Prudence, endurance, and survival are legitimate; fear for one's life or family excuses standing aside, martyrdom should be avoided, and violent resistance does more harm than patient accommodation."
+    },
+    {
+      "dim_id": 3,
+      "name": "Punishment versus mercy",
+      "question": "What does someone who has done serious harm actually deserve from those they wronged?",
+      "pole_high": "Grace beyond desert: forgiveness, unearned mercy, refusing revenge, and restoring rather than destroying the offender are the higher and more transformative response.",
+      "pole_low": "Desert must be paid: the wronged are entitled to vengeance, strict enforcement, exposure and shaming, and mercy toward the treacherous is folly."
+    },
+    {
+      "dim_id": 4,
+      "name": "Where evil comes from",
+      "question": "Are wrongdoers made by their circumstances and capable of becoming different people, or are they simply what they are?",
+      "pole_high": "Those who harm were first harmed or deprived; their motives deserve understanding from the inside, and character can genuinely change, even late in life.",
+      "pole_low": "Some people and forces are constitutionally bad and must be stopped rather than understood; hardship explains nothing, character is fixed, and a person is answerable for what they did whatever pressed them to it."
+    },
+    {
+      "dim_id": 5,
+      "name": "My own versus everyone",
+      "question": "When the people one loves or belongs to conflict with strangers, or with a larger cause, which claim should be honoured?",
+      "pole_high": "Obligation reaches past the circle of one's own: aid to strangers, solidarity across group lines, and devotion to a cause outrank private attachment and personal happiness.",
+      "pole_low": "The near bond comes first: loyalty to family, friend, group, or beloved rightly overrides orders, missions, causes, and the claims of people one does not know."
+    },
+    {
+      "dim_id": 6,
+      "name": "Own path versus given place",
+      "question": "Should a person pursue the life and standing they choose for themselves, or accept the role, place, and station they were born into?",
+      "pole_high": "A life is made by discovering one's own calling, choosing whom to love, leaving what confines you, and reaching for a larger stage; success and its rewards are worth wanting.",
+      "pole_low": "A person is completed by taking up their inherited role and family duty, staying rooted among their own people, and honouring the quiet dignity of ordinary labour, home and love over ambition and worldly worth."
+    },
+    {
+      "dim_id": 7,
+      "name": "Truth versus kind concealment",
+      "question": "Must the truth be told and one's word kept, whatever it costs, or may honesty bend to protect people?",
+      "pole_high": "Truthfulness, disclosure of wrongdoing, and fidelity to oaths and promises bind absolutely, even at ruinous cost to oneself, and secrecy by the powerful is a betrayal.",
+      "pole_low": "Deception, silence, and concealment are justified by their fruits \u2014 protecting the vulnerable, sparing someone's dignity, or serving a greater good \u2014 and a vow is not worth a life ruined by keeping it."
+    },
+    {
+      "dim_id": 8,
+      "name": "A world worth trusting",
+      "question": "Is the world ultimately answerable to a moral order that rewards good and hears the suffering, or is clear sight cynical and self-reliant?",
+      "pole_high": "There is providence or a just order at work: prayers are heard, sacrifice is remembered, the wicked come to bad ends, and hope and simple faith are wiser than suspicion.",
+      "pole_low": "No order guarantees justice; cynicism about human motives is truer than sentimentality, the exploiter always finds his audience, and rescue must come from one's own hands or not at all."
+    }
+  ],
+  "HALF B": [
+    {
+      "dim_id": 1,
+      "name": "Conscience Versus Orders",
+      "question": "When private conscience clashes with law, command, or the demands of one's country, which should win?",
+      "pole_high": "Each person's own conscience (or divine command) is the highest court, obliging refusal, subversion, or dissent no matter what the institution, the crowd, or loved ones demand",
+      "pole_low": "Obedience to lawful authority, sworn duty and the nation is the supreme obligation, and private conviction should yield to it"
+    },
+    {
+      "dim_id": 2,
+      "name": "Payback Versus Mercy",
+      "question": "Should wrongdoing and threat be answered with retribution and force, or with restraint, mercy and forgiveness?",
+      "pole_high": "Restraint, sparing the defeated and laying down hatred are the truest strength; violence and vengeance only breed more of themselves and settle nothing",
+      "pole_low": "Wrongdoers should be destroyed, enemies shown no mercy, and force applied decisively; vengeance is a worthy purpose and mercy is weakness"
+    },
+    {
+      "dim_id": 3,
+      "name": "Born To It Versus Self-Made",
+      "question": "Is a person's standing and role rightly fixed by birth, rank, sex and custom, or open to their own merit and choosing?",
+      "pole_high": "Worth is earned by effort and character, and people may author their own identity, break with inherited stations and overturn unjust orders of class, race, lineage and gender",
+      "pole_low": "There is a natural or providential order of ranks, bloodlines, inherited authority and separate spheres, and people should occupy the place they were born to"
+    },
+    {
+      "dim_id": 4,
+      "name": "Our Own Versus Everyone",
+      "question": "How far does moral obligation reach beyond blood, tribe and nation to strangers, outsiders and enemies?",
+      "pole_high": "Sympathy, care and solidarity are owed to the stranger, the outcast, the persecuted and even the enemy, and mutual aid across lines is what preserves people",
+      "pole_low": "Blood, clan, comrades and country come first; betraying one's own is unforgivable and outsiders' claims bind only weakly, if at all"
+    },
+    {
+      "dim_id": 5,
+      "name": "Blame Versus Understanding",
+      "question": "Is a wrongdoer a free author of their acts, or largely the product of injury, deprivation and circumstance?",
+      "pole_high": "Harm-doers are made by damage, need and pressure they did not choose; understanding the causes is part of the moral truth about them",
+      "pole_low": "People remain the authors of their own acts, wickedness can be inborn or arbitrary, and identifying and holding the guilty responsible is the point"
+    },
+    {
+      "dim_id": 6,
+      "name": "Trust In The System",
+      "question": "Can law, institutions and the order of the world be relied upon to uncover truth and deliver justice in the end?",
+      "pole_high": "Courts, officials, records, testimony and a providential or moral order can be trusted to find the truth, reward the good and bring wrongdoers to account",
+      "pole_low": "Institutions serve the powerful and manufacture their own version of events; the guilty prosper, the innocent are abandoned, and justice must be found elsewhere or not at all"
+    },
+    {
+      "dim_id": 7,
+      "name": "Face Versus Honesty",
+      "question": "Should a person maintain the reputation, role and comforting story others require, or expose the plain truth about themselves and to others?",
+      "pole_high": "Honest speech and self-knowledge \u2014 admitting one's motives, naming the wrong aloud, telling the devastating truth \u2014 matter more than the figure one cuts",
+      "pole_low": "Public honour, appearances and the self others require are goods worth defending, and protective lies, silence and saved face keep life liveable"
+    },
+    {
+      "dim_id": 8,
+      "name": "Hope Versus Withdrawal",
+      "question": "After loss, defeat or a corrupt world, is it right to keep living, remembering and mending, or to retreat, forget, or resign?",
+      "pole_high": "Life, memory, ritual, small acts of repair and hope passed on remain worth choosing even when nothing can be restored",
+      "pole_low": "Retreat into private ease, forgetting, resignation to fate or refusal of a struggle one cannot win is the wiser or more honest response"
+    }
+  ]
+}

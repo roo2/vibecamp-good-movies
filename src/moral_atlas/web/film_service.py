@@ -48,14 +48,14 @@ def build_session_deck() -> dict[str, list[Any]]:
     db.init_db()
     films = deck_eligible_films()
     films_with_artwork = [film for film in films if (film.get("artwork_url") or "").strip()]
-    if len(films) < 15 or len(films_with_artwork) < 5:
+    if len(films) < 15:
         return {"direct": [], "pairs": []}
 
     # The first five cards are named films, so they should always have their
     # poster available. The later blind-story cards deliberately conceal their
     # titles and can use the wider eligible corpus.
     chooser = random.SystemRandom()
-    direct = chooser.sample(films_with_artwork, k=5)
+    direct = chooser.sample(films_with_artwork if len(films_with_artwork) >= 5 else films, k=5)
     direct_ids = {film["film_id"] for film in direct}
     blind = chooser.sample([film for film in films if film["film_id"] not in direct_ids], k=10)
     return {

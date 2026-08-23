@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 from ..deps import current_session
 from ..shortlist_service import ranked_shortlist, session_member_ids
-from ..store import Session, next_shortlist_film, save_shortlist_reaction, shortlist_selection
+from ..store import (Session, next_shortlist_film, reopen_shortlist,
+                     save_shortlist_reaction, shortlist_selection)
 
 router = APIRouter(prefix="/api/shortlist", tags=["shortlist"])
 DECK_SIZE = 6
@@ -14,6 +15,10 @@ class Reaction(BaseModel):
     share_token: str
     film_id: str
     reaction: str
+
+
+class ShortlistRequest(BaseModel):
+    share_token: str
 
 @router.get("/films")
 def films(
@@ -58,4 +63,12 @@ def react(request: Reaction, session: Annotated[Session, Depends(current_session
     result = save_shortlist_reaction(request.share_token, session.user.id, request.film_id, request.reaction)
     if result is None:
         raise HTTPException(status_code=409, detail="This film is no longer available in the deck.")
+    return result
+
+
+@router.post("/reopen")
+def reopen(request: ShortlistRequest, session: Annotated[Session, Depends(current_session)]) -> dict[str, str]:
+    result = reopen_shortlist(request.share_token, session.user.id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Session not found.")
     return result

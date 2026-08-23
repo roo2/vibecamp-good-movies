@@ -18,3 +18,7 @@ export function loadShortlistSelection(access, shareToken) {
 export function saveShortlistReaction(access, shareToken, filmId, reaction) {
   return apiClient.post('/api/shortlist/reactions', { share_token: shareToken, film_id: filmId, reaction }, { headers: { 'X-Session-Token': access.token } })
 }
+
+export function reopenShortlist(access, shareToken) {
+  return apiClient.post('/api/shortlist/reopen', { share_token: shareToken }, { headers: { 'X-Session-Token': access.token } })
+}

@@ -7,58 +7,61 @@ from .ingest import load_seeds, slugify
 from .. import db
 
 
-# Deliberately title-free, spoiler-free prompts for the blind story-pair stage.
+# Deliberately title-free, spoiler-light prompts for the blind story-pair stage.
+# Keep these concrete and easy to scan: one situation, one choice, no more than
+# about twenty words. They are read at 21px on a phone and should feel like a
+# story someone can picture, not a miniature piece of film criticism.
 DESCRIPTIONS = {
-    "The Lion King": "A reluctant heir must decide whether returning to a troubled home is worth facing an old failure.",
-    "Maleficent": "A feared outsider revisits the betrayal that shaped her and discovers care in an unexpected bond.",
-    "The Lord of the Rings: The Return of the King": "Ordinary companions carry a burden through a collapsing world while leaders decide what power is for.",
-    "Hacksaw Ridge": "A man enters a brutal institution determined to serve others without abandoning the principle that defines him.",
-    "The Dark Knight": "A protector faces an enemy who believes fear can reveal what every decent person is really willing to do.",
-    "Frozen": "Two sisters must choose between a safe distance and the difficult honesty required to repair a family bond.",
-    "Joker": "An isolated man searches for dignity in a city that repeatedly treats suffering as someone else’s problem.",
-    "Starship Troopers": "Young citizens join a vast military project and slowly confront the stories a society tells about duty and enemies.",
-    "Dead Poets Society": "Students encounter a teacher who asks them to value their own voices inside a world built on expectation.",
-    "Sleeping Beauty": "A sheltered young person becomes the focus of a conflict between protection, freedom, and old promises.",
-    "Wicked": "Two unlikely friends navigate a public story that turns difference into danger and loyalty into a costly choice.",
-    "The Wizard of Oz": "A young traveller crosses a strange land with companions who each believe they are missing what matters most.",
-    "Casablanca": "Two people meet again in a place where private love and a larger struggle both demand a sacrifice.",
-    "It's a Wonderful Life": "A discouraged man is forced to reconsider whether a life of small obligations has mattered to anyone else.",
-    "The Godfather": "A family’s desire for security draws a reluctant heir into choices that change what belonging means.",
-    "Thelma & Louise": "Two friends leave ordinary life behind and discover how freedom can become both thrilling and dangerously narrow.",
-    "Groundhog Day": "A self-absorbed person is given repeated chances to ask whether change is real when no one is watching.",
-    "Schindler's List": "A businessman living within a cruel system must decide how far personal influence can be used to protect others.",
-    "Princess Mononoke": "People and forces of nature clash as a visitor tries to understand whether survival must always create enemies.",
-    "Fight Club": "A dissatisfied man finds belonging in a secret movement that promises freedom while demanding a new kind of obedience.",
-    "The Matrix": "An ordinary worker is offered a terrifying explanation for the world and must choose comfort or a difficult awakening.",
-    "Billy Elliot": "A young person discovers a calling that challenges the role his family and community have prepared for him.",
-    "Gladiator": "A respected leader loses everything and is drawn into a public struggle over revenge, honour, and the future of a nation.",
-    "Spirited Away": "A child in an unfamiliar world learns to hold onto compassion and identity amid rules she does not understand.",
-    "Shrek": "A solitary outsider’s quiet life is interrupted by a quest that challenges his assumptions about beauty and belonging.",
-    "No Country for Old Men": "A chance discovery pulls several people into a pursuit where chance, violence, and moral certainty seem increasingly unstable.",
-    "WALL-E": "A lonely caretaker discovers connection and asks a comfortable society to remember what responsibility to a shared world requires.",
-    "The Wolf of Wall Street": "An ambitious newcomer embraces a culture of excess and must decide whether success excuses the damage left behind.",
-    "Arrival": "A specialist confronting the unknown learns that understanding another perspective may change how a life is valued.",
-    "Parasite": "Two families from sharply different circumstances become entangled in a fragile arrangement shaped by need and status.",
-    "Sense and Sensibility": "Two sisters with opposite ideas about feeling and restraint each weigh what security is worth surrendering for.",
-    "Pride & Prejudice": "Two people whose first judgements of each other prove wrong must weigh pride, station, and the cost of admitting a mistake.",
-    "Top Gun: Maverick": "A veteran with a long record of disobedience is asked to prepare others for something he believes he should face himself.",
-    "The Terminator": "An ordinary person is hunted by something implacable and discovers what she is willing to become in order to survive.",
-    "Zootopia": "A newcomer determined to prove herself uncovers how readily a city turns fear of difference into policy.",
-    "Master and Commander: The Far Side of the World": "A commander pursuing an enemy across the sea weighs duty, friendship, and the lives of the men who trust him.",
-    "Avatar": "An outsider sent among a people he was meant to help displace must choose between the world that made him and the one that accepted him.",
-    "The Avengers": "Powerful individuals who distrust one another must decide whether a shared threat is worth surrendering their independence for.",
-    "Guardians of the Galaxy": "A band of self-interested outcasts find that protecting something larger than themselves costs more than they meant to give.",
-    "Captain Marvel": "A soldier who has been told what she is discovers her memories were shaped by the people who trained her.",
-    "Les Misérables": "Lives collide across years as mercy, law, poverty, and a chance to become someone new pull in different directions.",
-    "Bicycle Thieves": "A working family faces a single loss that threatens livelihood, pride, and the bond between a parent and child.",
-    "Rashomon": "Several witnesses tell incompatible versions of one event, leaving everyone to wrestle with truth and self-interest.",
-    "Tokyo Story": "An ageing couple visits their adult children and discovers how love can persist alongside distance and disappointment.",
-    "Seven Samurai": "Strangers with little to spare decide whether protecting a vulnerable community is worth the personal cost.",
-    "A Man for All Seasons": "A public servant must decide whether conscience can survive when loyalty to power becomes a condition of safety.",
-    "Chariots of Fire": "Two gifted runners pursue excellence for very different reasons and confront institutions that want to set their limits.",
-    "Do the Right Thing": "A hot day exposes the pressures beneath a neighbourhood's everyday coexistence and tests who will take responsibility.",
-    "V for Vendetta": "A citizen living under fearful rule is invited to consider whether liberation can be separated from violence and revenge.",
-    "A Separation": "A family dispute becomes a web of competing duties, where every honest choice appears to harm someone else.",
+    "The Lion King": "A young leader must face his past and decide whether to save the home he left behind.",
+    "Maleficent": "A feared outsider must decide whether pain from the past will rule her, or whether care can change her.",
+    "The Lord of the Rings: The Return of the King": "Small companions carry a dangerous burden while leaders fight to protect a world without giving in to power.",
+    "Hacksaw Ridge": "A soldier enters battle without a weapon and risks his life to save others while staying true to his beliefs.",
+    "The Dark Knight": "A hero faces an enemy who uses fear and chaos to test whether good people will turn cruel.",
+    "Frozen": "Two sisters kept apart by fear must learn whether love and honesty can bring their family back together.",
+    "Joker": "A lonely man, ignored by his city, searches for respect as his pain turns into anger.",
+    "Starship Troopers": "Young people join a proud army and begin to question what they were taught about duty and the enemy.",
+    "Dead Poets Society": "A teacher urges his students to think for themselves, even when family and school demand obedience.",
+    "Sleeping Beauty": "A sheltered young woman is caught between those who want to protect her and those who want revenge.",
+    "Wicked": "Two unlikely friends must choose between staying loyal to each other and becoming who the world expects.",
+    "The Wizard of Oz": "A lost girl travels with three companions who learn they may already have what they seek.",
+    "Casablanca": "Two former lovers meet again and must choose between being together and helping a greater cause.",
+    "It's a Wonderful Life": "A hopeless man is shown how much his ordinary life has mattered to the people around him.",
+    "The Godfather": "A man joins the dangerous family business he once rejected and slowly changes what loyalty means.",
+    "Thelma & Louise": "Two friends escape their old lives, but each step toward freedom leaves them fewer ways back.",
+    "Groundhog Day": "A selfish man lives the same day again and again until he learns to care about others.",
+    "Schindler's List": "A businessman inside a cruel system risks his wealth and safety to save the lives of strangers.",
+    "Princess Mononoke": "A young warrior enters a fight between people and nature and searches for a way both can survive.",
+    "Fight Club": "A lonely man finds purpose in a violent group, then sees that freedom can become another kind of control.",
+    "The Matrix": "A man must choose between a comfortable lie and a dangerous truth.",
+    "Billy Elliot": "A boy discovers a talent his family does not understand and must choose between fitting in and being himself.",
+    "Gladiator": "A fallen leader is forced to fight for others while choosing between revenge and a better future.",
+    "Spirited Away": "A girl trapped in a strange world must stay kind and remember who she is to save her family.",
+    "Shrek": "A lonely outsider begins a rescue mission and learns that love and worth are not based on appearance.",
+    "No Country for Old Men": "A man finds stolen money and is hunted through a world where violence seems impossible to escape.",
+    "WALL-E": "A lonely robot finds love and tries to wake people from a comfortable life that is harming their world.",
+    "The Wolf of Wall Street": "A young trader chases wealth and praise, ignoring the people harmed by his success.",
+    "Arrival": "A language expert tries to understand unknown visitors and learns that love can matter even when loss is certain.",
+    "Parasite": "A poor family enters the life of a rich family, building a plan that could easily fall apart.",
+    "Sense and Sensibility": "Two sisters take different paths through love, balancing honest feelings against the need for safety.",
+    "Pride & Prejudice": "Two people must look past pride and first impressions before they can understand each other.",
+    "Top Gun: Maverick": "An ageing pilot trains a young team for a deadly mission while facing mistakes from his past.",
+    "The Terminator": "A woman hunted by a machine discovers how strong she must become to protect the future.",
+    "Zootopia": "A new police officer uncovers a plan that turns fear of difference against an entire city.",
+    "Master and Commander: The Far Side of the World": "A sea captain chasing an enemy must weigh victory against friendship and the lives of his crew.",
+    "Avatar": "A soldier sent to help take another people's home must choose which side he truly belongs to.",
+    "The Avengers": "A group of powerful strangers must learn to trust each other before a shared enemy destroys their city.",
+    "Guardians of the Galaxy": "A group of selfish outsiders must decide whether they will risk everything to protect people they barely know.",
+    "Captain Marvel": "A soldier learns that her memories were changed and must decide who deserves her trust.",
+    "Les Misérables": "A man given mercy tries to build a better life while a strict officer refuses to forgive his past.",
+    "Bicycle Thieves": "A father and son search for a stolen bicycle that their family needs to survive.",
+    "Rashomon": "Several people tell different stories about the same crime, making the truth hard to find.",
+    "Tokyo Story": "An older couple visits their busy children and learns that love can remain even when families grow apart.",
+    "Seven Samurai": "Poor villagers ask a group of warriors to defend them, and each must decide what another life is worth.",
+    "A Man for All Seasons": "A public official risks his freedom and life rather than say something he believes is wrong.",
+    "Chariots of Fire": "Two runners chase the same prize for different reasons while others try to control how they compete.",
+    "Do the Right Thing": "A hot day pushes a neighbourhood's hidden anger into the open, forcing everyone to face their part in it.",
+    "V for Vendetta": "A woman living under harsh rule joins a masked rebel and questions whether violence can create real freedom.",
+    "A Separation": "A family dispute traps several people between honesty and duty, with every choice hurting someone.",
 }
 
 
@@ -74,32 +77,50 @@ def _description_for(title: str) -> str:
     raise KeyError(f"No blind-story description seeded for {title!r}")
 
 
-def seed_films(path: str = "seeds/phase0.yaml") -> int:
-    """Insert missing seed films; never overwrite an existing film row."""
+def sync_seed_films(path: str = "seeds/phase0.yaml") -> dict[str, int]:
+    """Insert missing seed films and migrate curated descriptions in place.
+
+    The film table is part research corpus and part product catalogue. Replacing
+    a whole existing row here would erase fetched metadata and evidence links,
+    so an existing film gets only its curated description updated. The operation
+    is deliberately idempotent: deployments can run it every time code changes.
+    """
     db.init_db()
-    existing = {(film["title"], film.get("year")) for film in db.list_films()}
-    inserted = 0
+    films = db.list_films()
+    existing = {(film["title"], film.get("year")): film for film in films}
+    existing_ids = {film["film_id"] for film in films}
+    result = {"inserted": 0, "updated": 0, "unchanged": 0}
     for seed in load_seeds(path):
         key = (seed["title"], seed.get("year"))
         film_id = slugify(*key)
+        description = _description_for(seed["title"])
         if key not in existing:
+            if film_id in existing_ids:
+                raise ValueError(
+                    f"Refusing to replace existing film {film_id!r} while adding {key!r}"
+                )
             db.upsert_film({
                 "film_id": film_id,
                 "title": seed["title"],
                 "year": seed.get("year"),
                 "seed_note": seed.get("note"),
-                "description": _description_for(seed["title"]),
+                "description": description,
                 "fetched_at": db.now(),
             })
-            existing.add(key)
-            inserted += 1
+            existing[key] = {"film_id": film_id, "description": description}
+            existing_ids.add(film_id)
+            result["inserted"] += 1
+        elif existing[key].get("description") != description:
+            # Use the stored id rather than deriving it: imported corpora may
+            # preserve an older id convention even when title and year match.
+            db.set_film_description(existing[key]["film_id"], description)
+            existing[key]["description"] = description
+            result["updated"] += 1
         else:
-            # Only fill a gap, never overwrite. These descriptions are edited by
-            # hand — they are the entire content of a blind pair, so they get
-            # rewritten as the product's voice changes — and re-running the
-            # seeder to pick up a new film should not silently revert that work
-            # to whatever this file happened to say.
-            current = (db.get_film(film_id) or {}).get("description") or ""
-            if not current.strip():
-                db.set_film_description(film_id, _description_for(seed["title"]))
-    return inserted
+            result["unchanged"] += 1
+    return result
+
+
+def seed_films(path: str = "seeds/phase0.yaml") -> int:
+    """Backward-compatible wrapper returning the number of missing films added."""
+    return sync_seed_films(path)["inserted"]

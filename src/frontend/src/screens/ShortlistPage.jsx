@@ -18,7 +18,7 @@ import { loadNextShortlistFilm, loadShortlistSelection, saveShortlistReaction } 
 
 const REFILL_AT = 2
 
-export default function ShortlistPage({ access, shareToken, matchesSeen = 0, onDone }) {
+export default function ShortlistPage({ access, shareToken, matchesSeen = 0, solo = false, onDone }) {
   const [queue, setQueue] = useState([])
   const [state, setState] = useState('loading')
   const [error, setError] = useState(null)
@@ -92,15 +92,17 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, onD
 
   if (error && !film) return <main className="app-page"><p className="message">{error}</p></main>
   if (state === 'exhausted' && !film) {
-    return <main className="app-page"><p className="message">You have been through every film we can offer you both.</p></main>
+    return <main className="app-page"><p className="message">{solo ? 'You have been through every film we can offer you.' : 'You have been through every film we can offer you both.'}</p></main>
   }
-  if (!film) return <main className="app-page"><p className="message">Finding films for the two of you…</p></main>
+  if (!film) return <main className="app-page"><p className="message">{solo ? 'Finding films for you…' : 'Finding films for the two of you…'}</p></main>
 
   const remaining = Math.max(0, 3 - matches)
   return <main className="app-page"><section className="phone-screen deck-screen">
     <header className="deck-header">
-      <span>Films for the two of you</span>
-      <span>{matches ? `${matches} agreed · ${remaining} to go` : 'Both say yes to shortlist it'}</span>
+      <span>{solo ? 'Picked for you' : 'Films for the two of you'}</span>
+      <span>{matches
+        ? `${matches} shortlisted · ${remaining} to go`
+        : solo ? 'Say yes to shortlist it' : 'Both say yes to shortlist it'}</span>
     </header>
     <article className="deck-card swipe-card" key={film.id} {...swipe.handlers} style={swipe.style}>
       <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× No</span>
@@ -110,6 +112,6 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, onD
     </article>
     <FilmAxisStrip filmId={film.id} />
     <div className="deck-actions"><button type="button" disabled={swipe.committed} onClick={() => vote('no')}>×<span>No</span></button><button className="deck-heart" type="button" disabled={swipe.committed} onClick={() => vote('yes')}>♥<span>Yes</span></button></div>
-    <p className="deck-note">Swipe right for yes · left for no. When you both say yes, it joins your shortlist.</p>
+    <p className="deck-note">Swipe right for yes · left for no. {solo ? 'Three yeses and you have your shortlist.' : 'When you both say yes, it joins your shortlist.'}</p>
   </section></main>
 }

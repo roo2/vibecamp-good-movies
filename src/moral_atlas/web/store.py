@@ -26,7 +26,7 @@ def _ensure_db() -> None:
     db.init_db()
 
 
-def create_session(name: str) -> Session:
+def create_session(name: str = "") -> Session:
     _ensure_db()
     user = User(id=f"usr_{uuid4().hex[:12]}", name=name.strip())
     token = token_urlsafe(32)

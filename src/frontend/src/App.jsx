@@ -57,13 +57,21 @@ function App() {
       .catch(console.error)
   }, [access, navigate, route])
 
-  const handleSignIn = useCallback(async (name) => {
-    const nextAccess = await startAccess(name)
+  // Alone and together are the same machinery with one fewer person in it: a
+  // solo run is a group of one, so it needs no lobby to invite nobody to and no
+  // wait for nobody to finish. It starts itself and goes straight to the films.
+  const handleStart = useCallback(async (mode) => {
+    const nextAccess = await startAccess()
     setAccess(nextAccess)
     const joinToken = currentRoute().startsWith('/join/') ? currentRoute().split('/')[2] : null
     if (joinToken) return
     const nextGroupSession = await createGroupSession(nextAccess)
     setGroupSession({ shareToken: nextGroupSession.share_token })
+    if (mode === 'solo') {
+      await startGroupSession(nextAccess, nextGroupSession.share_token)
+      navigate('/seen-it')
+      return
+    }
     navigate('/lobby')
   }, [navigate])
 
@@ -102,6 +110,13 @@ function App() {
     }
     await submitTestResult(access, answers, groupSession?.shareToken)
     const status = await refreshSessionStatus()
+    // Nobody else in the room: there is nothing to wait for, and a waiting screen
+    // that says "waiting for your partner" to someone who has none is a bug with
+    // a friendly face on it.
+    if ((status?.members?.length || 1) <= 1) {
+      navigate('/complete')
+      return
+    }
     if (status?.host_user_id === access.user.id) await beginResultsWait(access, groupSession.shareToken)
     navigate('/waiting')
   }, [access, groupSession, navigate, refreshSessionStatus])
@@ -127,7 +142,7 @@ function App() {
   }
 
   if (!access && route !== '/' && !PUBLIC_ROUTES.has(route) && !route.startsWith('/join/')) {
-    return <LandingPage onSignIn={handleSignIn} />
+    return <LandingPage onStart={handleStart} />
   }
 
   if (route === '/seen-it') {
@@ -149,15 +164,18 @@ function App() {
   if (route === '/complete') {
     return <TestCompletePage access={access} shareToken={groupSession?.shareToken} onContinue={() => navigate('/shortlist')} />
   }
+  // One person is a room of one — the copy differs, the machinery does not.
+  const solo = (sessionStatus?.members?.length || 1) <= 1
+
   if (route === '/shortlist') {
-    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} matchesSeen={matchesSeen}
+    return <ShortlistPage access={access} shareToken={groupSession?.shareToken} matchesSeen={matchesSeen} solo={solo}
                           onDone={(films) => { setShortlist(films); navigate('/match') }} />
   }
   if (route === '/match') {
-    return <MatchPage access={access} shareToken={groupSession?.shareToken} films={shortlist} onKeepLooking={handleKeepLooking} onStartOver={handleStartOver} />
+    return <MatchPage access={access} shareToken={groupSession?.shareToken} films={shortlist} solo={solo} onKeepLooking={handleKeepLooking} onStartOver={handleStartOver} />
   }
 
-  return <LandingPage onSignIn={handleSignIn} joining={route.startsWith('/join/')} />
+  return <LandingPage onStart={handleStart} joining={route.startsWith('/join/')} />
 }
 
 export default App

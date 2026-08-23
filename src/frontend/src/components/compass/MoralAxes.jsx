@@ -97,7 +97,9 @@ function MoralAxis({ axis, others, expanded, onToggle }) {
 function MoralAxes({ scores, companions = [] }) {
   const byId = companions.map((companion) => ({
     user_id: companion.user_id,
-    name: companion.name,
+    // Nobody is asked for a name any more, so there is usually nothing to show
+    // but the role — which is all the reader needed anyway.
+    name: (companion.name || '').trim() || 'your partner',
     scores: new Map((companion.profile?.scores || []).map((axis) => [axis.dim_id, axis])),
   }))
 

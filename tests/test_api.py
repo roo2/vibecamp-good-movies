@@ -311,3 +311,55 @@ def test_a_removed_yes_takes_a_film_back_off_the_shortlist(isolated_web_database
         con.execute("DELETE FROM shortlist_reactions WHERE session_id=? AND user_id=?",
                     [session_id, guest["user"]["id"]])
         assert _agreed_films(con, session_id) == []
+
+
+def test_someone_can_take_it_alone_and_without_giving_a_name(isolated_web_database):
+    """The solo path: no name, no invitation, no waiting for anybody.
+
+    A room of one is the same machinery with one fewer person in it — the read is
+    what the instrument does before it compares anyone — so this checks the two
+    places a group of one could have gone wrong: access without a name, and a
+    shortlist that requires unanimity among a single person.
+    """
+    from moral_atlas.web.store import MATCHES_WANTED
+
+    access = client.post("/api/access", json={})
+    assert access.status_code == 201, "a name must not be required to start"
+    me = access.json()
+    assert me["user"]["name"] == ""
+    headers = {"X-Session-Token": me["token"]}
+
+    share_token = client.post("/api/sessions", headers=headers).json()["share_token"]
+    assert client.post(f"/api/sessions/{share_token}/start", headers=headers).status_code == 200
+
+    films = client.get(f"/api/onboarding/films?share_token={share_token}",
+                       headers=headers).json()["films"]
+    for index, film in enumerate(films):
+        client.post("/api/onboarding/ratings", headers=headers, json={
+            "film_id": film["id"], "reaction": "loved_it" if index % 2 else "not_for_me",
+            "session_share_token": share_token,
+        })
+    assert client.post("/api/test/results", headers=headers, json={
+        "answers": {}, "session_share_token": share_token,
+    }).status_code == 201
+
+    status = client.get(f"/api/sessions/{share_token}", headers=headers).json()
+    assert len(status["members"]) == 1, "nobody to wait for, so the app skips the wait"
+
+    # Nobody else to agree with, so one yes is unanimous.
+    agreed = []
+    while len(agreed) < MATCHES_WANTED:
+        card = client.get(f"/api/shortlist/next?share_token={share_token}", headers=headers).json()
+        assert card["state"] == "card"
+        result = client.post("/api/shortlist/reactions", headers=headers, json={
+            "share_token": share_token, "film_id": card["film"]["id"], "reaction": "yes",
+        }).json()
+        agreed.append(card["film"]["id"])
+        assert result["state"] == ("shortlist" if len(agreed) == MATCHES_WANTED else "continue")
+
+    assert [film["id"] for film in result["films"]] == agreed
+
+    # And the compass has nobody to compare them against, which is not an error.
+    companions = client.get(f"/api/profile/moral/session/{share_token}", headers=headers)
+    assert companions.status_code == 200
+    assert companions.json()["companions"] == []

@@ -30,6 +30,8 @@ not a disqualification.
 """
 from __future__ import annotations
 
+import math
+import random
 import statistics as st
 from typing import Any
 
@@ -44,6 +46,42 @@ PRIOR = 2.0
 
 # Below this the axis contributed too little to be worth naming on the card.
 NOTE_FLOOR = 0.05
+
+# How far the deck is allowed to wander from strict rank order.
+#
+# Sorting by agreement is correct and, for the same two people, gives the same
+# film every single time — which is a strange thing for a product whose answer
+# to "what should we watch" is a recommendation rather than a computation. The
+# top of the list is usually several films that fit about equally well, and
+# picking the same one forever makes the other equals invisible.
+#
+# So the order is SAMPLED rather than sorted: each film's key is its agreement
+# plus Gumbel noise scaled by this, which is exactly Plackett-Luce sampling with
+# weights exp(agreement / VARIATION). Two films a hundredth apart swap about
+# half the time; a film 0.2 behind leads roughly one run in fifty; a film that
+# genuinely pulls against the room effectively never leads. Variation among
+# equals, not a lottery.
+#
+# Set to 0 for a deterministic deck, which is what the ranking tests want.
+VARIATION = 0.05
+
+
+def _sampled_order(ranked: list[dict[str, Any]], variation: float) -> list[dict[str, Any]]:
+    """Rank order when variation is 0, a Plackett-Luce sample of it otherwise."""
+    if variation <= 0:
+        return sorted(ranked, key=lambda row: (-row["agreement"], -row["mean_alignment"], row["id"]))
+    chooser = random.SystemRandom()
+
+    def key(row: dict[str, Any]) -> float:
+        # -log(-log(u)) is a standard Gumbel draw; adding it to a score and
+        # taking the largest is the Gumbel-max trick, so the winner is drawn in
+        # proportion to exp(agreement / variation) rather than always being the
+        # maximum.
+        gumbel = -math.log(-math.log(chooser.random()))
+        return row["agreement"] + variation * gumbel
+
+    return sorted(ranked, key=key, reverse=True)
+
 
 SEEN_REACTIONS = {"loved_it", "not_for_me"}
 
@@ -106,6 +144,7 @@ def ranked_shortlist(
     user_ids: list[str], limit: int | None = 6,
     dim_version: str = user_scores.DEFAULT_DIM_VERSION,
     bank_version: str = user_scores.DEFAULT_BANK_VERSION,
+    variation: float = VARIATION,
 ) -> list[dict[str, Any]]:
     dimensions = user_scores.factor_axes(
         settings().product_scorer, settings().product_variant, _factor_bank())
@@ -144,7 +183,7 @@ def ranked_shortlist(
             "note": _note(per_member, names, len(user_ids)),
         })
 
-    ranked.sort(key=lambda row: (-row["agreement"], -row["mean_alignment"], row["id"]))
+    ranked = _sampled_order(ranked, variation)
     return ranked[:limit] if limit is not None else ranked
 
 

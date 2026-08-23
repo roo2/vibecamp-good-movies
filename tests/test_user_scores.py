@@ -379,7 +379,7 @@ def test_the_deck_is_ranked_by_what_the_viewer_believes(scored_atlas):
 
     viewer = _new_user("Ada")
     _rate(viewer, 0, "loved_it")          # film-0 affirms axis 1
-    deck = ranked_shortlist([viewer], limit=6)
+    deck = ranked_shortlist([viewer], limit=6, variation=0)
 
     assert deck, "a scored viewer should get a deck"
     assert all(int(film["id"].split("-")[1]) % 2 == 0 for film in deck[:3]), \
@@ -395,7 +395,7 @@ def test_films_you_have_already_seen_are_not_on_tonights_list(scored_atlas):
     _rate(viewer, 0, "loved_it")
     _rate(viewer, 2, "not_for_me")
     _rate(viewer, 4, "havent_seen")
-    ids = {film["id"] for film in ranked_shortlist([viewer], limit=20)}
+    ids = {film["id"] for film in ranked_shortlist([viewer], limit=20, variation=0)}
 
     assert "film-0" not in ids, "already seen and loved"
     assert "film-2" not in ids, "already seen and rejected"
@@ -410,8 +410,8 @@ def test_two_people_are_ranked_by_whoever_likes_the_film_least(scored_atlas):
     _rate(ada, 0, "loved_it")             # Ada leans toward axis 1's high pole
     _rate(bob, 1, "loved_it")             # Bob leans the opposite way on both axes
 
-    together = ranked_shortlist([ada, bob], limit=20)
-    alone = {film["id"]: film["agreement"] for film in ranked_shortlist([ada], limit=20)}
+    together = ranked_shortlist([ada, bob], limit=20, variation=0)
+    alone = {film["id"]: film["agreement"] for film in ranked_shortlist([ada], limit=20, variation=0)}
 
     assert max(alone.values()) > together[0]["agreement"], \
         "adding someone who disagrees cannot improve the best match"
@@ -461,3 +461,42 @@ def test_default_profile_falls_back_when_the_shared_map_has_not_been_derived(mon
     assert response.status_code == 200
     assert response.json()["scores"] == []
     assert response.json()["is_provisional"] is True
+
+
+def test_the_deck_varies_between_runs_without_recommending_a_worse_film(scored_atlas):
+    """Same two people, same beliefs — a different film out front, but a fitting one.
+
+    The point of sampling the order rather than sorting it is that a product
+    which answers "what should we watch" with the identical film every time is
+    doing arithmetic at someone rather than recommending to them. What it must
+    not do is trade that variety for a film the room actually disagrees with, so
+    this asserts both halves: the leader moves, and every leader it produces is
+    near the top of the honest ranking.
+    """
+    from moral_atlas.web.shortlist_service import ranked_shortlist
+
+    viewer = _new_user("Ada")
+    _rate(viewer, 0, "loved_it")
+
+    ordered = ranked_shortlist([viewer], limit=None, variation=0)
+    best = ordered[0]["agreement"]
+    agreement_of = {film["id"]: film["agreement"] for film in ordered}
+
+    leaders = {ranked_shortlist([viewer], limit=1)[0]["id"] for _ in range(40)}
+
+    assert len(leaders) > 1, "40 runs that all lead with the same film is not variation"
+    for film_id in leaders:
+        assert best - agreement_of[film_id] <= 0.25, (
+            f"{film_id} led the deck at {agreement_of[film_id]:.3f} against a best of "
+            f"{best:.3f} — that is a worse film, not a different equally good one")
+
+
+def test_variation_can_be_switched_off(scored_atlas):
+    """The ranking underneath stays deterministic, so it can still be reasoned about."""
+    from moral_atlas.web.shortlist_service import ranked_shortlist
+
+    viewer = _new_user("Ada")
+    _rate(viewer, 0, "loved_it")
+    runs = [[film["id"] for film in ranked_shortlist([viewer], limit=8, variation=0)]
+            for _ in range(5)]
+    assert all(run == runs[0] for run in runs)

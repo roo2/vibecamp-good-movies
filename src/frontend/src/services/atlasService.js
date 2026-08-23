@@ -1,26 +1,25 @@
-// The dataset the explorer reads.
+// The dataset the explorer reads: the API, and only the API.
 //
-// Two sources, and the ORDER is the whole of whether this page can be trusted.
+// There used to be a second source — a JSON file `atlas dataset` wrote into
+// `public/` and `vite build` copied into the published site — tried FIRST, so
+// on any machine that actually had the store the page showed whatever state
+// that file was last built in. That cost a real bug: a section was added here,
+// the store held everything it needed, and the page rendered nothing, because a
+// snapshot from an earlier state answered first and won.
 //
-// `/api/atlas` re-reads the store on every request and caches against its mtime,
-// so it is fresh by construction: a pipeline run shows up on reload. It is tried
-// first for exactly that reason. It used not to be, and the consequence was not
-// theoretical — a new section was added to this page, the store had the data,
-// and the page rendered nothing, because a committed snapshot from an earlier
-// state answered first and won.
+// Reordering fixed the symptom and left the cause: a build step that has to be
+// remembered, and a file that is wrong by default between pipeline runs. So the
+// step is gone. `/api/atlas` reads the store per request and caches against a
+// fingerprint of its contents, which makes the page correct by construction
+// rather than by discipline.
 //
-// `/data/atlas.json` is that snapshot: a file `atlas dataset` writes into
-// `public/`, which `vite build` copies into the published site. The demo is a
-// bucket with no store behind it, so the snapshot is the only thing it can
-// serve — but it is only ever as fresh as the last time somebody rebuilt it,
-// which is why `atlas dataset --check` exists and why the page says which of
-// the two it is showing.
-//
-// It is deliberately NOT under /api. CloudFront routes /api/* to the runner and
-// everything else to the bucket, so a published file under that prefix would be
-// answered by the API — which has no route for it — rather than by S3.
+// The trade is availability for correctness, and it is worth naming. If the API
+// is unreachable this page shows an error instead of stale numbers. That is the
+// intended behaviour — a moral atlas quietly serving last week's corpus is
+// worse than one that admits it is offline — but it does mean the published
+// site now depends on the runner being up, where before it could limp along on
+// the bundled file.
 
-const STATIC_PATH = '/data/atlas.json'
 const LIVE_PATH = '/api/atlas'
 
 async function fetchJson(path, timeoutMs) {
@@ -36,31 +35,21 @@ async function fetchJson(path, timeoutMs) {
     if (timer) clearTimeout(timer)
   }
   if (!response.ok) throw new Error(`${path} responded ${response.status}`)
-  // A static host answers a missing path with index.html and a 200, so the
-  // status alone does not prove this is the dataset. Parsing does.
-  const body = await response.json()
+    const body = await response.json()
   if (!body || !Array.isArray(body.films)) throw new Error(`${path} is not the atlas dataset`)
   return body
 }
 
-// A static host answers everything, so an absent API is a slow failure rather
-// than a refusal. The timeout keeps the fallback quick on the published demo.
-const LIVE_TIMEOUT_MS = 2500
-
 export async function loadAtlas() {
   try {
-    const payload = await fetchJson(LIVE_PATH, LIVE_TIMEOUT_MS)
-    return { ...payload, source: 'live' }
-  } catch (liveError) {
-    try {
-      const payload = await fetchJson(STATIC_PATH)
-      return { ...payload, source: 'published' }
-    } catch {
-      throw new Error(
-        'No dataset published yet. Run `atlas dataset` to build it, or start the API.',
-        { cause: liveError },
-      )
-    }
+    return await fetchJson(LIVE_PATH)
+  } catch (cause) {
+    throw new Error(
+      'The atlas API is not answering. Start it with `uvicorn moral_atlas.web.app:app`, '
+      + 'or check the runner — this page reads the store directly and has no cached copy '
+      + 'to fall back to.',
+      { cause },
+    )
   }
 }
 
@@ -68,22 +57,15 @@ export async function loadAtlas() {
 // somebody opens that film: it averages ~80KB and the dialogue tracks run to
 // 170KB, which is not something to put in front of every visitor to the index.
 export async function loadFilmEvidence(filmId) {
+  // Same rule as the index: the store, not a snapshot. A published evidence
+  // file went stale in exactly the same way, and silently — the reader is being
+  // shown "the text every claim about this film was read from", so serving a
+  // copy from before the last ingest is the one thing it must not do.
   const id = encodeURIComponent(filmId)
-  try {
-    const body = await fetch(`/data/atlas/${id}.json`, { headers: { Accept: 'application/json' } })
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
-    if (!Array.isArray(body?.layers)) throw new Error('not an evidence document')
-    return body
-  } catch {
-    return fetchEvidenceLive(id)
-  }
-}
-
-async function fetchEvidenceLive(id) {
   const response = await fetch(`/api/atlas/films/${id}`, { headers: { Accept: 'application/json' } })
-  if (!response.ok) throw new Error('No source text has been published for this film.')
+  if (!response.ok) throw new Error('No source text is available for this film.')
   const body = await response.json()
-  if (!Array.isArray(body?.layers)) throw new Error('No source text has been published for this film.')
+  if (!Array.isArray(body?.layers)) throw new Error('No source text is available for this film.')
   return body
 }
 

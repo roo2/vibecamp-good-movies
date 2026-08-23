@@ -62,29 +62,41 @@ MIN_FILMS_PER_ITEM = 3
 
 def response_matrix(
     scorer: str | None = None, bank_version: str = "b1",
-    min_films: int = MIN_FILMS_PER_ITEM,
+    min_films: int = MIN_FILMS_PER_ITEM, variant: str | None = None,
 ) -> dict[str, Any]:
     """Films x items, dense, in {+1, 0, -1}.
 
     `scorer=None` reads the atlas's own `scores`; anything else reads that
     model's `model_verdicts`, so the same analysis can be run per model.
+
+    `variant` scopes the whole thing to one evidence condition, and on a mixed
+    corpus it should be set. Films read from a plot summary and films read from
+    their own dialogue are not answering the same instrument: a Wikipedia plot
+    section is an editor's account of which events mattered, and a reception
+    section is critics' moral opinions outright, so pooling them with subtitles
+    would put "what the encyclopaedia says about this film" and "what the film
+    says" into the same correlation matrix and call the result a dimension.
     """
     import numpy as np
 
     db.init_db()
     with db.connect(read_only=True) as con:
-        if scorer is None:
-            rows = con.execute(
-                "SELECT film_id, item_id, value FROM scores WHERE bank_version=?",
-                [bank_version],
-            ).fetchall()
-        else:
-            rows = con.execute(
-                "SELECT film_id, item_id, value FROM model_verdicts "
-                "WHERE bank_version=? AND scorer=?", [bank_version, scorer],
-            ).fetchall()
+        table = "scores" if scorer is None else "model_verdicts"
+        where, args = ["bank_version=?"], [bank_version]
+        if scorer is not None:
+            where.append("scorer=?")
+            args.append(scorer)
+        if variant:
+            where.append("variant=?")
+            args.append(variant)
+        rows = con.execute(
+            f"SELECT film_id, item_id, value FROM {table} WHERE {' AND '.join(where)}",
+            args,
+        ).fetchall()
     if not rows:
-        raise RuntimeError(f"no verdicts for scorer={scorer!r} bank={bank_version!r}")
+        raise RuntimeError(
+            f"no verdicts for scorer={scorer!r} bank={bank_version!r}"
+            + (f" variant={variant!r}" if variant else ""))
 
     # A film may be scored under several evidence variants; average first so a
     # film counts once however many conditions it was run under.
@@ -111,7 +123,7 @@ def response_matrix(
             if values:
                 matrix[row_index, index[item]] = sum(values) / len(values)
 
-    return {"films": films, "items": items, "matrix": matrix,
+    return {"films": films, "items": items, "matrix": matrix, "variant": variant,
             "dropped_items": dropped, "density": float((matrix != 0).mean())}
 
 
@@ -202,9 +214,10 @@ def item_groups(matrix, items: list[str], k: int, seed: int = 11) -> dict[str, i
 def analyse(
     scorer: str | None = None, bank_version: str = "b1",
     n_iter: int = 200, min_films: int = MIN_FILMS_PER_ITEM, seed: int = 11,
+    variant: str | None = None,
 ) -> dict[str, Any]:
     """The whole thing for one scorer: how many dimensions, and which items."""
-    data = response_matrix(scorer, bank_version, min_films)
+    data = response_matrix(scorer, bank_version, min_films, variant)
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
     groups = item_groups(data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
@@ -212,6 +225,7 @@ def analyse(
         sizes[label] = sizes.get(label, 0) + 1
     return {
         "scorer": scorer or "opus",
+        "variant": variant,
         "films": len(data["films"]),
         "items": len(data["items"]),
         "dropped_items": data["dropped_items"],

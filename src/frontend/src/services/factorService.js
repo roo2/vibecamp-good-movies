@@ -1,0 +1,34 @@
+// The axes as the films produced them, per model.
+//
+// Read live from the store, like everything else on this page. There is no
+// snapshot to fall back to and that is deliberate: a committed copy of an
+// analysis is wrong by default the moment the next scoring run lands, and this
+// page exists to show what the data says now.
+
+async function get(path) {
+  const response = await fetch(path, { headers: { Accept: 'application/json' } })
+  if (!response.ok) throw new Error(`${path} responded ${response.status}`)
+  return response.json()
+}
+
+// Which models have been run. The toggle is built from this rather than a
+// hardcoded list, so a model appears exactly when it has something to show.
+export async function loadModels() {
+  const body = await get('/api/factors')
+  return body.models || []
+}
+
+export async function loadFactors(scorer, variant = 'subs', bank = '') {
+  const query = new URLSearchParams({ variant })
+  if (bank) query.set('bank', bank)
+  return get(`/api/factors/${encodeURIComponent(scorer)}?${query}`)
+}
+
+// A factor's margin is how far its eigenvalue cleared the 95th percentile of a
+// null built by permuting each item's own column. Below this it is above the
+// line and practically on it, and should not be drawn like a leading factor.
+export const CLEAR_MARGIN = 0.05
+
+export function isClear(factor) {
+  return (factor.margin ?? 0) >= CLEAR_MARGIN
+}

@@ -417,3 +417,48 @@
 .atlas-source { padding: 1px 6px; border-radius: 8px; font-size: 11px; }
 .atlas-source.live { color: #171310; background: #5cc3c0; }
 .atlas-source.published { color: #b3aa9e; background: #2d251f; }
+
+/* --- Model picker -------------------------------------------------------- */
+/* There is no longer one answer on this page, so the first control asks whose. */
+.model-picker { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 20px 0 26px; }
+.model-picker-label { color: #7e766c; font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
+.model-picker-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.model-option { display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; border: 1px solid #2d251f; border-radius: 10px; color: #b3aa9e; background: #1c1713; text-align: left; }
+.model-option b { color: #f5efe6; font-size: 13px; }
+.model-option span { color: #7e766c; font-size: 11px; }
+.model-option:hover { border-color: #574f47; }
+.model-option.active { border-color: #eda36b; background: rgba(237, 163, 107, .1); }
+.model-option.active b { color: #eda36b; }
+
+/* --- Discovered axes ----------------------------------------------------- */
+.factors { margin: 16px 0 0; padding: 0; list-style: none; }
+.factor { padding: 14px 0; border-top: 1px solid #241e19; }
+.factor:first-child { border-top: 0; }
+.factor-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; justify-content: space-between; width: 100%; padding: 0; border: 0; background: transparent; text-align: left; }
+.factor-name { color: #f5efe6; font-size: 16px; font-weight: 600; }
+.factor.clear .factor-name { color: #eda36b; }
+.factor-meta { color: #7e766c; font-size: 11px; font-variant-numeric: tabular-nums; }
+.factor-meta b { color: #b3aa9e; }
+.factor-question { margin: 6px 0 0; color: #b3aa9e; font-family: Georgia, serif; font-size: 15px; line-height: 1.4; }
+/* Marginal factors are drawn back rather than hidden: they cleared the null,
+   but by an amount that moves when it is resampled. */
+.factor.marginal .factor-name { color: #b3aa9e; }
+.factor.marginal { opacity: .85; }
+.factor-warning { margin: 8px 0 0; padding: 8px 11px; border-left: 2px solid #7a6047; border-radius: 4px; color: #b3aa9e; background: rgba(237, 163, 107, .06); font-size: 12px; line-height: 1.45; }
+.factor-detail { display: grid; gap: 8px; margin-top: 10px; }
+.factor-pole { margin: 0; color: #b3aa9e; font-size: 12.5px; line-height: 1.45; }
+.factor-pole b { display: inline-block; min-width: 66px; color: #7e766c; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; }
+.factor-examples-label { margin: 6px 0 0; color: #7e766c; font-size: 11px; }
+.factor-examples { margin: 0; padding-left: 18px; color: #8a8074; font-size: 12px; line-height: 1.5; }
+.factor-headline { margin: 6px 0 14px; color: #b3aa9e; font-size: 14px; }
+.factor-headline b { color: #eda36b; font-size: 20px; font-weight: 700; }
+.factor-headline-sub { display: block; margin-top: 4px; color: #574f47; font-size: 11.5px; }
+
+/* --- Corpus list --------------------------------------------------------- */
+.atlas-search { width: min(100%, 320px); margin: 10px 0 14px; padding: 9px 12px; border: 1px solid #3a312a; border-radius: 8px; color: #f5efe6; background: #1c1713; outline: none; }
+.atlas-search:focus { border-color: #eda36b; }
+.film-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.film-list button { width: 100%; padding: 9px 11px; border: 1px solid #241e19; border-radius: 8px; color: #b3aa9e; background: #1c1713; text-align: left; font-size: 12.5px; }
+.film-list button:hover { border-color: #574f47; color: #f5efe6; }
+.film-list b { color: #f5efe6; font-weight: 600; }
+.film-list span { color: #574f47; }

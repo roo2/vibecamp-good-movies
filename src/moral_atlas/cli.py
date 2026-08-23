@@ -602,7 +602,13 @@ def dimension_count(
 def model_bank(
     scorers: str = typer.Option("deepseek", help="Comma-separated aliases."),
     variant: str = typer.Option("subs", help="Which harvest to cut from."),
-    threshold: float = typer.Option(0.45, help="Clustering distance threshold."),
+    threshold: float = typer.Option(
+        0.78, help="Clustering distance threshold. Higher merges harder — worth it on a "
+                   "large harvest, where 0.45 leaves near-duplicates as separate items."),
+    min_support: int = typer.Option(
+        2, help="Keep only propositions at least this many films raised independently. "
+                "An item one film engages cannot discriminate between films, and the "
+                "factor analysis drops it anyway."),
     prefix: str = typer.Option("", help="Bank version prefix; defaults to the alias."),
 ) -> None:
     """Cut a model's OWN propositions into its OWN item bank.
@@ -633,7 +639,7 @@ def model_bank(
         console.print(f"\n[bold]{alias}[/] {len(rows)} propositions → "
                       f"{len(clusters)} clusters")
         result = bank_module.build_bank(version, clusters, client_for(alias),
-                                        progress=console.print)
+                                        min_support=min_support, progress=console.print)
         console.print(f"  bank [bold]{version}[/]: {result['n_items']} items, "
                       f"{result['n_dropped']} dropped, "
                       f"{result['n_inversions_split']} inversions split")

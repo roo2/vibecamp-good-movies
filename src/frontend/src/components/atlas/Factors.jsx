@@ -59,11 +59,19 @@ function Factor({ factor }) {
 
       {open && (
         <div className="factor-detail">
-          <p className="factor-pole"><b>Affirming</b> {factor.pole_high}</p>
-          <p className="factor-pole"><b>Denying</b> {factor.pole_low}</p>
+          {/* Denying first, then affirming: the histogram below runs −1 on the
+              left to +1 on the right, and a legend in the opposite order to the
+              thing it labels makes the reader do the flip themselves. */}
+          <p className="factor-pole low">
+            <b>−&nbsp;a film denying this axis says</b> {factor.pole_low}
+          </p>
+          <p className="factor-pole high">
+            <b>+&nbsp;a film affirming it says</b> {factor.pole_high}
+          </p>
 
-          <FactorDistribution scores={factor.distribution} poleLow poleHigh />
-          <FilmAnchors high={factor.high} low={factor.low} />
+          <FactorDistribution films={factor.distribution} poleLow poleHigh />
+          <FilmAnchors high={factor.high} low={factor.low}
+                       poleHigh={factor.pole_high} poleLow={factor.pole_low} />
 
           <p className="factor-examples-label">
             The propositions this factor is made of. Films answered these together —

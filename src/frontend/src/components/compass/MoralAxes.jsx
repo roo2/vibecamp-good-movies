@@ -15,24 +15,46 @@ function strengthOf(axis) {
   return Math.abs(axis.score) >= 0.35 ? 'committed' : 'leaning'
 }
 
-function MoralAxis({ axis, expanded, onToggle }) {
+// How far apart two readings on the same axis can be before the gap is worth
+// naming. The axis runs -1..+1, so a full point is a quarter of its width and
+// comfortably more than the noise in a dozen films.
+const APART = 0.5
+
+function MoralAxis({ axis, others, expanded, onToggle }) {
   const centre = trackPosition(axis.score)
   const spread = spreadFor(axis.confidence)
   const bandLeft = Math.max(0, centre - spread)
   const bandRight = Math.min(100, centre + spread)
   const unread = !axis.evidence_items
+  // Only companions who were read on THIS axis. Someone can be read on the
+  // corpus and still have engaged nothing that loads on one particular factor.
+  const read = others.filter((other) => other.axis && other.axis.evidence_items)
+  const split = read.filter((other) => Math.abs(other.axis.score - axis.score) >= APART)
 
   return (
     <li className={`moral-axis ${unread ? 'unread' : axis.leaning}`}>
       <button type="button" className="moral-axis-head" onClick={onToggle} aria-expanded={expanded}>
         <span className="moral-axis-name">{axis.name}</span>
-        <span className="moral-axis-strength">{strengthOf(axis)}</span>
+        <span className="moral-axis-strength">
+          {read.length && !unread
+            ? (split.length ? 'you differ' : 'you agree')
+            : strengthOf(axis)}
+        </span>
       </button>
 
       <div className="moral-axis-track" role="img"
-           aria-label={`${axis.name}: ${axis.score >= 0 ? axis.pole_high : axis.pole_low}`}>
+           aria-label={[`${axis.name}: you, ${axis.score >= 0 ? axis.pole_high : axis.pole_low}`,
+                        ...read.map((other) => `${other.name}, ${other.axis.score >= 0 ? axis.pole_high : axis.pole_low}`)].join('; ')}>
         <i className="moral-axis-mid" />
         <u className="moral-axis-band" style={{ left: `${bandLeft}%`, width: `${bandRight - bandLeft}%` }} />
+        {/* Their marker sits under yours, hollow and dimmer, so the two never
+            read as one person's uncertainty — and so yours stays the one the
+            eye finds first on your own compass. */}
+        {read.map((other) => (
+          <b className="moral-axis-marker companion" key={other.user_id}
+             style={{ left: `${trackPosition(other.axis.score)}%` }}
+             title={`${other.name}: ${other.axis.score >= 0 ? '+' : ''}${other.axis.score.toFixed(2)}`} />
+        ))}
         {!unread && <b className="moral-axis-marker" style={{ left: `${centre}%` }} />}
       </div>
 
@@ -55,6 +77,15 @@ function MoralAxis({ axis, expanded, onToggle }) {
                 {axis.score >= 0 ? '+' : ''}{axis.score.toFixed(2)} · read from {Math.round(axis.evidence_items)} propositions
                 across {axis.films} {axis.films === 1 ? 'film' : 'films'}
               </p>
+              {read.map((other) => (
+                <p className="moral-axis-evidence companion" key={other.user_id}>
+                  <b>{other.name}</b> {other.axis.score >= 0 ? '+' : ''}{other.axis.score.toFixed(2)}
+                  {' · '}
+                  {Math.abs(other.axis.score - axis.score) >= APART
+                    ? 'the other side of this one from you'
+                    : 'close to where you landed'}
+                </p>
+              ))}
             </>
           )}
         </div>
@@ -63,24 +94,52 @@ function MoralAxis({ axis, expanded, onToggle }) {
   )
 }
 
-function MoralAxes({ scores }) {
-  // The axis they committed to hardest opens first, so the screen says something
-  // before anyone taps anything.
-  const strongest = scores.reduce(
-    (best, axis) => (Math.abs(axis.score) > Math.abs(best.score) ? axis : best), scores[0])
-  const [openId, setOpenId] = useState(strongest ? strongest.dim_id : null)
+function MoralAxes({ scores, companions = [] }) {
+  // With someone else in the session, the axis worth opening first is the one
+  // you disagree on hardest — that is the conversation. Alone, it stays the one
+  // you committed to hardest, so the screen says something before anyone taps.
+  const byId = companions.map((companion) => ({
+    user_id: companion.user_id,
+    name: companion.name,
+    scores: new Map((companion.profile?.scores || []).map((axis) => [axis.dim_id, axis])),
+  }))
+  const gapOn = (axis) => Math.max(0, ...byId
+    .map((companion) => companion.scores.get(axis.dim_id))
+    .filter((other) => other && other.evidence_items)
+    .map((other) => Math.abs(other.score - axis.score)))
+
+  const rank = byId.length ? gapOn : (axis) => Math.abs(axis.score)
+  const opening = scores.reduce(
+    (best, axis) => (rank(axis) > rank(best) ? axis : best), scores[0])
+  const [openId, setOpenId] = useState(opening ? opening.dim_id : null)
 
   return (
-    <ul className="moral-axes">
-      {scores.map((axis) => (
-        <MoralAxis
-          key={axis.dim_id}
-          axis={axis}
-          expanded={openId === axis.dim_id}
-          onToggle={() => setOpenId(openId === axis.dim_id ? null : axis.dim_id)}
-        />
-      ))}
-    </ul>
+    <>
+      {byId.length > 0 && (
+        <p className="moral-axes-key">
+          <b className="key-you" /> you
+          {byId.map((companion) => (
+            <React.Fragment key={companion.user_id}>
+              <b className="key-companion" /> {companion.name}
+            </React.Fragment>
+          ))}
+        </p>
+      )}
+      <ul className="moral-axes">
+        {scores.map((axis) => (
+          <MoralAxis
+            key={axis.dim_id}
+            axis={axis}
+            others={byId.map((companion) => ({
+              user_id: companion.user_id, name: companion.name,
+              axis: companion.scores.get(axis.dim_id),
+            }))}
+            expanded={openId === axis.dim_id}
+            onToggle={() => setOpenId(openId === axis.dim_id ? null : axis.dim_id)}
+          />
+        ))}
+      </ul>
+    </>
   )
 }
 

@@ -446,8 +446,14 @@
 .factor.marginal { opacity: .85; }
 .factor-warning { margin: 8px 0 0; padding: 8px 11px; border-left: 2px solid #7a6047; border-radius: 4px; color: #b3aa9e; background: rgba(237, 163, 107, .06); font-size: 12px; line-height: 1.45; }
 .factor-detail { display: grid; gap: 8px; margin-top: 10px; }
-.factor-pole { margin: 0; color: #b3aa9e; font-size: 12.5px; line-height: 1.45; }
-.factor-pole b { display: inline-block; min-width: 66px; color: #7e766c; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; }
+.factor-pole { margin: 0 0 4px; color: #b3aa9e; font-size: 12.5px; line-height: 1.45; }
+.factor-pole b { display: block; color: #7e766c; font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; }
+/* Teal denies, orange affirms — the same pairing the bars, the verdict labels
+   and the film rows use, so the direction survives without reading a word. */
+.factor-pole.low { border-inline-start: 2px solid #5cc3c0; padding-inline-start: 8px; }
+.factor-pole.high { border-inline-start: 2px solid #eda36b; padding-inline-start: 8px; }
+.factor-pole.low b { color: #5cc3c0; }
+.factor-pole.high b { color: #eda36b; }
 .factor-examples-label { margin: 6px 0 0; color: #7e766c; font-size: 11px; }
 .factor-examples { margin: 0; padding-left: 18px; color: #8a8074; font-size: 12px; line-height: 1.5; }
 .factor-headline { margin: 6px 0 14px; color: #b3aa9e; font-size: 14px; }
@@ -466,8 +472,30 @@
 /* --- Where every film sits on one axis ----------------------------------- */
 .distribution { margin: 14px 0 10px; }
 .distribution-bars { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 68px; padding: 0 2px; border-bottom: 1px solid #2d251f; }
-.distribution-bin { flex: 1; display: flex; align-items: flex-end; height: 100%; }
-.distribution-bin i { display: block; inline-size: 100%; min-block-size: 1px; border-radius: 2px 2px 0 0; background: #eda36b; }
+.distribution-bin { flex: 1; display: flex; align-items: flex-end; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.distribution-bin:disabled { cursor: default; }
+.distribution-bin i { display: block; inline-size: 100%; min-block-size: 1px; border-radius: 2px 2px 0 0; background: #eda36b; transition: filter .12s; }
+.distribution-bin.low i { background: #5cc3c0; }
+.distribution-bin.mid i { background: #7e766c; }
+.distribution-bin:hover:not(:disabled) i { filter: brightness(1.25); }
+.distribution-bin.open i { outline: 1px solid #f5efe6; outline-offset: 1px; }
+.distribution-scale .scale-low { color: #5cc3c0; }
+.distribution-scale .scale-high { color: #eda36b; }
+.distribution-split b { font-weight: 650; }
+.distribution-split b.low { color: #5cc3c0; }
+.distribution-split b.high { color: #eda36b; }
+.distribution-hint { margin: 8px 0 0; color: #574f47; font-size: 11px; }
+/* The films behind one bar. Opened rather than always shown: the shape is the
+   point, and 197 titles under it would bury the thing they explain. */
+.distribution-open { margin: 10px 0 0; padding: 9px 11px; border-radius: 5px; background: #171310; border-inline-start: 2px solid #7e766c; }
+.distribution-open.low { border-inline-start-color: #5cc3c0; }
+.distribution-open.high { border-inline-start-color: #eda36b; }
+.distribution-open-label { display: block; color: #b3aa9e; font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.distribution-open ul { margin: 7px 0 0; padding: 0; list-style: none; max-block-size: 232px; overflow-y: auto; }
+.distribution-open li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 2px 0; font-size: 12px; }
+.distribution-open li b { color: #f5efe6; font-weight: 500; }
+.distribution-open li em { color: #b3aa9e; font-style: normal; font-variant-numeric: tabular-nums; }
+.distribution-open li span { color: #574f47; font-size: 10.5px; }
 .distribution-mid { position: absolute; inset-block: 0; inset-inline-start: 50%; inline-size: 1px; background: #5cc3c0; text-decoration: none; }
 .distribution-scale { display: flex; justify-content: space-between; margin-top: 5px; color: #574f47; font-size: 11px; }
 .distribution-mean { color: #b3aa9e; font-variant-numeric: tabular-nums; }
@@ -480,6 +508,10 @@
 .anchors li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 12px; }
 .anchors b { color: #f5efe6; font-weight: 500; }
 .anchors em { color: #eda36b; font-style: normal; font-variant-numeric: tabular-nums; }
+.anchors-side.low em { color: #5cc3c0; }
+.anchors-side.high .anchors-label { color: #eda36b; }
+.anchors-side.low .anchors-label { color: #5cc3c0; }
+.anchors-pole { margin: 4px 0 0; color: #7e766c; font-family: Georgia, serif; font-size: 11.5px; font-style: italic; line-height: 1.4; }
 .anchors span { color: #574f47; font-size: 10.5px; }
 
 .proposition-table td:first-child { width: 100%; }
@@ -489,7 +521,25 @@
 .film-factors { margin: 8px 0 0; padding: 0; list-style: none; }
 .film-factor { border-top: 1px solid #241e19; }
 .film-factor:first-child { border-top: 0; }
-.film-factor > button { display: grid; grid-template-columns: minmax(120px, 1.1fr) 1fr 74px; gap: 10px; align-items: center; width: 100%; padding: 8px 0; border: 0; background: transparent; text-align: left; }
+.film-factor > button { display: grid; grid-template-columns: minmax(120px, 1.1fr) 1fr 74px; gap: 4px 10px; align-items: center; width: 100%; padding: 8px 0; border: 0; background: transparent; text-align: left; }
+/* The lean spans the full width on its own line rather than squeezing into the
+   name column: it is a whole sentence, and truncating the half that says WHICH
+   way the film leans would leave exactly the number that confused the reader. */
+.film-factor-lean { grid-column: 1 / -1; color: #b3aa9e; font-size: 11.5px; line-height: 1.4; }
+.film-factor-lean b { color: #7e766c; font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; margin-inline-end: 5px; }
+.film-factor-lean.high b { color: #eda36b; }
+.film-factor-lean.low b { color: #5cc3c0; }
+.film-factor-poles { display: grid; gap: 4px; margin: 0 0 9px; }
+.film-factor-poles .pole { margin: 0; color: #574f47; font-size: 11.5px; line-height: 1.4; padding-inline-start: 8px; border-inline-start: 2px solid #241e19; }
+.film-factor-poles .pole b { margin-inline-end: 5px; font-weight: 650; }
+/* The end the film actually landed on is lit; the other stays dim but present,
+   so the position reads as a choice between two stated things. */
+.film-factor-poles .pole.here { color: #b3aa9e; }
+.film-factor-poles .pole.low.here { border-inline-start-color: #5cc3c0; }
+.film-factor-poles .pole.high.here { border-inline-start-color: #eda36b; }
+.film-factor-poles .pole.low.here b { color: #5cc3c0; }
+.film-factor-poles .pole.high.here b { color: #eda36b; }
+.film-factor-thin { margin: 0 0 9px; color: #7e766c; font-size: 11px; line-height: 1.45; }
 .film-factor > button:disabled { cursor: default; opacity: .5; }
 .film-factor-name { color: #f5efe6; font-size: 12.5px; }
 .film-factor-track { position: relative; height: 11px; border-radius: 3px; background: #171310; }

@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import LandingPage from './screens/LandingPage.jsx'
-import QuickfireTestPage from './screens/QuickfireTestPage.jsx'
 import TestCompletePage from './screens/TestCompletePage.jsx'
 import SessionLobbyPage from './screens/SessionLobbyPage.jsx'
 import SessionWaitingPage from './screens/SessionWaitingPage.jsx'
@@ -10,10 +9,10 @@ import MatchPage from './screens/MatchPage.jsx'
 import AtlasPage from './screens/AtlasPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
 import { submitMovieReaction } from './services/movieService.js'
-import { loadCurrentTestResult, submitTestResult } from './services/resultService.js'
-import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, markSessionMemberUnready, startGroupSession } from './services/groupSessionService.js'
+import { submitTestResult } from './services/resultService.js'
+import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/atlas', '/lobby', '/seen-it', '/quickfire', '/complete', '/shortlist', '/match', '/waiting'])
+const routes = new Set(['/', '/atlas', '/lobby', '/seen-it', '/complete', '/shortlist', '/match', '/waiting'])
 
 // The dataset explorer is the public face of the work: it reads a published
 // file, holds nothing about anyone, and is the thing you show someone before
@@ -33,8 +32,6 @@ function App() {
   const [groupSession, setGroupSession] = useState(loadGroupSession)
   const [sessionStatus, setSessionStatus] = useState(null)
   const [selectedFilm, setSelectedFilm] = useState(null)
-  const [testAnswers, setTestAnswers] = useState({})
-  const [editingLastAnswer, setEditingLastAnswer] = useState(false)
 
   const navigate = useCallback((nextRoute) => {
     window.location.hash = nextRoute
@@ -100,21 +97,10 @@ function App() {
       navigate('/')
       return
     }
-    setTestAnswers(answers)
     await submitTestResult(access, answers, groupSession?.shareToken)
-    setEditingLastAnswer(false)
     const status = await refreshSessionStatus()
     if (status?.host_user_id === access.user.id) await beginResultsWait(access, groupSession.shareToken)
     navigate('/waiting')
-  }, [access, groupSession, navigate, refreshSessionStatus])
-
-  const handleEditLastAnswer = useCallback(async () => {
-    const currentResult = await loadCurrentTestResult(access, groupSession.shareToken)
-    await markSessionMemberUnready(access, groupSession.shareToken)
-    setTestAnswers(currentResult.answers)
-    setEditingLastAnswer(true)
-    await refreshSessionStatus()
-    navigate('/quickfire')
   }, [access, groupSession, navigate, refreshSessionStatus])
 
   const handleContinue = useCallback(async () => {
@@ -129,8 +115,6 @@ function App() {
 
   const handleStartOver = useCallback(() => {
     setSelectedFilm(null)
-    setTestAnswers({})
-    setEditingLastAnswer(false)
     navigate('/')
   }, [navigate])
 
@@ -143,7 +127,11 @@ function App() {
   }
 
   if (route === '/seen-it') {
-    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => navigate('/quickfire')} />
+    // Reacting to the last film is the end of the test now that the blind pairs
+    // are gone. The empty answer map is not a placeholder for something missing:
+    // there are no pair answers to send, and submitting is still what marks this
+    // member complete for the others waiting on them.
+    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => handleComplete({})} />
   }
 
   if (route === '/lobby' && groupSession) {
@@ -151,16 +139,11 @@ function App() {
   }
 
   if (route === '/waiting' && sessionStatus) {
-    const currentMember = sessionStatus.members.find((member) => member.user.id === access.user.id)
-    return <SessionWaitingPage status={sessionStatus} isHost={sessionStatus.host_user_id === access.user.id} canEditAnswer={Boolean(currentMember?.completed_at)} onBack={handleEditLastAnswer} onContinue={handleContinue} />
-  }
-
-  if (route === '/quickfire') {
-    return <QuickfireTestPage access={access} shareToken={groupSession?.shareToken} initialAnswers={testAnswers} startAtLast={editingLastAnswer} onComplete={handleComplete} />
+    return <SessionWaitingPage status={sessionStatus} isHost={sessionStatus.host_user_id === access.user.id} canEditAnswer={false} onContinue={handleContinue} />
   }
 
   if (route === '/complete') {
-    return <TestCompletePage access={access} onContinue={() => navigate('/shortlist')} />
+    return <TestCompletePage access={access} shareToken={groupSession?.shareToken} onContinue={() => navigate('/shortlist')} />
   }
   if (route === '/shortlist') {
     return <ShortlistPage access={access} shareToken={groupSession?.shareToken} onDone={(film) => { setSelectedFilm(film); navigate('/match') }} />

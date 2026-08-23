@@ -10,7 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 from .. import db
-from .film_service import build_session_deck, film_card
+from .film_service import DIRECT_CARDS, build_session_deck, film_card
 from .schemas import GroupSession, GroupSessionStatus, MovieRating, SessionMember, TestResult, User
 
 WAIT_TO_CONTINUE_SECONDS = 10 * 60
@@ -299,7 +299,8 @@ def create_group_session(host_user_id: str) -> GroupSession:
     _ensure_db()
     deck = build_session_deck()
     if not deck["direct"]:
-        raise ValueError("At least 15 seeded films are required to start a shared session.")
+        raise ValueError(
+            f"At least {DIRECT_CARDS} curated films are required to start a shared session.")
     group_session = GroupSession(
         id=f"group_{uuid4().hex[:12]}", share_token=token_urlsafe(12), host_user_id=host_user_id,
         status="lobby", created_at=db.now(),
@@ -425,7 +426,7 @@ def blind_session_pairs(share_token: str, user_id: str) -> list[dict[str, Any]] 
     pairs = []
     for index, film_ids in enumerate(deck["pairs"], start=1):
         cards = [film_card(film_id, include_title=False) for film_id in film_ids]
-        if all(cards):
+        if all(card and card.get("description") for card in cards):
             pairs.append({"id": f"pair-{index}", "choices": [
                 {"id": "a", "label": "Story A", "copy": cards[0]["description"]},
                 {"id": "b", "label": "Story B", "copy": cards[1]["description"]},

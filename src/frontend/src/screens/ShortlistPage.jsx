@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import useSwipeDecision from '../hooks/useSwipeDecision.js'
+import FilmAxisStrip from '../components/FilmAxisStrip.jsx'
 import { loadNextShortlistFilm, loadShortlistSelection, saveShortlistReaction } from '../services/shortlistService.js'
 
 export default function ShortlistPage({ access, shareToken, onDone }) {
@@ -49,8 +50,9 @@ export default function ShortlistPage({ access, shareToken, onDone }) {
     <article className="deck-card swipe-card" {...swipe.handlers} style={swipe.style}>
       <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× No</span>
       <span className="swipe-cue swipe-cue-right" aria-hidden="true" style={{ opacity: swipe.direction === 'right' ? swipe.strength : 0 }}>♥ Yes</span>
-      <div className="deck-art" style={film.artwork_url ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.8), transparent), url(${film.artwork_url})` } : {}}><h2>{film.title}</h2></div><div className="deck-copy"><span>{film.year}</span><p>{film.description}</p><small>{film.note || 'Matched for both of you'}</small></div>
+      <div className="deck-art" style={film.artwork_url ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.8), transparent), url(${film.artwork_url})` } : {}}><h2>{film.title}</h2></div><div className="deck-copy"><span>{film.year}</span>{film.description && <p>{film.description}</p>}<small>{film.note || 'Matched for both of you'}</small></div>
     </article>
+    <FilmAxisStrip filmId={film.id} />
     <div className="deck-actions"><button type="button" disabled={voting || swipe.committed} onClick={() => vote('no')}>×<span>No</span></button><button className="deck-heart" type="button" disabled={voting || swipe.committed} onClick={() => vote('yes')}>♥<span>Yes</span></button></div>
     <p className="deck-note">Swipe right for yes · left for no. You can always use the buttons.</p>
   </section></main>

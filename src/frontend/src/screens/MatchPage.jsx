@@ -1,3 +1,4 @@
+import FilmAxisStrip from '../components/FilmAxisStrip.jsx'
 import React, { useEffect, useState } from 'react'
 import { loadShortlistSelection, reopenShortlist } from '../services/shortlistService.js'
 
@@ -44,7 +45,8 @@ export default function MatchPage({ access, shareToken, film, onKeepLooking, onS
     <div className="sheet-handle" />
     <p className="screen-label"><i /> <i /> You both said yes</p>
     <h1>Tonight’s<br /><em>shared pick.</em></h1>
-    <div className="match-film"><div className="match-poster">Shared<br />match</div><div><h2>{selectedFilm.title}</h2><p>{selectedFilm.description}</p><p>You all chose it independently.</p></div></div>
+    <div className="match-film"><div className="match-poster">Shared<br />match</div><div><h2>{selectedFilm.title}</h2>{selectedFilm.description && <p>{selectedFilm.description}</p>}<p>You all chose it independently.</p></div></div>
+    <FilmAxisStrip filmId={selectedFilm.id} />
     {error && <p className="message" role="alert">{error}</p>}
     <div className="match-actions">
       <a className="peach-button" href={watchUrl} target="_blank" rel="noreferrer">See where to watch <span aria-hidden="true">↗</span></a>

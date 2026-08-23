@@ -20,7 +20,7 @@ function SessionLobbyPage({ access, groupSession, onStart }) {
   return (
     <main className="app-page">
       <section className="phone-screen session-screen" aria-label="Session lobby">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Moral Atlas</span></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="session-content">
           <p className="screen-label">{isHost ? 'Your shared session' : 'You joined a session'}</p>
           {isHost ? <>

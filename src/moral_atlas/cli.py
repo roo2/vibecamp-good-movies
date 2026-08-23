@@ -40,10 +40,20 @@ def _film_ids(limit: Optional[int] = None) -> list[str]:
 
 @app.command()
 def init() -> None:
-    """Create the database and report which credentials are present."""
+    """Create the database, apply curated data migrations, and report credentials."""
     db.init_db()
+    # `atlas-update` runs this command before restarting the deployed API. That
+    # makes edits to the curated seed descriptions reach existing database rows
+    # without replacing film metadata or requiring a one-off server command.
+    from .sources import seed as seed_mod
+    migration = seed_mod.sync_seed_films()
     s = settings()
     console.print(f"[green]database ready[/] {s.db_path}")
+    console.print(
+        "[green]curated films ready[/] "
+        f"inserted {migration['inserted']}, updated {migration['updated']}, "
+        f"unchanged {migration['unchanged']}"
+    )
 
     table = Table("credential", "status", "unlocks", box=None)
     table.add_row("ANTHROPIC_API_KEY", "[green]set[/]" if s.has_anthropic else "[red]missing[/]",
@@ -89,10 +99,28 @@ def ingest(
 
 @app.command("seed-films")
 def seed_films(seeds: str = typer.Option("seeds/phase0.yaml", help="Seed YAML file.")) -> None:
-    """Insert the curated seed films without downloading metadata or evidence."""
+    """Insert curated films and migrate their descriptions without downloading evidence."""
     from .sources import seed as seed_mod
-    inserted = seed_mod.seed_films(seeds)
-    console.print(f"[green]ready[/] inserted {inserted} missing seed films")
+    result = seed_mod.sync_seed_films(seeds)
+    console.print(
+        "[green]ready[/] "
+        f"inserted {result['inserted']}, updated {result['updated']}, "
+        f"unchanged {result['unchanged']}"
+    )
+
+
+@app.command("migrate-descriptions")
+def migrate_descriptions(
+    seeds: str = typer.Option("seeds/phase0.yaml", help="Seed YAML file."),
+) -> None:
+    """Apply the current curated descriptions to new and existing film rows."""
+    from .sources import seed as seed_mod
+    result = seed_mod.sync_seed_films(seeds)
+    console.print(
+        "[green]descriptions migrated[/] "
+        f"inserted {result['inserted']}, updated {result['updated']}, "
+        f"unchanged {result['unchanged']}"
+    )
 
 
 @app.command("populate-artwork")

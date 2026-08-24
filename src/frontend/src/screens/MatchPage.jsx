@@ -67,6 +67,7 @@ export default function MatchPage({ access, shareToken, films: initial, solo = f
     <div className="match-actions">
       <button className="match-secondary-button" type="button" onClick={onKeepLooking}>Keep looking</button>
       <button className="match-text-button" type="button" onClick={onStartOver}>Start over</button>
+      <a className="quiet-link" href="#/atlas">Where do these scales come from? →</a>
     </div>
   </section></main>
 }

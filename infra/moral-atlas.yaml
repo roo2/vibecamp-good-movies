@@ -32,6 +32,20 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Description: Lets you stand up a second, independent copy of the stack.
 
+  SiteDomainName:
+    Type: String
+    Default: ""
+    Description: >
+      Custom domain for the site. Empty leaves it on its cloudfront.net name.
+      Needs SiteCertificateArn, covering this name.
+
+  SiteCertificateArn:
+    Type: String
+    Default: ""
+    Description: >
+      ACM certificate for SiteDomainName, issued in us-east-1 whatever region
+      the stack is in — CloudFront reads certificates from that region only.
+
   InstanceType:
     Type: String
     Default: t4g.small
@@ -147,6 +161,9 @@ Conditions:
   SiteAuth: !Equals [!Ref EnableSiteAuth, "true"]
   IdleShutdown: !Not [!Equals [!Ref IdleShutdownHours, 0]]
   GitHubDeploy: !Not [!Equals [!Ref GitHubRepo, ""]]
+  CustomDomain: !And
+    - !Not [!Equals [!Ref SiteDomainName, ""]]
+    - !Not [!Equals [!Ref SiteCertificateArn, ""]]
   ImmutableSubject: !Not [!Equals [!Ref GitHubSubjectPrefix, ""]]
   CreateOidc: !And
     - !Condition GitHubDeploy
@@ -525,8 +542,15 @@ Resources:
             ResponseCode: 404
             ResponsePagePath: /index.html
             ErrorCachingMinTTL: 10
-        ViewerCertificate:
-          CloudFrontDefaultCertificate: true
+        # Additive: the cloudfront.net name keeps working. The alias must be
+        # here BEFORE DNS points at it, or CloudFront rejects the Host header.
+        Aliases: !If [CustomDomain, [!Ref SiteDomainName], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - CustomDomain
+          - AcmCertificateArn: !Ref SiteCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
 
   # A CloudFront origin must be a stable name. Without an EIP the runner's
   # public IP changes every time the idle alarm stops it and someone starts it
@@ -1124,6 +1148,12 @@ Resources:
         - !Sub "arn:${AWS::Partition}:automate:${AWS::Region}:ec2:stop"
 
 Outputs:
+  SiteDistributionDomain:
+    Description: >
+      Point DNS for SiteDomainName here. Route 53: A/AAAA alias, hosted zone
+      Z2FDTNDATAQYW2 (CloudFront's fixed id). A plain CNAME works too.
+    Value: !GetAtt Distribution.DomainName
+
   SiteUrl:
     Description: The demo URL to share with collaborators.
     Value: !Sub "https://${Distribution.DomainName}"

@@ -619,3 +619,10 @@
 
 .model-withdrawn { margin: 8px 0 0; color: #968c7f; font-size: 11.5px; }
 .model-withdrawn b { color: #b3aa9e; font-weight: 600; }
+
+
+/* The corpus lookup: one film at a time, read the way the atlas reads it. */
+.corpus-film { margin-top: 24px; padding-top: 18px; border-top: 1px solid #2d251f; }
+.corpus-film-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+.corpus-film-head h2 { margin: 0; font-size: 22px; }
+.corpus-film-head .atlas-note { margin: 2px 0 0; }

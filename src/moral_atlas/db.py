@@ -249,6 +249,12 @@ CREATE TABLE IF NOT EXISTS latent_factors (
     pole_high_label TEXT,
     pole_low_label  TEXT,
     coherent     INTEGER, -- the namer's own admission that a group has no theme
+    -- Which reading of the responses produced this factor: 'dense' keeps
+    -- silence as a value, 'strict' correlates only over films that took a
+    -- position on both items. Recorded because a factor's NAME and the
+    -- propositions shown under it must come from the same reading — names from
+    -- one and groups from the other is a mislabelled axis with no error.
+    estimator    TEXT,
     n_items      INTEGER,
     eigenvalue   REAL,
     margin       REAL,   -- how far it cleared the parallel-analysis null
@@ -467,6 +473,7 @@ def init_db() -> None:
         for column in ("pole_high_label", "pole_low_label"):
             _add_column_if_missing(con, "latent_factors", column, "TEXT")
         _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
+        _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
 
 
 def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:

@@ -442,3 +442,29 @@ def test_the_deck_leans_recent_without_erasing_old_films(isolated_web_database):
     modern = sum(1 for year in drawn if year >= 2000) / len(drawn)
     assert modern > 0.8, f"only {modern:.0%} of dealt cards were from 2000 on"
     assert any(year < 1990 for year in drawn), "an old film should still turn up sometimes"
+
+
+def test_a_factors_name_and_its_propositions_come_from_the_same_reading(isolated_web_database):
+    """Names live in the database; the groups under them are recomputed on demand.
+
+    If those two disagree about how to read the responses — one keeping silence
+    as a value, the other excluding it — every axis gets its name from one
+    clustering and its evidence from another. That looks exactly like a
+    mislabelled axis, and nothing raises. So the reading is recorded with the
+    rows, and whoever recomputes has to ask.
+    """
+    from moral_atlas.analysis import factor_names
+
+    assert factor_names.estimator_for("nobody", "subs", "nothing") == "dense", (
+        "an unnamed scorer must default to the reading the product has always used")
+
+    with isolated_web_database.connect() as con:
+        con.execute(
+            "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
+            "estimator) VALUES ('m', 'subs', 'b', 0, 'an axis', 'strict')")
+    assert factor_names.estimator_for("m", "subs", "b") == "strict"
+
+    with isolated_web_database.connect() as con:
+        con.execute("UPDATE latent_factors SET estimator=NULL WHERE scorer='m'")
+    assert factor_names.estimator_for("m", "subs", "b") == "dense", (
+        "rows written before the column existed were all produced densely")

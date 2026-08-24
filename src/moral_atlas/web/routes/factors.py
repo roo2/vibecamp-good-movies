@@ -183,6 +183,8 @@ def film_on_factors(
             "question": factor["question"],
             "pole_high": factor["pole_high"],
             "pole_low": factor["pole_low"],
+            "pole_high_label": factor.get("pole_high_label"),
+            "pole_low_label": factor.get("pole_low_label"),
             # None rather than 0 when the film engaged nothing: silence on an
             # axis is not a middling position on it, and a zero would draw as
             # though the film had weighed the question and declined to choose.

@@ -57,6 +57,8 @@ class MoralScore(BaseModel):
     question: str
     pole_high: str
     pole_low: str
+    pole_high_label: str = Field(description="The +1 end in a few words.")
+    pole_low_label: str = Field(description="The -1 end in a few words.")
     score: float = Field(description="-1 (pole_low) to +1 (pole_high); 0 is uncommitted.")
     leaning: str = Field(description="high, low, or balanced.")
     stance: str = Field(description="What this leaning asserts, in the axis's own words.")

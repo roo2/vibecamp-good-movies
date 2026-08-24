@@ -84,6 +84,8 @@ class DimensionScore:
     question: str
     pole_high: str
     pole_low: str
+    pole_high_label: str   # the same two ends in two or three words, for a scale
+    pole_low_label: str
     score: float           # -1..+1, signed toward pole_high
     leaning: str           # "high" | "low" | "balanced"
     stance: str            # what that leaning asserts, in the axis's own words
@@ -207,6 +209,10 @@ def score_preferences(
             question=dimension["question"],
             pole_high=dimension["pole_high"],
             pole_low=dimension["pole_low"],
+            # The LLM-derived dimension set has no labels; falling back to the
+            # axis name keeps both ends readable rather than blank.
+            pole_high_label=dimension.get("pole_high_label") or dimension["name"],
+            pole_low_label=dimension.get("pole_low_label") or dimension["name"],
             score=round(score, 4),
             leaning=leaning,
             stance=(dimension["pole_high"] if leaning == "high" else
@@ -241,12 +247,17 @@ def factor_axes(scorer: str, variant: str, bank_version: str) -> list[dict[str, 
     """Named factors, shaped like `dimensions` rows so scoring is unchanged."""
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT factor_id, name, question, pole_high, pole_low FROM latent_factors "
+            "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
+            "pole_low_label FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
             [scorer, variant, bank_version],
         ).fetchall()
+    # The short labels ride along with the sentences: a score is a point on a
+    # line, and a line needs a word at each end before the number means anything.
     return [{"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
-             "pole_high": r["pole_high"], "pole_low": r["pole_low"]} for r in rows]
+             "pole_high": r["pole_high"], "pole_low": r["pole_low"],
+             "pole_high_label": r["pole_high_label"] or r["name"],
+             "pole_low_label": r["pole_low_label"] or r["name"]} for r in rows]
 
 
 def factor_stances(

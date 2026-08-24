@@ -43,7 +43,11 @@ function Row({ factor }) {
         <span className="film-factor-name">{factor.name}</span>
         {scored ? (
           <>
-            <Bar score={factor.score} />
+            <span className="film-factor-scale">
+              <em className={side === 'low' ? 'lit' : ''}>{factor.pole_low_label}</em>
+              <Bar score={factor.score} />
+              <em className={side === 'high' ? 'lit' : ''}>{factor.pole_high_label}</em>
+            </span>
             <span className="film-factor-score">
               {factor.score >= 0 ? '+' : ''}{factor.score.toFixed(2)}
               <em>{factor.items} item{factor.items === 1 ? '' : 's'}</em>
@@ -68,10 +72,10 @@ function Row({ factor }) {
               the reader can see what the other answer would have been. */}
           <div className="film-factor-poles">
             <p className={side === 'low' ? 'pole low here' : 'pole low'}>
-              <b>−</b> {factor.pole_low}
+              <b>{factor.pole_low_label}</b> {factor.pole_low}
             </p>
             <p className={side === 'high' ? 'pole high here' : 'pole high'}>
-              <b>+</b> {factor.pole_high}
+              <b>{factor.pole_high_label}</b> {factor.pole_high}
             </p>
           </div>
 

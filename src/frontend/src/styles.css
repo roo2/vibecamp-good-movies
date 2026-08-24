@@ -98,6 +98,13 @@ button { cursor: pointer; }
 .moral-axis.high .moral-axis-strength { color: #eda36b; }
 .moral-axis.low .moral-axis-strength { color: #5cc3c0; }
 
+.moral-axis-poles { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px; color: #574f47; font-size: 10.5px; font-weight: 650; letter-spacing: .04em; }
+.moral-axis-poles span:last-child { text-align: right; }
+.moral-axis-poles .lit { color: #f5efe6; }
+.moral-axis.low .moral-axis-poles .lit { color: #5cc3c0; }
+.moral-axis.high .moral-axis-poles .lit { color: #eda36b; }
+.moral-axis-pole b { display: block; margin-bottom: 2px; color: #7e766c; font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+.moral-axis-pole.lit b { color: inherit; }
 .moral-axis-track { position: relative; height: 10px; }
 .moral-axis-track::before { position: absolute; top: 3.5px; right: 0; left: 0; height: 3px; border-radius: 2px; background: #241e19; content: ''; }
 .moral-axis-mid { position: absolute; top: 0; left: 50%; width: 1px; height: 10px; background: #3a312a; }
@@ -175,7 +182,8 @@ button { cursor: pointer; }
 .axis-strip-label { display: block; margin-bottom: 6px; color: #574f47; font-size: 10px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
 .axis-strip > ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; }
 .axis-strip-row > button { display: grid; grid-template-columns: 1fr 92px; gap: 10px; align-items: center; width: 100%; padding: 3px 0; border: 0; background: transparent; text-align: left; }
-.axis-strip-name { color: #b3aa9e; font-size: 12px; line-height: 1.3; }
+.axis-strip-name { color: #f5efe6; font-size: 12px; line-height: 1.3; }
+.axis-strip-name em { display: block; color: #574f47; font-size: 10.5px; font-style: normal; }
 .axis-strip-row.open .axis-strip-name { color: #f5efe6; }
 .axis-strip-track { position: relative; height: 6px; border-radius: 3px; background: #241e19; }
 .axis-strip-track i { position: absolute; inset-block: 0; border-radius: 3px; background: #7e766c; }

@@ -284,9 +284,13 @@ def test_rated_films_score_the_user_on_every_axis(scored_atlas):
     assert body["evidence"]["films_rated"] == len(films)
     assert body["evidence"]["films_used"] == len(films)
     assert body["is_provisional"] is False
-    # The reading quotes the axis they committed to hardest, in its own words.
+    # The reading quotes the axis they committed to hardest, in its own words —
+    # and only those words. It used to lead with the axis name, which made the
+    # reader parse a label before reaching the sentence that says something
+    # about them, when the name is on the axis a few lines below anyway.
     strongest = max(body["scores"], key=lambda score: abs(score["score"]))
-    assert body["summary"] == f"{strongest['name']} — {strongest['stance']}"
+    assert body["summary"] == strongest["stance"]
+    assert strongest["name"] not in body["summary"]
 
 
 def test_unseen_films_are_counted_but_do_not_score(scored_atlas):

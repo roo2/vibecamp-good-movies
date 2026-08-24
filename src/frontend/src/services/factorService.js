@@ -33,12 +33,10 @@ export async function loadFactors(scorer, variant = 'subs', bank = '') {
 }
 
 // A factor's margin is how far its eigenvalue cleared the 95th percentile of a
-// null built by permuting each item's own column. The server no longer sends
-// anything below this — DISPLAY_MARGIN in factor_names.py — so the value here
-// is the same bar, kept so the scree can still shade the factors that did not
-// make it. A factor 13% clear of chance is real and is also thin, and shown
-// beside one that cleared by 500% a reader weighs them the same.
-export const CLEAR_MARGIN = 0.25
+// null built by permuting each item's own column. 5% is the bar the analysis
+// itself applies, and now the only one: a 25% threshold used to sit on top of
+// it, which was a layout convenience deciding what counted as a finding.
+export const CLEAR_MARGIN = 0.05
 
 export function isClear(factor) {
   return (factor.margin ?? 0) >= CLEAR_MARGIN

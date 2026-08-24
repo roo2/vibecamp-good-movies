@@ -28,6 +28,31 @@ def planted(n_films=60, per_factor=25, k=3, noise=0.35, seed=4):
     return np.array(columns).T
 
 
+def like_the_corpus(n_films=200, per_factor=25, k=3, noise=0.35,
+                    acquiescence=0.75, seed=4, talkative=True):
+    """Planted factors, plus the two pathologies the real corpus has.
+
+    Films differ wildly in how much of the bank they engage at all, and the
+    scorer says "affirms" far more often than "denies" — 75% to 93% depending on
+    the model. Neither is a moral dimension, and both are larger than any moral
+    dimension in the data.
+    """
+    rng = np.random.default_rng(seed)
+    factors = rng.normal(size=(n_films, k))
+    columns = []
+    for f in range(k):
+        for _ in range(per_factor):
+            signal = factors[:, f] + rng.normal(scale=noise, size=n_films)
+            columns.append(np.where(signal > 0, 1.0,
+                                    np.where(rng.random(n_films) < acquiescence, 1.0, -1.0)))
+    matrix = np.array(columns).T
+    if not talkative:
+        return matrix                      # complete, for isolating one effect
+    share = rng.uniform(0.15, 0.95, size=n_films)
+    matrix[~(rng.random(matrix.shape) < share[:, None])] = 0.0
+    return matrix
+
+
 def test_the_planted_number_of_factors_is_recovered():
     """On data shaped like the corpus: sparse, and agreed with far too often."""
     result = latent.parallel_analysis(like_the_corpus(k=3, seed=4), n_iter=60, seed=1)
@@ -212,45 +237,27 @@ def test_item_groups_reports_how_far_each_item_sits_from_its_centre():
     assert set(distance) == set(groups)
 
 
-def test_the_interface_is_not_shown_factors_that_barely_cleared_chance():
-    """A 13%-clear factor beside a 500%-clear one invites equal weight."""
-    from moral_atlas.analysis import factor_names
+def test_the_atlas_hides_nothing_and_the_product_shows_a_handful():
+    """Two different jobs, and only one of them is a presentation choice.
 
-    rows = [{"margin": 5.0, "name": "strong"}, {"margin": 0.13, "name": "thin"},
-            {"margin": None, "name": "unmeasured"}]
-    kept = [r for r in rows
-            if r["margin"] is None or r["margin"] >= factor_names.DISPLAY_MARGIN]
+    A 25% margin bar used to sit on top of the null test and decide what reached
+    the page. It was picked to keep a list short — a layout problem in the
+    clothes of a statistical one — and it hid real findings from the page whose
+    whole purpose is to show them. The null test at 5% is the only bar on the
+    atlas now.
 
-    assert [r["name"] for r in kept] == ["strong", "unmeasured"], (
-        "a factor with no margin predates the measurement rather than failing it")
-    assert factor_names.DISPLAY_MARGIN == 0.25
-
-
-def like_the_corpus(n_films=200, per_factor=25, k=3, noise=0.35,
-                    acquiescence=0.75, seed=4, talkative=True):
-    """Planted factors, plus the two pathologies the real corpus has.
-
-    Films differ wildly in how much of the bank they engage at all, and the
-    scorer says "affirms" far more often than "denies" — 75% to 93% depending on
-    the model. Neither is a moral dimension, and both are larger than any moral
-    dimension in the data.
+    The product still shows a few, because somebody choosing a film is not
+    auditing a corpus. That limit is honest about being about a screen.
     """
-    rng = np.random.default_rng(seed)
-    factors = rng.normal(size=(n_films, k))
-    columns = []
-    for f in range(k):
-        for _ in range(per_factor):
-            signal = factors[:, f] + rng.normal(scale=noise, size=n_films)
-            columns.append(np.where(signal > 0, 1.0,
-                                    np.where(rng.random(n_films) < acquiescence, 1.0, -1.0)))
-    matrix = np.array(columns).T
-    if not talkative:
-        return matrix                      # complete, for isolating one effect
-    share = rng.uniform(0.15, 0.95, size=n_films)
-    matrix[~(rng.random(matrix.shape) < share[:, None])] = 0.0
-    return matrix
+    from moral_atlas.analysis import factor_names, user_scores
 
+    assert not hasattr(factor_names, "DISPLAY_MARGIN"), (
+        "the editorial threshold is gone; nothing should filter the atlas")
+    assert user_scores.PRODUCT_AXES == 6
 
+    axes = [{"dim_id": i, "name": f"axis {i}", "question": "?", "pole_high": "h",
+             "pole_low": "l"} for i in range(11)]
+    assert len(axes[:user_scores.PRODUCT_AXES]) == 6
 def test_the_strict_estimator_ignores_silence_entirely():
     """Two items only ever answered by different films cannot be correlated."""
     matrix = np.array([

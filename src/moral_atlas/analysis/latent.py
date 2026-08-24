@@ -7,25 +7,46 @@ actually responded to the items and recovers the structure from the responses,
 the way the personality factors were found: items that the same films answer the
 same way are being driven by the same underlying thing.
 
-WHAT COUNTS AS A RESPONSE. The scoring is deliberately sparse — a film's verdict
-is recorded only for the items it takes a position on, because "does not address
-this" is a real state and not a neutral midpoint. That leaves three values per
-cell: affirms (+1), denies (-1), and silence (0). Silence is kept rather than
-treated as missing, and that decision is doing a lot of work, so it is worth
-being plain about what it costs.
+WHAT COUNTS AS A RESPONSE. The scoring is sparse — a film's verdict is recorded
+only for the items it takes a position on, because "does not address this" is a
+real state and not a neutral midpoint. Silence is therefore excluded from the
+arithmetic rather than treated as a third value: two items are correlated over
+the films that took a position on BOTH of them.
 
-    The strict reading of the question — "of the films that took a position on
-    BOTH A and B, did they agree?" — cannot be answered on this corpus. 82% of
-    item pairs share no film at all, and the mean overlap is 0.21 films. There
-    is nothing to correlate.
+    That reading was impossible when this was written. At 40 films, 82% of item
+    pairs shared no film at all and the mean overlap was 0.21, so there was
+    nothing to correlate and silence had to be kept as a value to make the
+    matrix dense. The cost was severe and measurable: the largest factor in the
+    corpus was not a moral position but how talkative a film is — 87% of its
+    item loadings shared one sign, and a film's place on it correlated +0.87
+    with how many propositions it engaged.
 
-    Keeping silence as a third value makes the matrix dense and the arithmetic
-    well posed, but changes what is being measured. Two items can now look
-    related because the same films ENGAGE them, not because those films agree
-    about them. That is co-engagement — real structure, and already one of the
-    behavioural tests in `dimensions.validate` — but it is salience, not stance.
-    A recovered factor may be "these propositions are what war films talk
-    about" rather than "these propositions share a moral pole."
+    At 465 films every pair shares at least one film, the mean overlap is 96 and
+    the median 86. Normalising the dense reading does not substitute for this:
+    centring and scaling each film moves that correlation from +0.87 to -0.86,
+    flipping the sign and keeping the coupling, because silence is 63% of the
+    matrix and normalising values cannot touch a pattern of zeros.
+
+ACQUIESCENCE. Each film is also judged against its own rate of agreement. The
+scorers say "affirms" between 75% and 93% of the time and a film affirms 89% of
+what it engages, so "how readily was this film agreed with" is a large signal
+that is partly the film and partly the model's habit. Excluding silence without
+removing this still over-counted — 5 factors where 3 were planted.
+
+WHERE THIS IS WEAKEST, STATED PLAINLY. The count is trustworthy to the extent
+that missingness is a property of FILMS rather than of cells. On planted data
+whose silences follow how much each film engages, k is recovered exactly. Spray
+the same number of silences uniformly across cells instead and the count
+inflates badly — 13 to 15 where 3 were planted — because item pairs then
+correlate over unrelated subsets of films, which manufactures eigenvalues. It is
+stable rather than noisy: more null sampling does not move it. On this corpus
+missingness is a film property, and the count is stable across null seeds. It is
+still the assumption the number rests on. `test_the_count_depends_on_how_
+engagement_is_distributed` pins it.
+
+There is one more cost, paid knowingly: judging each film against its own rate
+spends a degree of freedom, so on complete data with no acquiescence the count
+comes back one short.
 
 HOW MANY FACTORS. Horn's parallel analysis. Compute the eigenvalues of the real
 item correlation matrix, then do the same for many random matrices of exactly
@@ -37,16 +58,14 @@ factors whose observed eigenvalue clears the 95th percentile of the null.
 
 This is what makes the count a finding rather than a setting.
 
-A REAL LIMIT, STATED ONCE. There are 40 scored films and 694 items. Factor
-analysis conventionally wants several times more respondents than variables; we
-have the reverse by two orders of magnitude, so the correlation matrix has rank
-at most 39 and no more than 39 factors are recoverable in principle. The
-parallel-analysis null is computed at the same shape, so it prices that in
-rather than ignoring it — but any single estimate of k here is fragile. What
-would carry weight is agreement: if models that harvested different
-propositions and scored films independently keep landing on the same k, that is
-evidence the corpus has that many joints. If they scatter, the honest reading is
-that 40 films cannot settle the question and the fix is more films.
+A REAL LIMIT, STATED ONCE. Factor analysis conventionally wants several times
+more respondents than variables. With 465 films and 298 items that is no longer
+inverted, but the correlation matrix still has rank at most the number of films,
+so the recoverable ceiling is reported alongside the count. What would carry
+most weight is agreement between models: if scorers that harvested different
+propositions keep landing on the same k, that is evidence the corpus has that
+many joints. They do not currently — one finds eleven and another finds none —
+and that disagreement is itself the finding.
 """
 from __future__ import annotations
 
@@ -208,21 +227,9 @@ def _agreement_eigenvalues(matrix) -> Any:
     return np.sort(np.linalg.eigvalsh(_pairwise_correlation(_film_centred(matrix))))[::-1]
 
 
-def _eigenvalues(matrix) -> Any:
-    """Eigenvalues of the item correlation matrix, via the SVD of the z-scored data."""
-    import numpy as np
-
-    centred = matrix - matrix.mean(axis=0)
-    sd = centred.std(axis=0)
-    sd[sd == 0] = 1.0
-    z = centred / sd
-    singular = np.linalg.svd(z, compute_uv=False)
-    return (singular ** 2) / max(1, matrix.shape[0] - 1)
-
-
 def parallel_analysis(
     matrix, n_iter: int = 200, percentile: float = 95.0, seed: int = 11,
-    margin_floor: float = 0.05, strict: bool = False,
+    margin_floor: float = 0.05,
 ) -> dict[str, Any]:
     """Horn's test: how many factors beat the structure the margins give free?
 
@@ -233,18 +240,14 @@ def parallel_analysis(
     """
     import numpy as np
 
-    # `strict` swaps in the agreement estimator. Both sides of the comparison
-    # use it, which is the whole discipline: an earlier attempt preprocessed the
-    # observed matrix and not the permuted ones, and reported 120 factors.
-    eigenvalues = _agreement_eigenvalues if strict else _eigenvalues
-    observed = eigenvalues(matrix)
+    observed = _agreement_eigenvalues(matrix)
     rng = np.random.default_rng(seed)
     null = np.empty((n_iter, len(observed)))
     for i in range(n_iter):
         shuffled = matrix.copy()
         for column in range(shuffled.shape[1]):
             rng.shuffle(shuffled[:, column])
-        null[i] = eigenvalues(shuffled)
+        null[i] = _agreement_eigenvalues(shuffled)
 
     threshold = np.percentile(null, percentile, axis=0)
     above = observed > threshold
@@ -274,8 +277,8 @@ def parallel_analysis(
     }
 
 
-def item_groups(matrix, items: list[str], k: int, seed: int = 11,
-                strict: bool = False) -> tuple[dict[str, int], dict[str, float]]:
+def item_groups(matrix, items: list[str], k: int,
+                seed: int = 11) -> tuple[dict[str, int], dict[str, float]]:
     """Sort items into k groups by how films responded to them.
 
     Clustering the loadings rather than the raw columns: two items answered the
@@ -290,21 +293,18 @@ def item_groups(matrix, items: list[str], k: int, seed: int = 11,
     import numpy as np
     from sklearn.cluster import KMeans
 
+    # Nothing beat chance. There is no grouping to return, and returning one
+    # group would hand the namer every proposition in the bank and get an axis
+    # back — a named, plausible, entirely invented axis with no margin behind it.
+    if k < 1:
+        return {}, {}
     if k < 2:
         return {item: 0 for item in items}, {item: 0.0 for item in items}
-    if strict:
-        # Cluster the eigenvectors of the agreement matrix, so membership is
-        # decided by the same reading of the data that decided the count.
-        correlation = _pairwise_correlation(_film_centred(matrix))
-        values, vectors = np.linalg.eigh(correlation)
-        loadings = vectors[:, np.argsort(values)[::-1][:k]]
-    else:
-        centred = matrix - matrix.mean(axis=0)
-        sd = centred.std(axis=0)
-        sd[sd == 0] = 1.0
-        z = centred / sd
-        _u, _s, vt = np.linalg.svd(z, full_matrices=False)
-        loadings = vt[:k].T                  # one row per item
+    # Cluster the eigenvectors of the agreement matrix, so membership is decided
+    # by the same reading of the data that decided the count.
+    correlation = _pairwise_correlation(_film_centred(matrix))
+    values, vectors = np.linalg.eigh(correlation)
+    loadings = vectors[:, np.argsort(values)[::-1][:k]]
     model = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(loadings)
     labels = model.labels_
     distances = np.linalg.norm(loadings - model.cluster_centers_[labels], axis=1)
@@ -315,19 +315,13 @@ def item_groups(matrix, items: list[str], k: int, seed: int = 11,
 def analyse(
     scorer: str | None = None, bank_version: str = "b1",
     n_iter: int = 200, min_films: int = MIN_FILMS_PER_ITEM, seed: int = 11,
-    variant: str | None = None, strict: bool = False,
+    variant: str | None = None,
 ) -> dict[str, Any]:
-    """The whole thing for one scorer: how many dimensions, and which items.
-
-    `strict` reads agreement instead of co-engagement — see
-    `_pairwise_correlation`. It is not the default because the two estimators
-    produce margins on different scales, so a display threshold tuned against
-    one does not transfer, and every axis in the product would move at once.
-    """
+    """The whole thing for one scorer: how many dimensions, and which items."""
     data = response_matrix(scorer, bank_version, min_films, variant)
-    horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed, strict=strict)
+    horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
     groups, distance = item_groups(data["matrix"], data["items"],
-                                   horn["n_clear_factors"], seed=seed, strict=strict)
+                                   horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
         sizes[label] = sizes.get(label, 0) + 1
@@ -338,7 +332,6 @@ def analyse(
         "items": len(data["items"]),
         "dropped_items": data["dropped_items"],
         "density": round(data["density"], 4),
-        "strict": strict,
         "n_factors": horn["n_factors"],
         "n_clear_factors": horn["n_clear_factors"],
         "margins": horn["margins"],

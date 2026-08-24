@@ -249,11 +249,12 @@ CREATE TABLE IF NOT EXISTS latent_factors (
     pole_high_label TEXT,
     pole_low_label  TEXT,
     coherent     INTEGER, -- the namer's own admission that a group has no theme
-    -- Which reading of the responses produced this factor: 'dense' keeps
-    -- silence as a value, 'strict' correlates only over films that took a
-    -- position on both items. Recorded because a factor's NAME and the
-    -- propositions shown under it must come from the same reading — names from
-    -- one and groups from the other is a mislabelled axis with no error.
+    -- Which reading of the responses produced this factor. Only 'strict' is
+    -- written now — correlating items over the films that took a position on
+    -- both, each film judged against its own affirm rate. 'dense' rows are
+    -- historical: they kept silence as a value, which made the largest factor
+    -- how talkative a film is. Recorded because a factor's NAME and the
+    -- propositions shown under it must come from the same reading.
     estimator    TEXT,
     n_items      INTEGER,
     eigenvalue   REAL,

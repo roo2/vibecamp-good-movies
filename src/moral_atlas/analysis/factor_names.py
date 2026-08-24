@@ -196,7 +196,7 @@ def persist(
     bank_version: str = "b1", model: str | None = None, usage: dict[str, Any] | None = None,
 ) -> str:
     variant = report.get("variant") or "all"
-    estimator = "strict" if report.get("strict") else "dense"
+    estimator = "strict"
     model = model or SCORERS[alias].model
     run_id = db.start_run(
         "factor-names", model, PROMPT_VERSION,

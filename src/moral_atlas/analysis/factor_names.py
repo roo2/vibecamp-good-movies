@@ -196,6 +196,7 @@ def persist(
     bank_version: str = "b1", model: str | None = None, usage: dict[str, Any] | None = None,
 ) -> str:
     variant = report.get("variant") or "all"
+    estimator = "strict" if report.get("strict") else "dense"
     model = model or SCORERS[alias].model
     run_id = db.start_run(
         "factor-names", model, PROMPT_VERSION,
@@ -209,12 +210,12 @@ def persist(
         con.executemany(
             "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
             "question, pole_high, pole_low, pole_high_label, pole_low_label, coherent, "
-            "n_items, eigenvalue, margin, model, run_id, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "estimator, n_items, eigenvalue, margin, model, run_id, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [(alias, variant, bank_version, f["factor_id"], f["name"], f["question"],
               f["pole_high"], f["pole_low"], f.get("pole_high_label"), f.get("pole_low_label"),
-              int(bool(f.get("coherent", True))), f["n_items"], f["eigenvalue"], f["margin"],
-              model, run_id, db.now()) for f in named],
+              int(bool(f.get("coherent", True))), estimator, f["n_items"], f["eigenvalue"],
+              f["margin"], model, run_id, db.now()) for f in named],
         )
         con.executemany(
             "INSERT OR REPLACE INTO latent_factor_items (scorer, variant, bank_version, "
@@ -237,7 +238,8 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1",
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
-            "pole_low_label, coherent, n_items, eigenvalue, margin, model FROM latent_factors "
+            "pole_low_label, coherent, estimator, n_items, eigenvalue, margin, model "
+            "FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
             [alias, variant, bank_version],
         ).fetchall()
@@ -279,3 +281,20 @@ def bank_texts(bank_version: str = "b1") -> dict[str, str]:
             [bank_version],
         ).fetchall()
     return {r["item_id"]: r["text"] for r in rows}
+
+
+def estimator_for(alias: str, variant: str = "subs", bank_version: str = "b1") -> str:
+    """Which reading produced the stored factors, so the detail can match it.
+
+    The names live in the database and the groups behind them are recomputed on
+    demand. If those two disagree about how to read the responses, every axis
+    gets a name from one clustering and its propositions from another — which
+    looks exactly like a mislabelled axis and raises no error at all.
+    """
+    db.init_db()
+    with db.connect(read_only=True) as con:
+        row = con.execute(
+            "SELECT estimator FROM latent_factors WHERE scorer=? AND variant=? "
+            "AND bank_version=? LIMIT 1", [alias, variant, bank_version],
+        ).fetchone()
+    return (row["estimator"] if row and row["estimator"] else "dense")

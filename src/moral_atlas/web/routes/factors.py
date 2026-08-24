@@ -30,6 +30,12 @@ WITHDRAWN = {
     # producing usable structured output, and the axes it did yield came from
     # too little to mean anything.
     "dolphin": "too small a model to complete the corpus",
+    # Scored more films than any other model and engaged fewer propositions than
+    # any other model: 564 films against 71 usable items, 8% of the grid. Two
+    # propositions can only be compared over the films that answered both, and
+    # its median pair shares one film — so nothing it produced can clear a
+    # significance test, however many films are added.
+    "grok": "answers too few propositions per film for any axis to reach significance",
 }
 
 _cache: dict[str, Any] = {}

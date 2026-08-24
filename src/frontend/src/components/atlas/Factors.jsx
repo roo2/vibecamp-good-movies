@@ -34,7 +34,7 @@ function Scree({ eigenvalues, thresholds }) {
   )
 }
 
-function Factor({ factor }) {
+function Factor({ factor, scorer }) {
   const [open, setOpen] = React.useState(false)
   const clear = isClear(factor)
 
@@ -69,11 +69,14 @@ function Factor({ factor }) {
             <b>+&nbsp;{factor.pole_high_label}</b> {factor.pole_high}
           </p>
 
-          <FactorDistribution films={factor.distribution}
+          <FactorDistribution films={factor.distribution} scorer={scorer}
+                             factorId={factor.factor_id}
                              poleLow={factor.pole_low_label} poleHigh={factor.pole_high_label} />
-          <FilmAnchors high={factor.high} low={factor.low}
+          <FilmAnchors high={factor.high} low={factor.low} scorer={scorer}
+                       factorId={factor.factor_id}
                        poleHigh={factor.pole_high} poleLow={factor.pole_low}
                        highLabel={factor.pole_high_label} lowLabel={factor.pole_low_label} />
+          <p className="atlas-note">Tap any film to read the propositions it answered on this axis.</p>
 
           <p className="factor-examples-label">
             The propositions this factor is made of. Films answered these together —
@@ -89,57 +92,88 @@ function Factor({ factor }) {
 export function Factors({ data }) {
   if (!data) return null
   const named = data.factors || []
-  const clear = named.filter(isClear).length
+  const shown = named.length
+  const bar = Math.round((data.display_margin ?? CLEAR_MARGIN) * 100)
+  const strict = data.estimator === 'strict'
 
+  // Method first, then results. The derivation used to sit underneath the axes,
+  // which asked a reader to judge eleven moral claims and only afterwards told
+  // them where the eleven came from — and the heading counted the factors the
+  // statistics found rather than the ones this page shows, so it announced a
+  // number the list below did not contain.
   return (
     <>
-      <section aria-labelledby="axes">
-        <h2 id="axes">The axes {data.scorer} found</h2>
-        <p className="atlas-note">
-          Nobody chose these, and nobody chose how many there are. {data.scorer} wrote its own
-          bank of moral propositions from {data.films} films&apos; dialogue, scored those films
-          against it, and the groupings below are the propositions that the same films answer
-          the same way. Only then was the model asked what each group is about — so the names
-          are a description of a finished result, not a theory the items were sorted into.
-        </p>
-        {named.length ? (
-          <ul className="factors">
-            {named.map((factor) => <Factor key={factor.factor_id} factor={factor} />)}
-          </ul>
-        ) : (
-          <p className="atlas-note">
-            Scored, but the axes have not been named yet — run <code>atlas name-factors</code>.
-          </p>
-        )}
-      </section>
-
       <section aria-labelledby="how-many">
-        <h2 id="how-many">Why {data.n_clear_factors}, and not eight?</h2>
+        <h2 id="how-many">
+          {shown === 1 ? 'One axis' : `${shown} axes`}, and where they came from
+        </h2>
         <p className="atlas-note">
-          This page used to assert eight axes because a model had been asked for eight, and a
-          model asked for eight will always return eight. The count below is the one number
-          here that nobody supplied: each factor is kept only if its eigenvalue beats the 95th
-          percentile of a null built by permuting each proposition&apos;s own column, which
-          destroys the relationships between propositions while leaving each one&apos;s
-          engagement rate and affirm/deny balance untouched.
+          Nobody chose these and nobody chose how many there are. {data.scorer} wrote its own
+          bank of moral propositions from {data.films} films&apos; dialogue and scored those
+          films against it. The groups are the propositions the same films answer the same
+          way; the count is whatever survives the test below. Only then was the model asked
+          what each group is about — so a name describes a finished result rather than a
+          theory the propositions were sorted into.
         </p>
+
         <p className="factor-headline">
-          <b>{data.n_factors}</b> clear the null · <b>{clear}</b> clear it by more than {Math.round(CLEAR_MARGIN * 100)}%, which is the bar for appearing here
+          <b>{data.n_factors}</b> beat chance · <b>{shown}</b> beat it by more than {bar}%,
+          and those are the ones shown
           <span className="factor-headline-sub">
             {data.films} films × {data.items} propositions
             {data.dropped_items ? `, ${data.dropped_items} dropped as too rarely scored` : ''}
             {' '}· at most {data.max_recoverable} recoverable from this many films
           </span>
         </p>
-        <Scree eigenvalues={data.eigenvalues} thresholds={data.null_threshold} />
+
         <p className="atlas-note">
-          Factors within a few percent of the line move between runs as the null is resampled,
-          so they are drawn differently and should be read as candidates rather than results.
-          One limit this cannot design away: scoring is sparse, so silence counts as a third
-          answer — which means two propositions can group because the same films <em>engage</em>
-          them, not because those films <em>agree</em> about them. Some of what is measured
-          here is salience.
+          A factor is kept only if its eigenvalue beats the 95th percentile of a null built by
+          permuting each proposition&apos;s own column — which destroys the relationships
+          between propositions while leaving each one&apos;s engagement rate and affirm/deny
+          balance untouched. So it has to explain more than the amount of structure those
+          margins hand out for free. {bar}% is a second, editorial bar: a factor a few percent
+          clear of chance is real and thin, and printed beside one that cleared by 500% a
+          reader weighs them the same.
         </p>
+
+        <Scree eigenvalues={data.eigenvalues} thresholds={data.null_threshold} />
+
+        <p className="atlas-note">
+          {strict ? (
+            <>
+              <b>How silence is handled.</b> A film&apos;s verdict is recorded only for the
+              propositions it takes a position on, and these axes are built by correlating two
+              propositions over the films that answered <em>both</em> — so agreement is what is
+              measured, not which films happen to talk about the same things. Each film is also
+              judged against its own rate of agreement, because the scorers say &ldquo;affirms&rdquo;
+              far more often than &ldquo;denies&rdquo; and that habit would otherwise be the
+              largest pattern in the data. Read the other way, silence counted as an answer and
+              the biggest axis turned out to be how talkative a film is.
+            </>
+          ) : (
+            <>
+              <b>One limit, stated plainly.</b> Scoring is sparse and silence counts here as a
+              third answer, so two propositions can group because the same films <em>engage</em>
+              them rather than because those films <em>agree</em> about them. Some of what is
+              measured this way is salience rather than stance.
+            </>
+          )}
+        </p>
+      </section>
+
+      <section aria-labelledby="axes">
+        <h2 id="axes">The axes {data.scorer} found</h2>
+        {named.length ? (
+          <ul className="factors">
+            {named.map((factor) => (
+              <Factor key={factor.factor_id} factor={factor} scorer={data.scorer} />
+            ))}
+          </ul>
+        ) : (
+          <p className="atlas-note">
+            Scored, but the axes have not been named yet — run <code>atlas name-factors</code>.
+          </p>
+        )}
       </section>
     </>
   )

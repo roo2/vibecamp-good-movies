@@ -25,7 +25,7 @@ const sideOf = (index) => (index === (BINS - 1) / 2 ? 'mid' : index < (BINS - 1)
 
 const signed = (value) => `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
 
-export function FactorDistribution({ films, poleLow, poleHigh }) {
+export function FactorDistribution({ films, poleLow, poleHigh, scorer, factorId }) {
   const [open, setOpen] = React.useState(null)
   if (!films?.length) return null
 
@@ -93,15 +93,8 @@ export function FactorDistribution({ films, poleLow, poleHigh }) {
               : sideOf(open) === 'low' ? ` — ${poleLow || 'toward −1'}`
               : ` — ${poleHigh || 'toward +1'}`}
           </span>
-          <ul>
-            {[...chosen].sort((a, b) => b.score - a.score).map((film) => (
-              <li key={film.film_id}>
-                <b>{film.title ?? 'a film'}</b>
-                <em>{signed(film.score)}</em>
-                {film.items != null && <span>{film.items} item{film.items === 1 ? '' : 's'}</span>}
-              </li>
-            ))}
-          </ul>
+          <AnchorList films={[...chosen].sort((a, b) => b.score - a.score)}
+                      scorer={scorer} factorId={factorId} />
         </div>
       ) : (
         <p className="distribution-hint">Click a bar to see which films are in it.</p>
@@ -110,7 +103,80 @@ export function FactorDistribution({ films, poleLow, poleHigh }) {
   )
 }
 
-export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel }) {
+
+// Why one film sits where it does on one axis.
+//
+// A list of films under an axis is an assertion until you can open one. This
+// fetches that film's verdicts and shows only the propositions belonging to
+// this factor — the actual sentences it affirmed and denied, which is the
+// evidence the position was computed from and the thing a doubtful reader
+// wants first.
+export function FilmOnAxis({ scorer, factorId, film }) {
+  const [state, setState] = React.useState({ status: 'loading' })
+
+  React.useEffect(() => {
+    let live = true
+    setState({ status: 'loading' })
+    fetch(`/api/factors/${encodeURIComponent(scorer)}/films/${encodeURIComponent(film.film_id)}`)
+      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+      .then((data) => {
+        if (!live) return
+        const match = (data.factors || []).find((f) => f.factor_id === factorId)
+        setState({ status: 'ready', factor: match })
+      })
+      .catch(() => live && setState({ status: 'failed' }))
+    return () => { live = false }
+  }, [scorer, factorId, film.film_id])
+
+  if (state.status === 'loading') return <p className="film-why-note">Reading its answers…</p>
+  if (state.status === 'failed' || !state.factor?.verdicts?.length) {
+    return <p className="film-why-note">No recorded answers for this film on this axis.</p>
+  }
+
+  const affirmed = state.factor.verdicts.filter((v) => v.verdict === 'affirms')
+  const denied = state.factor.verdicts.filter((v) => v.verdict === 'denies')
+  return (
+    <div className="film-why">
+      <p className="film-why-note">
+        {affirmed.length} affirmed · {denied.length} denied — which is what puts it at{' '}
+        <b>{signed(film.score)}</b>.
+      </p>
+      <ul>
+        {state.factor.verdicts.map((verdict) => (
+          <li key={verdict.item_id} className={verdict.verdict}>
+            <b>{verdict.verdict}</b>
+            <span>{verdict.text}</span>
+            {verdict.evidence && <em>{verdict.evidence}</em>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function AnchorList({ films, scorer, factorId }) {
+  const [openId, setOpenId] = React.useState(null)
+  return (
+    <ul>
+      {films.map((film) => (
+        <li key={film.film_id} className={openId === film.film_id ? 'open' : ''}>
+          <button type="button" aria-expanded={openId === film.film_id}
+                  onClick={() => setOpenId(openId === film.film_id ? null : film.film_id)}>
+            <b>{film.title}</b>
+            <em>{signed(film.score)}</em>
+            <span>{film.items} item{film.items === 1 ? '' : 's'}</span>
+          </button>
+          {openId === film.film_id && (
+            <FilmOnAxis scorer={scorer} factorId={factorId} film={film} />
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel,
+                              scorer, factorId }) {
   if (!high?.length && !low?.length) return null
   // Each column says what its end of the axis MEANS, not just which way it
   // points. "Furthest toward affirming" is only informative to a reader who has
@@ -120,28 +186,12 @@ export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel 
       <div className="anchors-side high">
         <span className="anchors-label">Most {highLabel || 'affirming'}</span>
         {poleHigh && <p className="anchors-pole">{poleHigh}</p>}
-        <ul>
-          {high.map((film) => (
-            <li key={film.film_id}>
-              <b>{film.title}</b>
-              <em>{signed(film.score)}</em>
-              <span>{film.items} item{film.items === 1 ? '' : 's'}</span>
-            </li>
-          ))}
-        </ul>
+        <AnchorList films={high} scorer={scorer} factorId={factorId} />
       </div>
       <div className="anchors-side low">
         <span className="anchors-label">Most {lowLabel || 'denying'}</span>
         {poleLow && <p className="anchors-pole">{poleLow}</p>}
-        <ul>
-          {low.map((film) => (
-            <li key={film.film_id}>
-              <b>{film.title}</b>
-              <em>{signed(film.score)}</em>
-              <span>{film.items} item{film.items === 1 ? '' : 's'}</span>
-            </li>
-          ))}
-        </ul>
+        <AnchorList films={low} scorer={scorer} factorId={factorId} />
       </div>
     </div>
   )

@@ -74,6 +74,9 @@ function CompassScreen({ access, shareToken, onContinue }) {
           <button className="peach-button" type="button" onClick={onContinue}>
             See tonight’s list <span aria-hidden="true">→</span>
           </button>
+          {/* Somebody who has just been told what they believe is entitled to
+              ask where the scales came from. */}
+          <a className="quiet-link" href="#/atlas">Where do these scales come from? →</a>
         </div>
       </section>
     </main>

@@ -39,7 +39,12 @@ function SessionWaitingPage({ status, isHost, canEditAnswer, onBack, onContinue 
           ))}</div>
           {error && <p className="message" role="alert">{error}</p>}
         </div>
-        {isHost && (pending.length === 0 || status.can_continue_without_members) && <button className="peach-button" type="button" onClick={handleContinue}>See joint result <span aria-hidden="true">→</span></button>}
+        {/* Nothing to press when you are both done — that page moves on by
+            itself. This button is only ever the way out of a partner who
+            stopped answering, which is a decision and stays a button. */}
+        {isHost && pending.length > 0 && status.can_continue_without_members
+          && <button className="peach-button" type="button" onClick={handleContinue}>Carry on without them <span aria-hidden="true">→</span></button>}
+        {pending.length === 0 && <p className="login-footer">Reading you both…</p>}
         {isHost && pending.length > 0 && !status.can_continue_without_members && <p className="login-footer">If they get stuck, you can carry on without them after 10 minutes.</p>}
       </section>
     </main>

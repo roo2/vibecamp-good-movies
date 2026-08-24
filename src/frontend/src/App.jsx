@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import LandingPage from './screens/LandingPage.jsx'
 import TestCompletePage from './screens/TestCompletePage.jsx'
 import SessionLobbyPage from './screens/SessionLobbyPage.jsx'
@@ -82,17 +82,57 @@ function App() {
     return nextStatus
   }, [access, groupSession])
 
+  // Both waiting screens move on by themselves.
+  //
+  // They used to wait for the host to press a button, which meant a couple who
+  // were both ready sat looking at a screen until whichever of them held the
+  // "host" role — a thing neither of them knows they are — noticed. Every one of
+  // those presses had exactly one sensible answer, so the screen gives it.
+  //
+  // The guard is a ref rather than state: the poll runs every four seconds and
+  // starting a session twice, or continuing one twice, is worse than waiting.
+  const advancing = useRef(false)
+
   useEffect(() => {
     if (route !== '/waiting' && route !== '/lobby') return undefined
     async function updateStatus() {
       const nextStatus = await refreshSessionStatus()
-      if (route === '/lobby' && nextStatus?.status === 'in_progress') navigate('/seen-it')
-      if (route === '/waiting' && nextStatus?.status === 'results_started') navigate('/complete')
+      if (!nextStatus) return
+      const isHost = nextStatus.host_user_id === access?.user?.id
+      const members = nextStatus.members || []
+      const everyoneReady = members.length > 0 && members.every((member) => member.completed_at)
+
+      if (route === '/lobby') {
+        if (nextStatus.status === 'in_progress') { navigate('/seen-it'); return }
+        // Your partner is here and nothing else has to happen first.
+        if (isHost && nextStatus.status === 'lobby' && members.length > 1 && !advancing.current) {
+          advancing.current = true
+          try {
+            await startGroupSession(access, groupSession.shareToken)
+            navigate('/seen-it')
+          } finally {
+            advancing.current = false
+          }
+        }
+        return
+      }
+
+      if (nextStatus.status === 'results_started' || everyoneReady) {
+        // Only the host may end the wait for the session, but neither person
+        // should be made to sit through the other's round trip to do it.
+        if (isHost && nextStatus.status !== 'results_started' && !advancing.current) {
+          advancing.current = true
+          continueWithoutMembers(access, groupSession.shareToken)
+            .catch(() => {})
+            .finally(() => { advancing.current = false })
+        }
+        navigate('/complete')
+      }
     }
     updateStatus()
     const timer = window.setInterval(updateStatus, 4000)
     return () => window.clearInterval(timer)
-  }, [route, refreshSessionStatus, navigate])
+  }, [route, refreshSessionStatus, navigate, access, groupSession])
 
   const handleStartSession = useCallback(async () => {
     await startGroupSession(access, groupSession.shareToken)
@@ -113,7 +153,14 @@ function App() {
     // Nobody else in the room: there is nothing to wait for, and a waiting screen
     // that says "waiting for your partner" to someone who has none is a bug with
     // a friendly face on it.
-    if ((status?.members?.length || 1) <= 1) {
+    const members = status?.members || []
+    const everyoneReady = members.length > 0 && members.every((member) => member.completed_at)
+    // Nobody else in the room, or nobody left to wait for: either way there is
+    // nothing a waiting screen could tell them.
+    if (members.length <= 1 || everyoneReady) {
+      if (status?.host_user_id === access.user.id && members.length > 1) {
+        continueWithoutMembers(access, groupSession.shareToken).catch(() => {})
+      }
       navigate('/complete')
       return
     }

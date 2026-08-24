@@ -175,3 +175,76 @@ def test_the_interface_is_not_shown_factors_that_barely_cleared_chance():
     assert [r["name"] for r in kept] == ["strong", "unmeasured"], (
         "a factor with no margin predates the measurement rather than failing it")
     assert factor_names.DISPLAY_MARGIN == 0.25
+
+
+def like_the_corpus(n_films=200, per_factor=25, k=3, noise=0.35,
+                    acquiescence=0.75, seed=4):
+    """Planted factors, plus the two pathologies the real corpus has.
+
+    Films differ wildly in how much of the bank they engage at all, and the
+    scorer says "affirms" far more often than "denies" — 75% to 93% depending on
+    the model. Neither is a moral dimension, and both are larger than any moral
+    dimension in the data.
+    """
+    rng = np.random.default_rng(seed)
+    factors = rng.normal(size=(n_films, k))
+    columns = []
+    for f in range(k):
+        for _ in range(per_factor):
+            signal = factors[:, f] + rng.normal(scale=noise, size=n_films)
+            columns.append(np.where(signal > 0, 1.0,
+                                    np.where(rng.random(n_films) < acquiescence, 1.0, -1.0)))
+    matrix = np.array(columns).T
+    talkative = rng.uniform(0.15, 0.95, size=n_films)
+    matrix[~(rng.random(matrix.shape) < talkative[:, None])] = 0.0
+    return matrix
+
+
+def test_the_strict_estimator_ignores_silence_entirely():
+    """Two items only ever answered by different films cannot be correlated."""
+    matrix = np.array([
+        [1.0, 0.0],
+        [-1.0, 0.0],
+        [0.0, 1.0],
+        [0.0, -1.0],
+    ])
+    correlation = latent._pairwise_correlation(matrix)
+
+    assert correlation[0, 1] == 0.0, (
+        "no film took a position on both, so there is nothing to correlate — "
+        "the dense reading would call these related because the silences line up")
+    assert correlation[0, 0] == 1.0
+
+
+def test_the_strict_estimator_recovers_what_the_dense_one_cannot():
+    """The dense reading finds talkativeness and acquiescence before the truth."""
+    matrix = like_the_corpus(k=3, seed=4)
+
+    dense = latent.parallel_analysis(matrix, n_iter=80, seed=1)["n_factors"]
+    strict = latent.parallel_analysis(matrix, n_iter=80, seed=1, strict=True)["n_factors"]
+
+    assert strict == 3, f"three factors were planted; strict found {strict}"
+    assert dense > strict, (
+        "the dense estimator should over-count here, because the extra factors "
+        "it finds are the engagement and affirm-rate patterns")
+
+
+def test_the_strict_estimator_still_reports_nothing_when_there_is_nothing():
+    """The result it must be able to return, or finding factors proves nothing."""
+    rng = np.random.default_rng(3)
+    noise = rng.choice([-1.0, 0.0, 1.0], size=(120, 90))
+
+    assert latent.parallel_analysis(noise, n_iter=80, seed=1, strict=True)["n_factors"] == 0
+
+
+def test_film_centring_removes_a_films_own_affirm_rate():
+    """Acquiescence is a property of the judge as much as the judged."""
+    matrix = np.array([
+        [1.0, 1.0, 1.0, -1.0],   # affirms nearly everything
+        [1.0, -1.0, 0.0, 0.0],   # engages two, split
+    ])
+    centred = latent._film_centred(matrix)
+
+    assert np.isclose(centred[0][matrix[0] != 0].mean(), 0.0)
+    assert np.isclose(centred[1][matrix[1] != 0].mean(), 0.0)
+    assert (centred[matrix == 0] == 0).all(), "silence stays silent, not centred into a value"

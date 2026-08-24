@@ -680,6 +680,11 @@ def name_factors_cmd(
     bank: str = typer.Option("b1"),
     iterations: int = typer.Option(200, help="Permutations for the parallel-analysis null."),
     min_films: int = typer.Option(3, help="Drop items scored on fewer films than this."),
+    strict: bool = typer.Option(
+        False, "--strict",
+        help="Read agreement rather than co-engagement: correlate items only "
+             "over the films that took a position on both, and judge each film "
+             "against its own affirm rate."),
 ) -> None:
     """Name the axes the FILMS produced, rather than asking a model for eight.
 
@@ -695,7 +700,8 @@ def name_factors_cmd(
     for alias in _ready_scorers(scorers):
         try:
             report = latent.analyse(None if alias == "opus" else alias, bank,
-                                    n_iter=iterations, min_films=min_films, variant=variant)
+                                    n_iter=iterations, min_films=min_films,
+                                    variant=variant, strict=strict)
         except RuntimeError as error:
             console.print(f"[yellow]{alias}: {error}[/]")
             continue

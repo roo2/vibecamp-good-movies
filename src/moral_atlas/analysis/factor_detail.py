@@ -57,6 +57,7 @@ def _titles() -> dict[str, str]:
 def detail(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
     texts: dict[str, str], per_pole: int = 10, per_factor_items: int = 40,
+    distance: dict[str, float] | None = None,
 ) -> dict[int, dict[str, Any]]:
     """Per factor: where the corpus sits, which films anchor each pole, and why."""
     rows = _verdicts(scorer, bank_version, variant)
@@ -114,14 +115,23 @@ def detail(
             "distribution": positions,
             "high": positions[:per_pole],
             "low": list(reversed(positions[-per_pole:])) if positions else [],
+            # Ordered by how central each item is to the factor, NOT by how
+            # often films engaged it. Engagement order put the most-answered
+            # proposition first, and the most-answered proposition is usually
+            # the one nearly every film affirms — which is the item that
+            # separates films least. It made a factor about self-sacrifice open
+            # with a line about technology, and read as a mislabelled cluster
+            # when the label was right and the evidence was sorted wrong.
             "propositions": sorted(
                 ({
                     "item_id": item,
                     "text": texts.get(item, item),
                     "affirms": per_item.get(item, [0, 0])[0],
                     "denies": per_item.get(item, [0, 0])[1],
+                    "distance": round((distance or {}).get(item, 0.0), 4),
                 } for item in item_ids),
-                key=lambda row: -(row["affirms"] + row["denies"]),
+                key=lambda row: ((distance or {}).get(row["item_id"], 0.0),
+                                 -(row["affirms"] + row["denies"])),
             )[:per_factor_items],
         }
     return out

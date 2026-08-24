@@ -42,7 +42,15 @@ from ..llm.providers import SCORERS, client_for
 # Enough of a group to characterise it without paying for all of it. Groups run
 # to sixty items, and where there is a shared thread it is visible in far fewer;
 # where there is not, more items would not rescue it.
-SAMPLE = 28
+SAMPLE = 40
+
+# How far a factor must clear the parallel-analysis null before it is shown to
+# anybody. `latent` keeps everything above 5%, because that is the honest
+# statistical bar and the count is a finding; this is a higher, editorial bar for
+# the interface. A factor 13% clear of chance is real and is also thin, and
+# putting it beside one that cleared by 500% invites a reader to weigh them the
+# same. The weak ones stay in the database and out of the way.
+DISPLAY_MARGIN = 0.25
 
 
 class FactorName(BaseModel):
@@ -72,6 +80,12 @@ same way — affirming together, denying together, or passing over together.
 
 For each group, say what its propositions have in common as a moral question.
 
+The propositions are listed with the ones NEAREST THE CENTRE of the group first.
+Weight them accordingly: the opening lines are what the group is most about, and
+a striking phrase further down is not the theme just because it is striking. If
+the central propositions and the tail describe different things, that is a group
+with no single theme, and coherent=false is the honest answer.
+
 An axis has two ends and both of them are positions somebody holds. Name it so a
 reader can see what it runs BETWEEN, because they will be shown their own place
 on it as a point on a line, and a line has to be labelled at both ends.
@@ -97,13 +111,30 @@ cover one.
 """
 
 
-def _items_by_factor(groups: dict[str, int], texts: dict[str, str]) -> dict[int, list[str]]:
-    out: dict[int, list[str]] = {}
-    for item_id, factor in sorted(groups.items()):
+def _items_by_factor(
+    groups: dict[str, int], texts: dict[str, str],
+    distance: dict[str, float] | None = None,
+) -> dict[int, list[str]]:
+    """Each factor's propositions, nearest the centre of the group first.
+
+    The order is the whole point, and getting it wrong produced a real bad name.
+    These used to be sorted by item_id — which is bank insertion order, so the
+    slice a namer saw was an arbitrary corner of the cluster rather than a
+    reading of it. DeepSeek's largest factor opened, in that order, with
+    "Sacrificing oneself for another is the highest act of love", and was duly
+    called Self-preservation vs Heroic self-sacrifice; the items nearest its
+    actual centre are about deception as survival, childhood damage and secrets
+    kept. The namer named the corner it was shown.
+
+    Sorted by distance to the group's centre, the sample is what the factor is
+    most about, and a name that does not fit it is a name that does not fit.
+    """
+    out: dict[int, list[tuple[float, str]]] = {}
+    for item_id, factor in groups.items():
         text = texts.get(item_id)
         if text:
-            out.setdefault(factor, []).append(text)
-    return out
+            out.setdefault(factor, []).append(((distance or {}).get(item_id, 0.0), text))
+    return {factor: [text for _d, text in sorted(rows)] for factor, rows in out.items()}
 
 
 def name_factors(
@@ -118,7 +149,7 @@ def name_factors(
     apart, which is the property the axes actually need.
     """
     alias = alias or report["scorer"]
-    grouped = _items_by_factor(report["groups"], texts)
+    grouped = _items_by_factor(report["groups"], texts, report.get("distance"))
     if not grouped:
         return []
 
@@ -126,8 +157,10 @@ def name_factors(
     blocks = []
     for factor, items in sorted(grouped.items()):
         listing = "\n".join(f"  - {text}" for text in items[:sample])
-        more = f"\n  ...and {len(items) - sample} more" if len(items) > sample else ""
-        blocks.append(f"GROUP {factor} ({len(items)} propositions)\n{listing}{more}")
+        more = (f"\n  ...and {len(items) - sample} more, further from the centre"
+                if len(items) > sample else "")
+        blocks.append(f"GROUP {factor} ({len(items)} propositions, most central first)"
+                      f"\n{listing}{more}")
 
     result = client.parse(system=SYSTEM, user="\n\n".join(blocks),
                           output_model=FactorNames, max_tokens=16000)
@@ -193,7 +226,13 @@ def persist(
     return run_id
 
 
-def load(alias: str, variant: str = "subs", bank_version: str = "b1") -> list[dict[str, Any]]:
+def load(alias: str, variant: str = "subs", bank_version: str = "b1",
+         min_margin: float | None = DISPLAY_MARGIN) -> list[dict[str, Any]]:
+    """Named factors, filtered to the ones worth showing.
+
+    `min_margin=None` returns everything, which is what an audit wants; the
+    default is the interface's bar.
+    """
     db.init_db()
     with db.connect(read_only=True) as con:
         rows = con.execute(
@@ -202,7 +241,12 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1") -> list[di
             "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
             [alias, variant, bank_version],
         ).fetchall()
-    return [_with_labels(dict(r)) for r in rows]
+    factors = [_with_labels(dict(r)) for r in rows]
+    if min_margin is None:
+        return factors
+    # A margin of None predates the measurement rather than failing it, so it is
+    # kept: dropping it would hide axes for being old.
+    return [f for f in factors if f["margin"] is None or f["margin"] >= min_margin]
 
 
 def _with_labels(factor: dict[str, Any]) -> dict[str, Any]:

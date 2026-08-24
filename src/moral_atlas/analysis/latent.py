@@ -189,26 +189,34 @@ def parallel_analysis(
     }
 
 
-def item_groups(matrix, items: list[str], k: int, seed: int = 11) -> dict[str, int]:
+def item_groups(matrix, items: list[str], k: int, seed: int = 11) -> tuple[dict[str, int], dict[str, float]]:
     """Sort items into k groups by how films responded to them.
 
     Clustering the loadings rather than the raw columns: two items answered the
     same way by the same films have similar loadings on the retained factors,
     which is the operational form of "driven by the same underlying thing".
+
+    Returns the grouping AND how far each item sits from its group's centre.
+    Membership alone says an item belongs somewhere; the distance says how much
+    it belongs, and every group has a periphery. Anyone showing a reader "what
+    this factor is made of" needs the near items, not an arbitrary slice.
     """
     import numpy as np
     from sklearn.cluster import KMeans
 
     if k < 2:
-        return {item: 0 for item in items}
+        return {item: 0 for item in items}, {item: 0.0 for item in items}
     centred = matrix - matrix.mean(axis=0)
     sd = centred.std(axis=0)
     sd[sd == 0] = 1.0
     z = centred / sd
     _u, _s, vt = np.linalg.svd(z, full_matrices=False)
     loadings = vt[:k].T                      # one row per item
-    labels = KMeans(n_clusters=k, n_init=10, random_state=seed).fit_predict(loadings)
-    return {item: int(label) for item, label in zip(items, labels)}
+    model = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(loadings)
+    labels = model.labels_
+    distances = np.linalg.norm(loadings - model.cluster_centers_[labels], axis=1)
+    return ({item: int(label) for item, label in zip(items, labels)},
+            {item: float(distance) for item, distance in zip(items, distances)})
 
 
 def analyse(
@@ -219,7 +227,8 @@ def analyse(
     """The whole thing for one scorer: how many dimensions, and which items."""
     data = response_matrix(scorer, bank_version, min_films, variant)
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
-    groups = item_groups(data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
+    groups, distance = item_groups(data["matrix"], data["items"],
+                                   horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
         sizes[label] = sizes.get(label, 0) + 1
@@ -238,6 +247,10 @@ def analyse(
         "null_threshold": horn["null_threshold"],
         "group_sizes": dict(sorted(sizes.items())),
         "groups": groups,
+        # How far each item sits from the centre of its group. Small means the
+        # item is what the factor is about; large means it landed there because
+        # it had to land somewhere.
+        "distance": distance,
     }
 
 

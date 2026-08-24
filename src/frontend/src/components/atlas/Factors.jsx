@@ -1,6 +1,6 @@
 import React from 'react'
 import { FactorDistribution, FactorPropositions, FilmAnchors } from './FactorDistribution.jsx'
-import { isClear } from '../../services/factorService.js'
+import { CLEAR_MARGIN, isClear } from '../../services/factorService.js'
 
 const pct = (value) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
 
@@ -18,7 +18,7 @@ function Scree({ eigenvalues, thresholds }) {
     <div className="scree">
       {rows.map((row) => {
         const margin = row.threshold ? (row.observed - row.threshold) / row.threshold : 0
-        const state = margin <= 0 ? 'below' : margin >= 0.05 ? 'clear' : 'marginal'
+        const state = margin <= 0 ? 'below' : margin >= CLEAR_MARGIN ? 'clear' : 'marginal'
         return (
           <div className={`scree-row ${state}`} key={row.index}>
             <span className="scree-index">{row.index}</span>
@@ -124,7 +124,7 @@ export function Factors({ data }) {
           engagement rate and affirm/deny balance untouched.
         </p>
         <p className="factor-headline">
-          <b>{data.n_factors}</b> clear the null · <b>{clear}</b> clear it by more than 5%
+          <b>{data.n_factors}</b> clear the null · <b>{clear}</b> clear it by more than {Math.round(CLEAR_MARGIN * 100)}%, which is the bar for appearing here
           <span className="factor-headline-sub">
             {data.films} films × {data.items} propositions
             {data.dropped_items ? `, ${data.dropped_items} dropped as too rarely scored` : ''}

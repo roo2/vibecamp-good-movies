@@ -410,3 +410,35 @@ def test_keep_looking_deals_more_cards_instead_of_the_same_shortlist(isolated_we
         headers=headers).json()
     assert grown["state"] == "shortlist"
     assert len(grown["films"]) == MATCHES_WANTED + 1
+
+
+def test_the_deck_leans_recent_without_erasing_old_films(isolated_web_database):
+    """Old films are pushed down, not made impossible.
+
+    Two people said the films felt old and that they had not seen enough of the
+    old ones to judge them — which makes an old card a wasted question rather
+    than a matter of taste. So this builds a corpus split evenly between old and
+    modern, deals many decks, and checks the lean is real without being a bar:
+    an old film someone HAS seen is one of the more informative answers there is.
+    """
+    from moral_atlas.web.film_service import build_session_deck, DIRECT_CARDS, _recency
+
+    assert _recency({"year": 1960}) == 0.0
+    assert _recency({"year": 2019}) == 1.0
+    assert 0 < _recency({"year": 2000}) < 1, "the ramp between is a ramp, not a cliff"
+
+    # Half before 1990, half after 2005, and three times the size of a deck so
+    # the draw is a choice rather than everything there is.
+    for index in range(30):
+        for era, year in (("old", 1955 + index), ("new", 2006 + index % 15)):
+            isolated_web_database.upsert_film({
+                "film_id": f"{era}-{index}", "title": f"{era.title()} {index}", "year": year,
+                "artwork_url": f"https://example.test/{era}-{index}.jpg",
+            })
+
+    drawn = [isolated_web_database.get_film(film_id)["year"]
+             for _ in range(40) for film_id in build_session_deck()["direct"]]
+    assert len(drawn) == 40 * DIRECT_CARDS
+    modern = sum(1 for year in drawn if year >= 2000) / len(drawn)
+    assert modern > 0.8, f"only {modern:.0%} of dealt cards were from 2000 on"
+    assert any(year < 1990 for year in drawn), "an old film should still turn up sometimes"

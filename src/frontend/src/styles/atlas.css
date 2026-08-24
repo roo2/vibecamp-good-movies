@@ -491,7 +491,11 @@
 .distribution-open.low { border-inline-start-color: #5cc3c0; }
 .distribution-open.high { border-inline-start-color: #eda36b; }
 .distribution-open-label { display: block; color: #b3aa9e; font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
-.distribution-open ul { margin: 7px 0 0; padding: 0; list-style: none; max-block-size: 232px; overflow-y: auto; }
+/* Sized in viewport units, because this list can now be opened. 232px was
+   fine for a column of titles and became a letterbox the moment a film
+   expanded inside it — on a phone that left the propositions readable three
+   lines at a time. */
+.distribution-open ul { margin: 7px 0 0; padding: 0; list-style: none; max-block-size: min(70vh, 620px); overflow-y: auto; }
 .distribution-open li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 2px 0; font-size: 12px; }
 .distribution-open li b { color: #f5efe6; font-weight: 500; }
 .distribution-open li em { color: #b3aa9e; font-style: normal; font-variant-numeric: tabular-nums; }
@@ -581,3 +585,33 @@
 .film-why li.denies b { color: #5cc3c0; }
 .film-why li span { color: #b3aa9e; }
 .film-why li em { grid-column: 2; color: #574f47; font-size: 10.5px; font-style: normal; }
+
+
+/* Readable weight for the film lists under an axis.
+   Measured against the panel background #171310: the muted grey these inherited
+   sits at 2.30:1, which is not a subtle shade so much as an invisible one, and
+   the affirm/deny tags at 4.13:1 were only just short. 4.5:1 is the bar for
+   body text; these clear it with room. */
+.anchors li > button span,
+.distribution-open li > button span { color: #968c7f; }
+.film-why-note { color: #968c7f; }
+.film-why li b { color: #a39889; }
+.film-why li em { color: #968c7f; }
+.film-why li.affirms b { color: #eda36b; }
+.film-why li.denies b { color: #5cc3c0; }
+/* And a background of its own, so an opened film reads as nested inside the
+   list rather than as more list. */
+.film-why { background: #1f1a16; border-inline-start-color: #766254; }
+
+@media (max-width: 720px) {
+  /* Room to read. The title, score and item count competed for one line on a
+     phone; the propositions underneath then wrapped into a narrow gutter. */
+  .anchors li > button,
+  .distribution-open li > button { grid-template-columns: 1fr auto; row-gap: 2px; padding: 7px 0; }
+  .anchors li > button span,
+  .distribution-open li > button span { grid-column: 1 / -1; font-size: 11px; }
+  .film-why { padding: 11px 12px; }
+  .film-why li { grid-template-columns: 1fr; gap: 3px; font-size: 13px; line-height: 1.55; }
+  .film-why li em { grid-column: 1; }
+  .film-why-note { font-size: 12px; }
+}

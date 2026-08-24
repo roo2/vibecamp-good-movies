@@ -80,8 +80,9 @@ def get_factors(
 
     factors = factor_names.load(scorer, variant, bank)
     try:
+        estimator = factor_names.estimator_for(scorer, variant, bank)
         report = latent.analyse(scorer, bank, n_iter=n_iter, variant=variant,
-                                strict=factor_names.estimator_for(scorer, variant, bank) == "strict")
+                                strict=estimator == "strict")
     except RuntimeError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -104,6 +105,11 @@ def get_factors(
         "scorer": scorer,
         "variant": variant,
         "bank_version": bank,
+        # Which reading produced these, so the page can describe the method it
+        # actually used rather than the one it used to use.
+        "estimator": estimator,
+        "display_margin": factor_names.DISPLAY_MARGIN,
+        "shown": len(factors),
         "films": report["films"],
         "items": report["items"],
         "density": report["density"],

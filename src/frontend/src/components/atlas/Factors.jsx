@@ -93,7 +93,7 @@ export function Factors({ data }) {
   if (!data) return null
   const named = data.factors || []
   const shown = named.length
-  const bar = Math.round((data.display_margin ?? CLEAR_MARGIN) * 100)
+  const bar = Math.round((data.margin_floor ?? CLEAR_MARGIN) * 100)
 
   // Method first, then results. The derivation used to sit underneath the axes,
   // which asked a reader to judge eleven moral claims and only afterwards told
@@ -116,8 +116,8 @@ export function Factors({ data }) {
         </p>
 
         <p className="factor-headline">
-          <b>{data.n_factors}</b> beat chance · <b>{shown}</b> beat it by more than {bar}%,
-          and those are the ones shown
+          <b>{shown}</b> {shown === 1 ? 'factor beats' : 'factors beat'} chance by more
+          than {bar}%, and all of them are here
           <span className="factor-headline-sub">
             {data.films} films × {data.items} propositions
             {data.dropped_items ? `, ${data.dropped_items} dropped as too rarely scored` : ''}
@@ -130,9 +130,10 @@ export function Factors({ data }) {
           permuting each proposition&apos;s own column — which destroys the relationships
           between propositions while leaving each one&apos;s engagement rate and affirm/deny
           balance untouched. So it has to explain more than the amount of structure those
-          margins hand out for free. {bar}% is a second, editorial bar: a factor a few percent
-          clear of chance is real and thin, and printed beside one that cleared by 500% a
-          reader weighs them the same.
+          margins hand out for free. Everything that passes is on this page, however narrowly
+          it got through — the app itself shows only the strongest few, because somebody
+          deciding what to watch is not auditing a corpus, but that is a choice about a screen
+          and not about what counts as a finding.
         </p>
 
         <Scree eigenvalues={data.eigenvalues} thresholds={data.null_threshold} />

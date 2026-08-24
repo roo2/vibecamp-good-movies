@@ -107,7 +107,9 @@ def get_factors(
         # Which reading produced these, so the page can describe the method it
         # actually used rather than the one it used to use.
         "estimator": estimator,
-        "display_margin": factor_names.DISPLAY_MARGIN,
+        # What the null test itself required, so the page can state the bar it
+        # actually applied rather than one layered on top of it.
+        "margin_floor": report["margin_floor"],
         "shown": len(factors),
         "films": report["films"],
         "items": report["items"],

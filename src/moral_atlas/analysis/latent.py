@@ -334,6 +334,8 @@ def analyse(
         "density": round(data["density"], 4),
         "n_factors": horn["n_factors"],
         "n_clear_factors": horn["n_clear_factors"],
+        # The only bar there is, carried out so a reader can be told what it was.
+        "margin_floor": horn["margin_floor"],
         "margins": horn["margins"],
         "max_recoverable": horn["max_recoverable"],
         "eigenvalues": horn["observed"],

@@ -46,7 +46,6 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from .. import db
-from .factor_names import DISPLAY_MARGIN
 
 DEFAULT_DIM_VERSION = "d1"
 DEFAULT_BANK_VERSION = "b1"
@@ -244,27 +243,41 @@ def score_preferences(
 # factor's items.
 
 
-def factor_axes(scorer: str, variant: str, bank_version: str) -> list[dict[str, Any]]:
-    """Named factors, shaped like `dimensions` rows so scoring is unchanged."""
+# How many axes a person is shown. A presentation choice and nothing more: the
+# compass is read in one sitting by somebody deciding what to watch, and eleven
+# moral scales is a report rather than a reading. The atlas shows all of them,
+# because auditing the corpus is exactly what that page is for.
+PRODUCT_AXES = 6
+
+
+def factor_axes(scorer: str, variant: str, bank_version: str,
+                limit: int | None = PRODUCT_AXES) -> list[dict[str, Any]]:
+    """The strongest named factors, shaped like `dimensions` rows.
+
+    Strongest by eigenvalue — how much of the corpus's variation the factor
+    accounts for. Every one of these already beat the permutation null, so the
+    question is no longer whether they are real but which of them separate films
+    the most.
+    """
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
-            "pole_low_label FROM latent_factors "
+            "pole_low_label, eigenvalue FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? "
-            # The same bar the interface uses, and one more: an axis the namer
-            # would not call coherent should not be handed to somebody as a
-            # reading of what they believe. It stays in the atlas, where the
-            # warning beside it is the point.
-            "AND (margin IS NULL OR margin >= ?) AND (coherent IS NULL OR coherent=1) "
-            "ORDER BY factor_id",
-            [scorer, variant, bank_version, DISPLAY_MARGIN],
+            # An axis the namer would not call coherent should not be handed to
+            # somebody as a reading of what they believe. It stays in the atlas,
+            # where the warning beside it is the point.
+            "AND (coherent IS NULL OR coherent=1) "
+            "ORDER BY eigenvalue DESC",
+            [scorer, variant, bank_version],
         ).fetchall()
     # The short labels ride along with the sentences: a score is a point on a
     # line, and a line needs a word at each end before the number means anything.
-    return [{"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
+    axes = [{"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
              "pole_high": r["pole_high"], "pole_low": r["pole_low"],
              "pole_high_label": r["pole_high_label"] or r["name"],
              "pole_low_label": r["pole_low_label"] or r["name"]} for r in rows]
+    return axes[:limit] if limit else axes
 
 
 def factor_stances(

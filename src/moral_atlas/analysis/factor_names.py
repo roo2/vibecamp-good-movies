@@ -44,13 +44,16 @@ from ..llm.providers import SCORERS, client_for
 # where there is not, more items would not rescue it.
 SAMPLE = 40
 
-# How far a factor must clear the parallel-analysis null before it is shown to
-# anybody. `latent` keeps everything above 5%, because that is the honest
-# statistical bar and the count is a finding; this is a higher, editorial bar for
-# the interface. A factor 13% clear of chance is real and is also thin, and
-# putting it beside one that cleared by 500% invites a reader to weigh them the
-# same. The weak ones stay in the database and out of the way.
-DISPLAY_MARGIN = 0.25
+# There is no display threshold any more, and there should not have been one. A
+# factor either beats the permutation null or it does not, and `latent` already
+# applies that test at 5%; anything stored here has passed it. The 25% bar on top
+# was picked to keep a list short, which is a layout problem wearing the clothes
+# of a statistical one — it hid real findings from the page whose entire job is
+# to show them, and the number itself came from nowhere.
+#
+# The product still shows a handful, because a person reading their own compass
+# is not auditing a corpus. That limit lives in `user_scores.PRODUCT_AXES`, where
+# it is honestly a presentation choice.
 
 
 class FactorName(BaseModel):
@@ -228,11 +231,11 @@ def persist(
 
 
 def load(alias: str, variant: str = "subs", bank_version: str = "b1",
-         min_margin: float | None = DISPLAY_MARGIN) -> list[dict[str, Any]]:
-    """Named factors, filtered to the ones worth showing.
+         min_margin: float | None = None) -> list[dict[str, Any]]:
+    """Every named factor, strongest first by eigenvalue.
 
-    `min_margin=None` returns everything, which is what an audit wants; the
-    default is the interface's bar.
+    `min_margin` still filters if a caller asks, but nothing does by default:
+    each of these already cleared the null.
     """
     db.init_db()
     with db.connect(read_only=True) as con:
@@ -243,7 +246,8 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1",
             "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
             [alias, variant, bank_version],
         ).fetchall()
-    factors = [_with_labels(dict(r)) for r in rows]
+    factors = sorted([_with_labels(dict(r)) for r in rows],
+                     key=lambda f: -(f["eigenvalue"] or 0))
     if min_margin is None:
         return factors
     # A margin of None predates the measurement rather than failing it, so it is

@@ -90,6 +90,12 @@ def _summary(scores: list[user_scores.DimensionScore]) -> str:
     One axis rather than a ranked list: the pole texts are full sentences, and
     two of them stacked is a wall rather than a reading. The rest of the profile
     is right there underneath it.
+
+    The axis NAME is deliberately not included. It used to lead — "Redemption
+    and family vs judgment and individualism — A person's past defines their
+    character..." — which made the reader parse a label before reaching the
+    sentence that actually says something about them. The sentence stands on its
+    own, and the name is on the axis a few lines below.
     """
     committed = sorted(
         (s for s in scores if s.leaning != "balanced"),
@@ -98,4 +104,4 @@ def _summary(scores: list[user_scores.DimensionScore]) -> str:
     if not committed:
         return ("Nothing you have told us yet pushes hard on any one axis — "
                 "rate a few more films and the shape will sharpen.")
-    return f"{committed[0].name} — {committed[0].stance}"
+    return committed[0].stance

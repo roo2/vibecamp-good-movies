@@ -9,12 +9,6 @@ const trackPosition = (score) => ((score + 1) / 2) * 100
 // rather than hidden behind a point that looks more exact than it is.
 const spreadFor = (confidence) => (1 - confidence) * 50
 
-function strengthOf(axis) {
-  if (!axis.evidence_items) return 'not read yet'
-  if (axis.leaning === 'balanced') return 'balanced'
-  return Math.abs(axis.score) >= 0.35 ? 'committed' : 'leaning'
-}
-
 // How far apart two readings on the same axis can be before the gap is worth
 // naming. The axis runs -1..+1, so a full point is a quarter of its width and
 // comfortably more than the noise in a dozen films.
@@ -29,45 +23,52 @@ function MoralAxis({ axis, others, expanded, onToggle }) {
   // Only companions who were read on THIS axis. Someone can be read on the
   // corpus and still have engaged nothing that loads on one particular factor.
   const read = others.filter((other) => other.axis && other.axis.evidence_items)
-  const split = read.filter((other) => Math.abs(other.axis.score - axis.score) >= APART)
 
   return (
     <li className={`moral-axis ${unread ? 'unread' : axis.leaning}`}>
-      <button type="button" className="moral-axis-head" onClick={onToggle} aria-expanded={expanded}>
-        <span className="moral-axis-name">{axis.name}</span>
-        <span className="moral-axis-strength">
-          {read.length && !unread
-            ? (split.length ? 'you differ' : 'you agree')
-            : strengthOf(axis)}
+      {/* The whole segment is the control. The axis NAME is gone from here:
+          it was a third label competing with the two that actually say which
+          way the reader leans, and it repeats what those two poles already
+          spell out. It survives in the expanded detail, where the question is.
+
+          Both ends are named whether or not this axis was read. A marker on an
+          unlabelled line is a number, and the reader has to guess which way is
+          which. */}
+      {/* One label for the whole control. The track used to carry its own
+          role="img" and description, which now sits INSIDE a button — two
+          accessible names competing for the same control. The button says
+          where the reader landed and the track is decoration. */}
+      <button type="button" className="moral-axis-row" onClick={onToggle} aria-expanded={expanded}
+              aria-label={[
+                `${axis.name}. ${unread ? 'Not read yet'
+                  : axis.leaning === 'balanced' ? 'You are balanced between them'
+                  : `You lean ${axis.leaning === 'high' ? axis.pole_high_label : axis.pole_low_label}`}`,
+                ...read.map((other) => `${other.name} leans ${
+                  other.axis.score >= 0 ? axis.pole_high_label : axis.pole_low_label}`),
+              ].join('. ')}>
+        <span className="moral-axis-poles">
+          <span className={axis.leaning === 'low' && !unread ? 'lit' : ''}>{axis.pole_low_label}</span>
+          <span className={axis.leaning === 'high' && !unread ? 'lit' : ''}>{axis.pole_high_label}</span>
         </span>
-      </button>
 
-      {/* Both ends named, always, and named the same way whether or not this
-          axis was read. A number on an unlabelled line is not a position — it
-          is a number, and the reader has to guess which way is which. */}
-      <div className="moral-axis-poles">
-        <span className={axis.leaning === 'low' && !unread ? 'lit' : ''}>{axis.pole_low_label}</span>
-        <span className={axis.leaning === 'high' && !unread ? 'lit' : ''}>{axis.pole_high_label}</span>
-      </div>
-
-      <div className="moral-axis-track" role="img"
-           aria-label={[`${axis.name}: you, ${axis.score >= 0 ? axis.pole_high : axis.pole_low}`,
-                        ...read.map((other) => `${other.name}, ${other.axis.score >= 0 ? axis.pole_high : axis.pole_low}`)].join('; ')}>
-        <i className="moral-axis-mid" />
-        <u className="moral-axis-band" style={{ left: `${bandLeft}%`, width: `${bandRight - bandLeft}%` }} />
+        <span className="moral-axis-track" aria-hidden="true">
+          <i className="moral-axis-mid" />
+          <u className="moral-axis-band" style={{ left: `${bandLeft}%`, width: `${bandRight - bandLeft}%` }} />
         {/* Their marker sits under yours, hollow and dimmer, so the two never
             read as one person's uncertainty — and so yours stays the one the
             eye finds first on your own compass. */}
-        {read.map((other) => (
-          <b className="moral-axis-marker companion" key={other.user_id}
-             style={{ left: `${trackPosition(other.axis.score)}%` }}
-             title={`${other.name}: ${other.axis.score >= 0 ? '+' : ''}${other.axis.score.toFixed(2)}`} />
-        ))}
-        {!unread && <b className="moral-axis-marker" style={{ left: `${centre}%` }} />}
-      </div>
+          {read.map((other) => (
+            <b className="moral-axis-marker companion" key={other.user_id}
+               style={{ left: `${trackPosition(other.axis.score)}%` }}
+               title={`${other.name}: ${other.axis.score >= 0 ? '+' : ''}${other.axis.score.toFixed(2)}`} />
+          ))}
+          {!unread && <b className="moral-axis-marker" style={{ left: `${centre}%` }} />}
+        </span>
+      </button>
 
       {expanded && (
         <div className="moral-axis-detail">
+          <p className="moral-axis-title">{axis.name}</p>
           <p className="moral-axis-question">{axis.question}</p>
           {unread ? (
             <p className="moral-axis-empty">
@@ -109,7 +110,7 @@ function MoralAxes({ scores, companions = [] }) {
     user_id: companion.user_id,
     // Nobody is asked for a name any more, so there is usually nothing to show
     // but the role — which is all the reader needed anyway.
-    name: (companion.name || '').trim() || 'your date',
+    name: (companion.name || '').trim() || 'your friend',
     scores: new Map((companion.profile?.scores || []).map((axis) => [axis.dim_id, axis])),
   }))
 

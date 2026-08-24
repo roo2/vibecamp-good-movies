@@ -33,7 +33,7 @@ function LandingPage({ onStart, joining = false }) {
       <section className="phone-screen login-screen" aria-label="Start">
         <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="login-content">
-          <p className="screen-label">{joining ? 'Your date invited you' : '90 seconds · no sign-up'}</p>
+          <p className="screen-label">{joining ? 'A friend invited you' : '90 seconds · no sign-up'}</p>
           {/* Only the word that carries the promise is lit. Emphasis on a whole
               phrase is emphasis on nothing — the eye needs one place to land. */}
           <h1>{joining ? <>Watch something<br /><em>together.</em></> : <>Find something<br /><em>good</em> to watch.</>}</h1>
@@ -53,7 +53,7 @@ function LandingPage({ onStart, joining = false }) {
         ) : (
           <div className="start-choices">
             <button className="peach-button" type="button" disabled={starting} onClick={() => begin('pair')}>
-              {starting === 'pair' ? 'Setting up…' : <>With a date <span aria-hidden="true">→</span></>}
+              {starting === 'pair' ? 'Setting up…' : <>With a friend <span aria-hidden="true">→</span></>}
             </button>
             <button className="start-secondary" type="button" disabled={starting} onClick={() => begin('solo')}>
               {starting === 'solo' ? 'Starting…' : 'Just me'}

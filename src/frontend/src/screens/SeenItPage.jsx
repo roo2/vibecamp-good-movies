@@ -102,8 +102,8 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
           </div>
         </div>
         <aside className="seen-it-note"><span aria-hidden="true">ⓘ</span><p>{topUps > 0
-          ? 'A few more — we need a handful you have actually seen before we can read you. Your date never sees these.'
-          : 'Swipe right if you liked it · left if it wasn’t for you. Your date never sees these.'}</p></aside>
+          ? 'A few more — we need a handful you have actually seen before we can read you. Your friend never sees these.'
+          : 'Swipe right if you liked it · left if it wasn’t for you. Your friend never sees these.'}</p></aside>
       </section>
     </main>
   )

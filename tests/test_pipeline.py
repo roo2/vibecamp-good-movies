@@ -463,3 +463,46 @@ def test_a_split_cluster_says_why_on_the_item(monkeypatch, tmp_path):
             "SELECT note FROM item_bank WHERE bank_version='btest'")]
     assert any("split from cluster 0" in n for n in notes), \
         "an item that exists because of a split should say so"
+
+
+def test_rebuilding_a_bank_discards_what_was_measured_against_the_old_one(tmp_path, monkeypatch):
+    """Item ids are positional, so a rebuild silently repoints every verdict.
+
+    `I001` is simply the first item of a bank. Rebuild the bank and it is a
+    different sentence, while every verdict recorded against the old one still
+    names `I001`. Nothing errors; the scores are just quietly about other
+    propositions. Sonnet had 738 verdicts in exactly that position.
+    """
+    from dataclasses import replace
+    from moral_atlas import db
+    from moral_atlas.analysis import bank as bank_module
+    from moral_atlas.config import settings
+
+    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "c",
+                            db_path=tmp_path / "b.sqlite")
+    monkeypatch.setattr(db, "settings", lambda: test_settings)
+    db.init_db()
+
+    with db.connect() as con:
+        con.execute("INSERT INTO item_bank (item_id, bank_version, text, active) "
+                    "VALUES ('I001', 'v1', 'the old first item', 1)")
+        con.execute("INSERT INTO model_verdicts (scorer, bank_version, variant, film_id, "
+                    "item_id, value) VALUES ('m', 'v1', 'subs', 'f', 'I001', 1)")
+        con.execute("INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, "
+                    "name) VALUES ('m', 'subs', 'v1', 0, 'an axis')")
+
+    removed = bank_module._write_items(
+        "v1", [{"item_id": "I001", "text": "a different first item", "cluster_id": 0,
+                "support": 2, "active": True, "note": ""}])
+
+    assert removed == {"model_verdicts": 1, "latent_factors": 1}, (
+        "the rebuild must say what it invalidated, not drop it silently")
+    with db.connect(read_only=True) as con:
+        assert con.execute("SELECT COUNT(*) n FROM model_verdicts").fetchone()["n"] == 0
+        assert con.execute("SELECT text FROM item_bank WHERE item_id='I001'").fetchone()[0] \
+            == "a different first item"
+
+    # A bank nobody has scored against costs nothing to rebuild.
+    assert bank_module._write_items(
+        "v2", [{"item_id": "I001", "text": "fresh", "cluster_id": 0, "support": 2,
+                "active": True, "note": ""}]) == {}

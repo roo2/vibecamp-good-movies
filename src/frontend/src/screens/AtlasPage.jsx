@@ -26,6 +26,7 @@ function filmParam() {
 
 function AtlasPage({ onBack }) {
   const [models, setModels] = React.useState(null)
+  const [withdrawn, setWithdrawn] = React.useState([])
   const [selected, setSelected] = React.useState(null)
   const [factors, setFactors] = React.useState(null)
   const [factorsError, setFactorsError] = React.useState(null)
@@ -36,9 +37,10 @@ function AtlasPage({ onBack }) {
   React.useEffect(() => {
     let live = true
     loadModels()
-      .then((found) => {
+      .then(({ models: found, withdrawn: gone }) => {
         if (!live) return
         setModels(found)
+        setWithdrawn(gone)
         // Most verdicts first, so the page opens on the model with the most to
         // say rather than on whichever sorts first alphabetically.
         if (found.length) setSelected(found[0])
@@ -103,7 +105,7 @@ function AtlasPage({ onBack }) {
         </section>
       ) : (
         <>
-          <ModelPicker models={models} selected={selected?.scorer} onSelect={setSelected} />
+          <ModelPicker models={models} withdrawn={withdrawn} selected={selected?.scorer} onSelect={setSelected} />
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
           <Factors data={factors} />

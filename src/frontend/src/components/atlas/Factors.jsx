@@ -166,8 +166,17 @@ export function Factors({ data }) {
             ))}
           </ul>
         ) : (
+          // Nothing found is a result, and it has a cause worth printing. The old
+          // message here guessed that the naming step had not been run, which for
+          // a scorer that HAS been through it reads as a missing chore rather
+          // than as the finding it is.
           <p className="atlas-note">
-            Scored, but the axes have not been named yet — run <code>atlas name-factors</code>.
+            <b>No axes.</b> Nothing {data.scorer} produced beat chance, so there is nothing to
+            name. It scored {data.films} films but engaged only {data.items} propositions —{' '}
+            {Math.round(data.density * 100)}% of the grid — and two propositions can only be
+            compared over the films that answered both. At this density most pairs share barely
+            a film, so there is almost nothing to correlate. That is a shortage of scoring
+            rather than a verdict on the model&apos;s opinions.
           </p>
         )}
       </section>

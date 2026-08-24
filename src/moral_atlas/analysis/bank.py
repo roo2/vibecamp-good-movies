@@ -313,7 +313,7 @@ def build_bank(
             "note": c.get("note", ""),
         })
 
-    _write_items(bank_version, items, model, run_id)
+    invalidated = _write_items(bank_version, items, model, run_id)
     db.finish_run(run_id, getattr(client, "usage", None) and client.usage.as_dict() or {})
 
     return {
@@ -325,14 +325,41 @@ def build_bank(
         "n_items": len(items),
         "n_dropped": len(dropped),
         "n_inversions_split": len(splits),
+        # What the rebuild had to throw away, so the caller can report it rather
+        # than let a corpus quietly shrink.
+        "invalidated": invalidated,
         "inversions": splits,
         "dropped": dropped,
     }
 
 
 def _write_items(bank_version: str, items: list[dict[str, Any]],
-                 model: str | None = None, run_id: str | None = None) -> None:
+                 model: str | None = None, run_id: str | None = None) -> dict[str, int]:
+    """Replace a bank, and take everything measured against it with it.
+
+    Item ids are positional — `I001` is simply the first item of this bank — so
+    rebuilding renumbers them. Every verdict, factor and item-assignment already
+    recorded against this bank_version still names ids that now belong to
+    different propositions. Nothing would error; the scores would just quietly
+    be about other sentences.
+
+    So the dependants are deleted in the same transaction as the rebuild. That
+    is expensive — it discards real scoring — but the alternative is a corpus
+    that reads as scored and is not, which is worse than one that reads as
+    empty. Returns what it removed so a caller can say so out loud.
+    """
+    removed: dict[str, int] = {}
     with db.connect() as con:
+        # `model_refusals` is deliberately absent: it records that a scorer
+        # declined to answer for a film, which is a fact about the model rather
+        # than about any particular item, and it carries no bank_version to
+        # match on anyway.
+        for table in ("model_verdicts", "latent_factors", "latent_factor_items"):
+            count = con.execute(f"SELECT COUNT(*) n FROM {table} WHERE bank_version=?",
+                                [bank_version]).fetchone()["n"]
+            if count:
+                removed[table] = count
+                con.execute(f"DELETE FROM {table} WHERE bank_version=?", [bank_version])
         con.execute("DELETE FROM item_bank WHERE bank_version=?", [bank_version])
         for it in items:
             con.execute(
@@ -343,6 +370,7 @@ def _write_items(bank_version: str, items: list[dict[str, Any]],
                  it["support"], it["active"], it["note"], model, PROMPT_VERSION,
                  run_id, db.now()],
             )
+    return removed
 
 
 

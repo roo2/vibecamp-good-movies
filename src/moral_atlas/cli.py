@@ -671,6 +671,10 @@ def model_bank(
         console.print(f"  bank [bold]{version}[/]: {result['n_items']} items, "
                       f"{result['n_dropped']} dropped, "
                       f"{result['n_inversions_split']} inversions split")
+        if result.get("invalidated"):
+            gone = ", ".join(f"{n} {table}" for table, n in result["invalidated"].items())
+            console.print(f"  [yellow]discarded {gone}[/] — item ids are positional, so "
+                          f"anything scored against the old bank was measuring other sentences")
 
 
 @app.command("name-factors")

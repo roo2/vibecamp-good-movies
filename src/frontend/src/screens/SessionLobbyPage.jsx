@@ -33,7 +33,7 @@ function SessionLobbyPage({ access, groupSession, onStart }) {
             <img className="session-qr" src={qrUrl} alt="QR code your partner can scan to join you" />
             <button className="link-button" type="button" onClick={copyLink}>{copied ? 'Link copied' : 'Copy the link for them'}</button>
             <div className="lobby-members" aria-live="polite">
-              <strong>{guestCount ? 'They’re in — you can start' : 'Waiting for them to join…'}</strong>
+              <strong>{guestCount ? 'They’re in' : 'Waiting for them to join…'}</strong>
               {groupSession.members?.map((member) => <span key={member.user.id}>{member.user.id === access.user.id ? 'You' : 'Your partner'}</span>)}
             </div>
           </> : <>
@@ -44,7 +44,16 @@ function SessionLobbyPage({ access, groupSession, onStart }) {
             </p>
           </>}
         </div>
-        {isHost ? <button className="peach-button" type="button" onClick={onStart} disabled={!guestCount}>{guestCount ? 'Start — both of us are here' : 'Waiting for them…'} <span aria-hidden="true">→</span></button> : <p className="login-footer">Waiting for them to start you both off.</p>}
+        {/* No start button. The only sensible moment to begin is the moment the
+            second person arrives, and the app knows when that is — the "host" is
+            a role neither of them knows they hold, so waiting on them to press
+            something was waiting on nobody in particular. The way out is for the
+            person who never got a partner, not for the pair. */}
+        {isHost
+          ? guestCount
+            ? <p className="login-footer">They’re here — starting you both off…</p>
+            : <button className="link-button" type="button" onClick={onStart}>Start without them</button>
+          : <p className="login-footer">Waiting for them to start you both off.</p>}
       </section>
     </main>
   )

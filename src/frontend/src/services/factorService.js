@@ -15,7 +15,9 @@ async function get(path) {
 // hardcoded list, so a model appears exactly when it has something to show.
 export async function loadModels() {
   const body = await get('/api/factors')
-  return body.models || []
+  // Withdrawn models ride along: a scorer that was tried and could not do the
+  // job is a result, and dropping it silently reads as never having asked.
+  return { models: body.models || [], withdrawn: body.withdrawn || [] }
 }
 
 // One film on the axes the product itself reads. No scorer argument on purpose:

@@ -20,6 +20,18 @@ from ...config import settings
 
 router = APIRouter(prefix="/api/factors", tags=["factors"])
 
+# Scorers whose run is not worth putting in front of a reader, and why.
+#
+# Withdrawn from the interface, not from the database: the runs stay, because
+# "this model was tried and could not do it" is a finding about the model and
+# deleting it would leave the impression nobody had asked.
+WITHDRAWN = {
+    # 8B parameters, and it shows. 30 films scored out of 570 before it stopped
+    # producing usable structured output, and the axes it did yield came from
+    # too little to mean anything.
+    "dolphin": "too small a model to complete the corpus",
+}
+
 _cache: dict[str, Any] = {}
 
 
@@ -59,10 +71,15 @@ def list_models() -> dict[str, Any]:
     # with the most verdicts is the one that model is actually being judged on.
     best: dict[str, dict[str, Any]] = {}
     for row in rows:
+        if row["scorer"] in WITHDRAWN:
+            continue
         current = best.get(row["scorer"])
         if current is None or row["verdicts"] > current["verdicts"]:
             best[row["scorer"]] = dict(row)
-    return {"models": sorted(best.values(), key=lambda row: -row["verdicts"])}
+    return {"models": sorted(best.values(), key=lambda row: -row["verdicts"]),
+            # Named rather than silently absent, so the page can say a model was
+            # tried and withdrawn instead of implying it was never run.
+            "withdrawn": [{"scorer": s, "reason": r} for s, r in sorted(WITHDRAWN.items())]}
 
 
 @router.get("/{scorer}")

@@ -4,7 +4,7 @@ import React from 'react'
 // whose answer. Each model writes its own bank of propositions, scores films
 // against it, and gets its own factors out — so the axes below are that model's
 // reading of the corpus, not the corpus's own.
-export function ModelPicker({ models, selected, onSelect }) {
+export function ModelPicker({ models, selected, onSelect, withdrawn = [] }) {
   if (!models.length) return null
 
   return (
@@ -32,18 +32,26 @@ export function ModelPicker({ models, selected, onSelect }) {
             >
               <b>{model.scorer}</b>
               <span>
-                {model.factors ? `${model.factors} axes` : 'not named yet'}
+                {model.factors ? `${model.factors} axes` : 'no axes'}
                 {' · '}
                 {model.films} films
               </span>
-              {/* A model with verdicts but no names has been scored and not yet
-                  analysed, which is a different state from having no data — the
-                  button stays, because picking it should say so rather than
-                  hide the run. */}
+              {/* "no axes" rather than "not named yet": a model can reach zero
+                  by never being analysed or by being analysed and finding
+                  nothing, and from here those look identical. The first is a
+                  chore and the second is a result, so the label claims neither
+                  — the page itself says which once you pick the model. */}
             </button>
           )
         })}
       </div>
+      {/* Said out loud. A model that was tried and could not do it is a result;
+          removed silently, the page reads as though it was never asked. */}
+      {withdrawn.map((model) => (
+        <p className="model-withdrawn" key={model.scorer}>
+          <b>{model.scorer}</b> was run and withdrawn — {model.reason}.
+        </p>
+      ))}
     </div>
   )
 }

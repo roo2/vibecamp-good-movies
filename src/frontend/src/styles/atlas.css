@@ -496,10 +496,9 @@
    expanded inside it — on a phone that left the propositions readable three
    lines at a time. */
 .distribution-open ul { margin: 7px 0 0; padding: 0; list-style: none; max-block-size: min(70vh, 620px); overflow-y: auto; }
-.distribution-open li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 2px 0; font-size: 12px; }
+.distribution-open li { font-size: 12px; }
 .distribution-open li b { color: #f5efe6; font-weight: 500; }
 .distribution-open li em { color: #b3aa9e; font-style: normal; font-variant-numeric: tabular-nums; }
-.distribution-open li span { color: #574f47; font-size: 10.5px; }
 .distribution-mid { position: absolute; inset-block: 0; inset-inline-start: 50%; inline-size: 1px; background: #5cc3c0; text-decoration: none; }
 .distribution-scale { display: flex; justify-content: space-between; margin-top: 5px; color: #574f47; font-size: 11px; }
 .distribution-mean { color: #b3aa9e; font-variant-numeric: tabular-nums; }
@@ -575,7 +574,13 @@
 
 
 /* A film under an axis opens onto the answers that put it there. */
-.anchors li > button { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; width: 100%; padding: 3px 0; border: 0; background: transparent; text-align: left; }
+/* Both lists of films use the same row, so both must be styled. Only the
+   anchors were: inside an opened histogram bar the button fell back to the
+   browser default — a white box — with the title's near-white on top of it,
+   which is why those rows read as blank. */
+.anchors li > button,
+.distribution-open li > button { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; width: 100%; padding: 4px 0; border: 0; background: transparent; text-align: left; font: inherit; color: inherit; }
+.distribution-open li.open > button b { color: #eda36b; }
 .anchors li.open > button b { color: #eda36b; }
 .film-why { margin: 4px 0 10px; padding: 8px 10px; border-inline-start: 2px solid #3a312a; background: #171310; border-radius: 0 6px 6px 0; }
 .film-why-note { margin: 0 0 7px; color: #7e766c; font-size: 11px; }
@@ -636,3 +641,7 @@
 .film-factor > button:hover em { color: #d5ccc1; }
 .film-factor > button:hover em.lit { color: inherit; }
 .film-factor-why { padding-top: 2px; }
+
+.corpus-footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid #241e19; }
+.corpus-footer .quiet-link { color: #968c7f; font-size: 13px; text-decoration: none; }
+.corpus-footer .quiet-link:hover { color: #eda36b; }

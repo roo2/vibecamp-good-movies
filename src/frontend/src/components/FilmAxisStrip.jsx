@@ -26,7 +26,12 @@ function Axis({ factor, open, onToggle }) {
   return (
     <li className={`axis-strip-row ${side} ${open ? 'open' : ''}`}>
       <button type="button" onClick={onToggle} aria-expanded={open}>
-        <span className="axis-strip-name">{factor.name}</span>
+        {/* The end it landed on, not the axis name: on a card this small the
+            useful three words are the ones describing where the film sits. */}
+        <span className="axis-strip-name">
+          {factor.score >= 0 ? factor.pole_high_label : factor.pole_low_label}
+          <em>over {factor.score >= 0 ? factor.pole_low_label : factor.pole_high_label}</em>
+        </span>
         <span className="axis-strip-track">
           <i style={factor.score >= 0
             ? { insetInlineStart: '50%', inlineSize: `${magnitude}%` }

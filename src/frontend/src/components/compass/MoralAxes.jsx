@@ -42,6 +42,14 @@ function MoralAxis({ axis, others, expanded, onToggle }) {
         </span>
       </button>
 
+      {/* Both ends named, always, and named the same way whether or not this
+          axis was read. A number on an unlabelled line is not a position — it
+          is a number, and the reader has to guess which way is which. */}
+      <div className="moral-axis-poles">
+        <span className={axis.leaning === 'low' && !unread ? 'lit' : ''}>{axis.pole_low_label}</span>
+        <span className={axis.leaning === 'high' && !unread ? 'lit' : ''}>{axis.pole_high_label}</span>
+      </div>
+
       <div className="moral-axis-track" role="img"
            aria-label={[`${axis.name}: you, ${axis.score >= 0 ? axis.pole_high : axis.pole_low}`,
                         ...read.map((other) => `${other.name}, ${other.axis.score >= 0 ? axis.pole_high : axis.pole_low}`)].join('; ')}>
@@ -68,9 +76,11 @@ function MoralAxis({ axis, others, expanded, onToggle }) {
           ) : (
             <>
               <p className={axis.leaning === 'low' ? 'moral-axis-pole lit' : 'moral-axis-pole'}>
+                <b>{axis.pole_low_label}</b>
                 {axis.pole_low}
               </p>
               <p className={axis.leaning === 'high' ? 'moral-axis-pole lit' : 'moral-axis-pole'}>
+                <b>{axis.pole_high_label}</b>
                 {axis.pole_high}
               </p>
               <p className="moral-axis-evidence">

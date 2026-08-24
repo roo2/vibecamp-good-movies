@@ -242,8 +242,13 @@ CREATE TABLE IF NOT EXISTS latent_factors (
     factor_id    INTEGER,
     name         TEXT,
     question     TEXT,
-    pole_high    TEXT,
+    pole_high    TEXT,   -- what affirming these propositions claims, in a sentence
     pole_low     TEXT,
+    -- The same two poles as a label you can put at the end of a scale. The
+    -- sentences say what each side believes; a slider needs two or three words.
+    pole_high_label TEXT,
+    pole_low_label  TEXT,
+    coherent     INTEGER, -- the namer's own admission that a group has no theme
     n_items      INTEGER,
     eigenvalue   REAL,
     margin       REAL,   -- how far it cleared the parallel-analysis null
@@ -455,6 +460,13 @@ def init_db() -> None:
         # only ever recorded that a check had not run. Dropped rather than left
         # to read as "no reversals found".
         _drop_column_if_present(con, "item_bank", "reversed_of")
+        # Short labels for the two ends of each axis, and whether the namer
+        # thought the group cohered at all. `coherent` was always produced and
+        # never stored, so the interface's "would not cohere" warning could not
+        # fire however honest a namer was.
+        for column in ("pole_high_label", "pole_low_label"):
+            _add_column_if_missing(con, "latent_factors", column, "TEXT")
+        _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
 
 
 def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:

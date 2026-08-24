@@ -69,15 +69,15 @@ export function FactorDistribution({ films, poleLow, poleHigh }) {
         <u className="distribution-mid" />
       </div>
       <div className="distribution-scale">
-        <span className="scale-low">← {poleLow ? 'denies' : '−1'}</span>
+        <span className="scale-low">← {poleLow || '−1'}</span>
         <span className="distribution-mean">
           {rows.length} films · mean {signed(mean)}
         </span>
-        <span className="scale-high">{poleHigh ? 'affirms' : '+1'} →</span>
+        <span className="scale-high">{poleHigh || '+1'} →</span>
       </div>
       <p className="distribution-split">
-        <b className="low">{negative}</b> lean toward denying · {middle} near the middle ·{' '}
-        <b className="high">{positive}</b> toward affirming
+        <b className="low">{negative}</b> toward {poleLow || 'denying'} · {middle} near the
+        middle · <b className="high">{positive}</b> toward {poleHigh || 'affirming'}
         {positive / rows.length > 0.85 && (
           <em> — almost every film agrees here, so this axis says more about the
             corpus than it distinguishes between films.</em>
@@ -90,8 +90,8 @@ export function FactorDistribution({ films, poleLow, poleHigh }) {
             {chosen.length} film{chosen.length === 1 ? '' : 's'} around{' '}
             {signed((open / (BINS - 1)) * 2 - 1)}
             {sideOf(open) === 'mid' ? ' — weighed it both ways'
-              : sideOf(open) === 'low' ? ` — ${poleLow ? 'denying' : 'toward −1'}` 
-              : ` — ${poleHigh ? 'affirming' : 'toward +1'}`}
+              : sideOf(open) === 'low' ? ` — ${poleLow || 'toward −1'}`
+              : ` — ${poleHigh || 'toward +1'}`}
           </span>
           <ul>
             {[...chosen].sort((a, b) => b.score - a.score).map((film) => (
@@ -110,7 +110,7 @@ export function FactorDistribution({ films, poleLow, poleHigh }) {
   )
 }
 
-export function FilmAnchors({ high, low, poleHigh, poleLow }) {
+export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel }) {
   if (!high?.length && !low?.length) return null
   // Each column says what its end of the axis MEANS, not just which way it
   // points. "Furthest toward affirming" is only informative to a reader who has
@@ -118,7 +118,7 @@ export function FilmAnchors({ high, low, poleHigh, poleLow }) {
   return (
     <div className="anchors">
       <div className="anchors-side high">
-        <span className="anchors-label">Furthest toward affirming</span>
+        <span className="anchors-label">Most {highLabel || 'affirming'}</span>
         {poleHigh && <p className="anchors-pole">{poleHigh}</p>}
         <ul>
           {high.map((film) => (
@@ -131,7 +131,7 @@ export function FilmAnchors({ high, low, poleHigh, poleLow }) {
         </ul>
       </div>
       <div className="anchors-side low">
-        <span className="anchors-label">Furthest toward denying</span>
+        <span className="anchors-label">Most {lowLabel || 'denying'}</span>
         {poleLow && <p className="anchors-pole">{poleLow}</p>}
         <ul>
           {low.map((film) => (

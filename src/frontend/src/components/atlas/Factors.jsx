@@ -63,15 +63,17 @@ function Factor({ factor }) {
               left to +1 on the right, and a legend in the opposite order to the
               thing it labels makes the reader do the flip themselves. */}
           <p className="factor-pole low">
-            <b>−&nbsp;a film denying this axis says</b> {factor.pole_low}
+            <b>−&nbsp;{factor.pole_low_label}</b> {factor.pole_low}
           </p>
           <p className="factor-pole high">
-            <b>+&nbsp;a film affirming it says</b> {factor.pole_high}
+            <b>+&nbsp;{factor.pole_high_label}</b> {factor.pole_high}
           </p>
 
-          <FactorDistribution films={factor.distribution} poleLow poleHigh />
+          <FactorDistribution films={factor.distribution}
+                             poleLow={factor.pole_low_label} poleHigh={factor.pole_high_label} />
           <FilmAnchors high={factor.high} low={factor.low}
-                       poleHigh={factor.pole_high} poleLow={factor.pole_low} />
+                       poleHigh={factor.pole_high} poleLow={factor.pole_low}
+                       highLabel={factor.pole_high_label} lowLabel={factor.pole_low_label} />
 
           <p className="factor-examples-label">
             The propositions this factor is made of. Films answered these together —

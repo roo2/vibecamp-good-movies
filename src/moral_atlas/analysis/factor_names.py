@@ -47,8 +47,13 @@ SAMPLE = 28
 
 class FactorName(BaseModel):
     factor_id: int
-    name: str = Field(description="2-4 words, plain English, no jargon.")
+    name: str = Field(description="The axis as 'A vs B', naming both ends.")
     question: str = Field(description="The moral question these share, as one sentence.")
+    pole_high_label: str = Field(
+        description="The affirming end as 1-3 words, e.g. 'Heroic self-sacrifice'.")
+    pole_low_label: str = Field(
+        description="The denying end as 1-3 words, and a real position rather "
+                    "than a negation, e.g. 'Self-preservation' not 'Not heroic'.")
     pole_high: str = Field(description="What affirming these propositions asserts.")
     pole_low: str = Field(description="What denying them asserts.")
     coherent: bool = Field(
@@ -67,11 +72,22 @@ same way — affirming together, denying together, or passing over together.
 
 For each group, say what its propositions have in common as a moral question.
 
-  - `name` is 2-4 plain words a non-specialist would understand at a glance.
+An axis has two ends and both of them are positions somebody holds. Name it so a
+reader can see what it runs BETWEEN, because they will be shown their own place
+on it as a point on a line, and a line has to be labelled at both ends.
+
+  - `pole_high_label` and `pole_low_label` are those two ends, 1-3 words each.
+    The low end must be a position in its own right, never the absence or the
+    negation of the high one: "Self-preservation", not "Not self-sacrificing";
+    "Absolute values", not "Non-relativist". If you cannot name the low end as
+    something a person would own, you have probably named the high end as a
+    topic rather than a stance — reword both.
+  - `name` is the axis itself, written "<low> vs <high>" from those two labels,
+    e.g. "Self-preservation vs heroic self-sacrifice".
   - `question` is the axis as a question with two defensible sides, not a topic.
-  - `pole_high` is what a work affirming these propositions claims; `pole_low`
-    is what a work denying them claims. Phrase both so that someone holding that
-    view would accept the wording as fair.
+  - `pole_high` and `pole_low` say, in a sentence each, what a work at that end
+    claims. Phrase both so that someone holding that view would accept the
+    wording as fair.
 
 You did not choose these groupings and you are not being asked to improve them.
 If a group's propositions genuinely do not share a moral question, set
@@ -129,6 +145,8 @@ def name_factors(
             "question": factor.question.strip(),
             "pole_high": factor.pole_high.strip(),
             "pole_low": factor.pole_low.strip(),
+            "pole_high_label": factor.pole_high_label.strip(),
+            "pole_low_label": factor.pole_low_label.strip(),
             "coherent": bool(factor.coherent),
             "n_items": len(grouped[index]),
             "eigenvalue": eigenvalues[index] if index < len(eigenvalues) else None,
@@ -157,10 +175,12 @@ def persist(
                         [alias, variant, bank_version])
         con.executemany(
             "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
-            "question, pole_high, pole_low, n_items, eigenvalue, margin, model, run_id, "
-            "created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "question, pole_high, pole_low, pole_high_label, pole_low_label, coherent, "
+            "n_items, eigenvalue, margin, model, run_id, created_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [(alias, variant, bank_version, f["factor_id"], f["name"], f["question"],
-              f["pole_high"], f["pole_low"], f["n_items"], f["eigenvalue"], f["margin"],
+              f["pole_high"], f["pole_low"], f.get("pole_high_label"), f.get("pole_low_label"),
+              int(bool(f.get("coherent", True))), f["n_items"], f["eigenvalue"], f["margin"],
               model, run_id, db.now()) for f in named],
         )
         con.executemany(
@@ -177,11 +197,35 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1") -> list[di
     db.init_db()
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT factor_id, name, question, pole_high, pole_low, n_items, eigenvalue, "
-            "margin, model FROM latent_factors WHERE scorer=? AND variant=? AND bank_version=? "
-            "ORDER BY factor_id", [alias, variant, bank_version],
+            "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
+            "pole_low_label, coherent, n_items, eigenvalue, margin, model FROM latent_factors "
+            "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
+            [alias, variant, bank_version],
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [_with_labels(dict(r)) for r in rows]
+
+
+def _with_labels(factor: dict[str, Any]) -> dict[str, Any]:
+    """Fill in pole labels for rows named before the convention existed.
+
+    A name like "Moral relativism vs. absolute values" already carries both ends;
+    splitting it is exact when it is written that way and harmless when it is
+    not, because the fallback is the axis name itself rather than a guess.
+    """
+    if factor.get("pole_high_label") and factor.get("pole_low_label"):
+        factor["coherent"] = None if factor["coherent"] is None else bool(factor["coherent"])
+        return factor
+    name = (factor.get("name") or "").strip()
+    low, high = None, None
+    for separator in (" vs. ", " vs ", " versus ", " or "):
+        if separator in name.lower():
+            index = name.lower().index(separator)
+            low, high = name[:index].strip(), name[index + len(separator):].strip()
+            break
+    factor["pole_low_label"] = factor.get("pole_low_label") or low or name
+    factor["pole_high_label"] = factor.get("pole_high_label") or high or name
+    factor["coherent"] = None if factor.get("coherent") is None else bool(factor["coherent"])
+    return factor
 
 
 def bank_texts(bank_version: str = "b1") -> dict[str, str]:

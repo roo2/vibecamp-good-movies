@@ -542,6 +542,13 @@
 .film-factor-thin { margin: 0 0 9px; color: #7e766c; font-size: 11px; line-height: 1.45; }
 .film-factor > button:disabled { cursor: default; opacity: .5; }
 .film-factor-name { color: #f5efe6; font-size: 12.5px; }
+.film-factor-scale { display: grid; grid-template-columns: minmax(0, 1fr) minmax(70px, 2fr) minmax(0, 1fr); gap: 8px; align-items: center; }
+.film-factor-scale em { color: #574f47; font-size: 10px; font-style: normal; line-height: 1.2; }
+.film-factor-scale em:last-child { text-align: right; }
+.film-factor-scale em.lit { color: #b3aa9e; }
+.film-factor.high .film-factor-scale em.lit { color: #eda36b; }
+.film-factor.low .film-factor-scale em.lit { color: #5cc3c0; }
+.film-factor-poles .pole b { display: block; margin: 0 0 2px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
 .film-factor-track { position: relative; height: 11px; border-radius: 3px; background: #171310; }
 .film-factor-bar { position: absolute; inset-block: 0; border-radius: 3px; }
 .film-factor-bar.high { background: #eda36b; }

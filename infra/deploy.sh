@@ -5,6 +5,10 @@
 #   ./infra/deploy.sh                          # after that
 #   ENVIRONMENT=staging ./infra/deploy.sh      # a second, independent copy
 #
+#   SITE_DOMAIN=somethinggoodtowatch.id-host.com \
+#   SITE_CERT_ARN=arn:aws:acm:us-east-1:...:certificate/... \
+#     ./infra/deploy.sh                        # put it on a custom domain
+#
 # Safe to re-run: CloudFormation works out the difference, and any parameter
 # you do not pass keeps the value the stack already has.
 set -euo pipefail
@@ -62,6 +66,16 @@ else
   echo "→ keeping the existing basic-auth setting"
 fi
 
+# Both are sticky: `aws cloudformation deploy` keeps the value a stack already
+# has for any parameter it is not given, so CI redeploying without them cannot
+# silently take the site's domain away again.
+if [ -n "${SITE_DOMAIN:-}" ]; then
+  PARAMS+=("SiteDomainName=$SITE_DOMAIN")
+fi
+if [ -n "${SITE_CERT_ARN:-}" ]; then
+  PARAMS+=("SiteCertificateArn=$SITE_CERT_ARN")
+fi
+
 if [ -n "$SITE_USERNAME" ]; then
   PARAMS+=("SiteUsername=$SITE_USERNAME")
 elif [ "$EXISTS" = false ]; then
@@ -90,7 +104,18 @@ if [ "$ACCOUNT" != "$EXPECTED_ACCOUNT" ]; then
   exit 1
 fi
 
-echo "→ validating"
+# CloudFormation takes at most 51200 bytes of template inline, and this one
+# runs close to it. Checked here because the error you get otherwise names a
+# constraint on a field called templateBody and prints the whole file at you.
+TEMPLATE_BYTES=$(wc -c < "$TEMPLATE")
+if [ "$TEMPLATE_BYTES" -gt 51200 ]; then
+  echo "the template is $TEMPLATE_BYTES bytes; CloudFormation accepts 51200 inline." >&2
+  echo "  Either trim it, or stage it in a private bucket and switch this script" >&2
+  echo "  to --template-url (validate) and --s3-bucket (deploy)." >&2
+  exit 1
+fi
+
+echo "→ validating ($TEMPLATE_BYTES bytes, limit 51200)"
 aws cloudformation validate-template --region "$REGION" \
   --template-body "file://$TEMPLATE" >/dev/null
 

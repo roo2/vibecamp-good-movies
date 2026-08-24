@@ -101,6 +101,11 @@ export default function CorpusPage({ onBack }) {
             corpus grows by subtitle availability, not by taste.
           </p>
         )}
+
+        {/* The axes are asserted on this page and explained on that one. */}
+        <p className="corpus-footer">
+          <a className="quiet-link" href="#/atlas">Where do these scales come from? →</a>
+        </p>
       </div>
     </main>
   )

@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import FlowProgress, { WAITING_STEP } from '../components/FlowProgress.jsx'
 
 function SessionWaitingPage({ status, isHost, canEditAnswer, onBack, onContinue }) {
   const [error, setError] = useState(null)
@@ -25,17 +24,16 @@ function SessionWaitingPage({ status, isHost, canEditAnswer, onBack, onContinue 
 
   return (
     <main className="app-page waiting-page">
-      <section className="phone-screen session-screen waiting-screen" aria-label="Waiting for your partner">
-        <FlowProgress current={WAITING_STEP} onBack={canEditAnswer ? handleBack : undefined} backLabel="Change your last answer" />
+      <section className="phone-screen session-screen waiting-screen" aria-label="Waiting for your date">
         <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="session-content">
           <p className="screen-label">Almost there</p>
-          <h1>{pending.length ? <>Waiting for<br /><em>your partner.</em></> : <>You’re both<br /><em>done.</em></>}</h1>
+          <h1>{pending.length ? <>Waiting for<br /><em>your date.</em></> : <>You’re both<br /><em>done.</em></>}</h1>
           <p className="screen-copy">{pending.length
             ? 'They are still answering. Nothing is shared until you have both finished.'
             : 'Neither of you saw the other’s answers. Here is what you have in common.'}</p>
           <div className="member-list">{status.members.map((member) => (
-            <div key={member.user.id}><span>{member.completed_at ? '✓' : '○'}</span>{isYou(member) ? 'You' : 'Your partner'}<small>{member.completed_at ? 'Ready' : 'Still answering'}</small></div>
+            <div key={member.user.id}><span>{member.completed_at ? '✓' : '○'}</span>{isYou(member) ? 'You' : 'Your date'}<small>{member.completed_at ? 'Ready' : 'Still answering'}</small></div>
           ))}</div>
           {error && <p className="message" role="alert">{error}</p>}
         </div>

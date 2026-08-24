@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..deps import current_session
 from ..film_service import film_exists
-from ..store import (Session, direct_session_films, film_is_in_direct_session_deck,
-                     list_movie_ratings, save_movie_rating as persist_movie_rating)
+from ..store import (Session, direct_session_films, extend_session_deck,
+                     film_is_in_direct_session_deck, list_movie_ratings,
+                     save_movie_rating as persist_movie_rating)
 from ..schemas import MovieRating, MovieRatingRequest
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
@@ -43,3 +44,22 @@ def save_movie_rating(
 @router.get("/ratings", response_model=list[MovieRating])
 def get_movie_ratings(session: Annotated[Session, Depends(current_session)]) -> list[MovieRating]:
     return list_movie_ratings(session.user.id)
+
+
+@router.post("/films/more")
+def deal_more_films(
+    share_token: str,
+    session: Annotated[Session, Depends(current_session)],
+) -> dict[str, list[dict[str, object]]]:
+    """Deal more films to somebody who answered everything and said nothing.
+
+    "Haven't seen it" is an honest answer that carries no moral information.
+    Give it twenty times and the deck is exhausted while the person is still
+    unread — so rather than hand them an empty compass, deal ten more.
+    """
+    films = extend_session_deck(share_token, session.user.id)
+    if not films:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No more films are available for this session.")
+    return {"films": films}

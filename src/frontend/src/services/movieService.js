@@ -16,3 +16,11 @@ export function submitMovieReaction(access, filmId, reaction, shareToken) {
     headers: { 'X-Session-Token': access.token },
   })
 }
+
+// Ten more films for somebody who reached the end of the deck without saying
+// enough to be read. The deck is shared, so this extends it for both people.
+export function loadMoreOnboardingFilms(access, shareToken) {
+  return apiClient.post(`/api/onboarding/films/more?share_token=${encodeURIComponent(shareToken)}`, {}, {
+    headers: { 'X-Session-Token': access.token },
+  }).then((payload) => payload.films)
+}

@@ -469,6 +469,48 @@ def group_session_deck(share_token: str, user_id: str) -> dict[str, list[Any]] |
     return json.loads(row["deck_json"])
 
 
+# How many more films to deal when somebody reaches the end of the deck and
+# still has not said enough for the instrument to read them. Small on purpose:
+# the point is to rescue a thin reading, not to restart the quiz.
+TOP_UP_CARDS = 10
+
+
+def extend_session_deck(share_token: str, user_id: str, count: int = TOP_UP_CARDS) -> list[dict[str, Any]]:
+    """Add films to a session's deck, skipping the ones already dealt.
+
+    A person can answer every card and still be unreadable: "haven't seen it"
+    is an honest answer that carries no moral information, and somebody who
+    gives it twenty times has told us nothing about themselves. Rather than
+    show them an empty compass, deal more.
+
+    The deck is shared, so this extends it for BOTH people — which is right.
+    They are answering the same films, and a deck that forked would make the
+    comparison between them meaningless.
+    """
+    _ensure_db()
+    from .film_service import deck_eligible_films
+
+    with db.connect() as con:
+        row = con.execute(
+            "SELECT s.session_id, s.deck_json FROM group_sessions s "
+            "JOIN session_members m ON m.session_id=s.session_id "
+            "WHERE s.share_token=? AND m.user_id=?", [share_token, user_id],
+        ).fetchone()
+        if row is None or not row["deck_json"]:
+            return []
+        deck = json.loads(row["deck_json"])
+        already = set(deck.get("direct") or [])
+        fresh = [film for film in deck_eligible_films() if film["film_id"] not in already]
+        if not fresh:
+            return []
+        chooser = random.SystemRandom()
+        picked = chooser.sample(fresh, k=min(count, len(fresh)))
+        deck["direct"] = list(deck.get("direct") or []) + [f["film_id"] for f in picked]
+        con.execute("UPDATE group_sessions SET deck_json=? WHERE session_id=?",
+                    [json.dumps(deck), row["session_id"]])
+    return [card for film in picked if (card := film_card(film["film_id"]))]
+
+
 def direct_session_films(share_token: str, user_id: str) -> list[dict[str, Any]] | None:
     deck = group_session_deck(share_token, user_id)
     if deck is None:

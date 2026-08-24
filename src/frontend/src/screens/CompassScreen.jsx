@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import FlowProgress, { COMPASS_STEP } from '../components/FlowProgress.jsx'
 import MoralAxes from '../components/compass/MoralAxes.jsx'
 import { loadMoralProfile, loadSessionMoralProfiles } from '../services/profileService.js'
 
@@ -42,7 +41,6 @@ function CompassScreen({ access, shareToken, onContinue }) {
   return (
     <main className="app-page">
       <section className="phone-screen compass-screen">
-        <FlowProgress current={COMPASS_STEP} />
         <header className="compass-header">
           <span>Your compass · {profile.scores.length} axes</span>
           <span className="compass-view-label">{profile.evidence.films_used} films read</span>

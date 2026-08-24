@@ -109,7 +109,7 @@ function MoralAxes({ scores, companions = [] }) {
     user_id: companion.user_id,
     // Nobody is asked for a name any more, so there is usually nothing to show
     // but the role — which is all the reader needed anyway.
-    name: (companion.name || '').trim() || 'your partner',
+    name: (companion.name || '').trim() || 'your date',
     scores: new Map((companion.profile?.scores || []).map((axis) => [axis.dim_id, axis])),
   }))
 

@@ -112,12 +112,17 @@ function AtlasPage({ onBack }) {
         </>
       )}
 
-      {!!films.length && (
+      {/* Gated on the corpus, not on the RESULTS. Searching for a film that is
+          not here used to unmount the whole section — including the search box —
+          so the reader was left staring at a gap with no way to undo the typing
+          that caused it. */}
+      {!!(corpus?.films || []).length && (
         <section aria-labelledby="films">
           <h2 id="films">The corpus</h2>
           <p className="atlas-note">
-            {films.length} films. Open one to read the dialogue every claim about it was scored
-            from — the point of showing it is that a reader can disagree with the verdict.
+            {(corpus?.films || []).length} films. Open one to read the dialogue every claim about
+            it was scored from — the point of showing it is that a reader can disagree with the
+            verdict.
           </p>
           <input
             className="atlas-search"
@@ -125,6 +130,12 @@ function AtlasPage({ onBack }) {
             placeholder="Find a film"
             onChange={(event) => setQuery(event.target.value)}
           />
+          {!films.length && (
+            <p className="atlas-note">
+              Nothing here matches &ldquo;{query.trim()}&rdquo;. The corpus is
+              {' '}{(corpus?.films || []).length} films, so a lot of cinema is missing from it.
+            </p>
+          )}
           <ul className="film-list">
             {films.slice(0, 60).map((film) => (
               <li key={film.id}>

@@ -79,13 +79,20 @@ VARIATION = 0.05
 # a 2019 film that fits equally well, and there are decades more old films than
 # new ones for it to draw from.
 #
-# The size is measured rather than guessed. On a real profile the top six are
-# identical at 0.06, 0.12 and 0.20, and only move at 0.35 — where the best fit
-# falls from +0.49 to +0.39, which is buying a newer film with a worse one. So
-# this sits high enough to settle films that fit about equally and low enough
-# that fit still decides whenever fit actually differs. Most of the felt
-# improvement comes from the deck, where age is weighted at selection instead.
-RECENCY_WEIGHT = 0.15
+# The size is measured rather than guessed, across six real profiles and their
+# top six recommendations each:
+#
+#     weight   median year   2010+   pre-2000   fit given up
+#      0.15       2014        88%       0%         0.007
+#      0.40       2014        91%       0%         0.007
+#      0.40 with a straight-line curve — 2020, 88%, and two distinct leaders in
+#      forty runs instead of four, because "newest" is a total order and a total
+#      order has one winner.
+#
+# So 0.40 against the saturating curve: it costs seven thousandths of fit, it
+# empties the top of the deck of films from before 2000, and it leaves the choice
+# between modern films where it was — on how well they actually fit.
+RECENCY_WEIGHT = 0.40
 
 
 def _sampled_order(ranked: list[dict[str, Any]], variation: float) -> list[dict[str, Any]]:

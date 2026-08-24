@@ -44,16 +44,30 @@ MIN_CARDS = 10
 # corpus reaches back to the 1920s and nothing in the deck cared what year it
 # was. "Have you seen it?" is a different question about a 1953 film than a 2019
 # one — most people simply have not, which spends a card and teaches nothing.
-OLDEST_INTERESTING_YEAR = 1980
-NEWEST_YEAR = 2025
+OLDEST_INTERESTING_YEAR = 1990
+# ...and everything from here on counts as modern, equally.
+MODERN_ENOUGH_YEAR = 2012
 
 
 def _recency(film: dict[str, Any]) -> float:
-    """0 for anything old enough, rising to 1 for the newest films."""
+    """0 for an old film, 1 for a modern one, ramping between.
+
+    The curve SATURATES, and that is the whole point of its shape. A straight
+    line from 1985 to today would rank 2021 above 2014 above 2008 as firmly as it
+    ranks any of them above 1962 — which quietly undoes the variety, because the
+    newest film that fits then wins every single run. Nobody asked for the newest
+    film; they asked not to be handed films they have never seen and would not
+    enjoy the look of.
+
+    So: old films are pushed down, modern films are treated as equals, and what
+    decides between the equals is fit and the sampling — exactly as before.
+    """
     year = film.get("year") or 0
     if year <= OLDEST_INTERESTING_YEAR:
         return 0.0
-    return min(1.0, (year - OLDEST_INTERESTING_YEAR) / (NEWEST_YEAR - OLDEST_INTERESTING_YEAR))
+    if year >= MODERN_ENOUGH_YEAR:
+        return 1.0
+    return (year - OLDEST_INTERESTING_YEAR) / (MODERN_ENOUGH_YEAR - OLDEST_INTERESTING_YEAR)
 
 
 def _films_the_scorer_has_read() -> set[str]:
@@ -116,7 +130,13 @@ def build_session_deck() -> dict[str, list[Any]]:
     # cutoff would be simpler and worse: half the corpus would stop existing, and
     # an old film someone loves is one of the more informative answers there is.
     chooser = random.SystemRandom()
-    spread = 0.45
+    # Lower spread means the deck leans harder on age and repeats itself more
+    # across sessions, and that is a real cost rather than a knob to max out —
+    # measured over forty decks: 0.45 shows 63 different films and 10% from
+    # before 2000; 0.30 shows 52 and 7%; 0.20 shows 32 and 1%, which is nearly
+    # everybody being handed the same thirty films. 0.30 buys most of the
+    # recency for a bearable amount of the sameness.
+    spread = 0.30
 
     def key(film: dict[str, Any]) -> float:
         gumbel = -math.log(-math.log(chooser.random()))

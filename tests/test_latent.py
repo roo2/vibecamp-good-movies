@@ -52,13 +52,14 @@ def test_structureless_responses_yield_no_factors():
 def test_items_are_grouped_with_the_ones_sharing_their_factor():
     matrix = planted(n_films=60, per_factor=20, k=3, noise=0.3)
     items = [f"I{i:03d}" for i in range(matrix.shape[1])]
-    groups = latent.item_groups(matrix, items, 3)
+    groups, distance = latent.item_groups(matrix, items, 3)
 
     # Items 0-19 were built from factor 0, 20-39 from factor 1, 40-59 from 2.
     blocks = [ {groups[items[i]] for i in range(start, start + 20)}
                for start in (0, 20, 40) ]
     assert all(len(b) == 1 for b in blocks), "each planted block lands in one group"
     assert len({next(iter(b)) for b in blocks}) == 3, "and the blocks are kept apart"
+    assert set(distance) == set(items), "every item knows how far it sits from its centre"
 
 
 def test_margins_expose_a_factor_that_only_just_clears():
@@ -116,3 +117,61 @@ def test_agreeing_on_the_count_is_not_agreeing_on_the_grouping():
     out = latent.convergence(reports)
     assert out["same_count"] is True
     assert abs(out["grouping_agreement"]["a vs b"]["ari"]) < 0.1
+
+
+def test_the_namer_is_shown_each_factor_from_its_centre_outward():
+    """What the namer reads decides what the axis is called.
+
+    The sample used to be ordered by item_id — bank insertion order — so a namer
+    saw an arbitrary corner of a cluster and named that. DeepSeek's largest
+    factor opened with "Sacrificing oneself for another is the highest act of
+    love" and came back called Self-preservation vs Heroic self-sacrifice, while
+    the propositions nearest its centre were about deception as survival and
+    childhood damage. Centre-first is the fix, and this pins it.
+    """
+    from moral_atlas.analysis.factor_names import _items_by_factor
+
+    groups = {"I900": 0, "I001": 0, "I500": 0}
+    texts = {"I900": "nearest the centre", "I001": "furthest out", "I500": "in between"}
+    distance = {"I900": 0.1, "I001": 0.9, "I500": 0.5}
+
+    assert _items_by_factor(groups, texts, distance)[0] == [
+        "nearest the centre", "in between", "furthest out"]
+    # With no distances it must still be deterministic rather than dict order.
+    assert len(_items_by_factor(groups, texts)[0]) == 3
+
+
+def test_item_groups_reports_how_far_each_item_sits_from_its_centre():
+    """Membership says an item belongs somewhere; distance says how much."""
+    import numpy as np
+    from moral_atlas.analysis.latent import item_groups
+
+    # Two obvious clumps: films answer the first two items alike, and the last
+    # two alike, so the clustering has something real to find.
+    matrix = np.array([
+        [1.0, 1.0, -1.0, -1.0],
+        [1.0, 1.0, -1.0, -1.0],
+        [-1.0, -1.0, 1.0, 1.0],
+        [-1.0, -1.0, 1.0, 1.0],
+        [1.0, 1.0, 1.0, -1.0],
+    ])
+    groups, distance = item_groups(matrix, ["a", "b", "c", "d"], 2)
+
+    assert set(groups) == {"a", "b", "c", "d"}
+    assert groups["a"] == groups["b"] and groups["c"] != groups["a"]
+    assert all(value >= 0 for value in distance.values())
+    assert set(distance) == set(groups)
+
+
+def test_the_interface_is_not_shown_factors_that_barely_cleared_chance():
+    """A 13%-clear factor beside a 500%-clear one invites equal weight."""
+    from moral_atlas.analysis import factor_names
+
+    rows = [{"margin": 5.0, "name": "strong"}, {"margin": 0.13, "name": "thin"},
+            {"margin": None, "name": "unmeasured"}]
+    kept = [r for r in rows
+            if r["margin"] is None or r["margin"] >= factor_names.DISPLAY_MARGIN]
+
+    assert [r["name"] for r in kept] == ["strong", "unmeasured"], (
+        "a factor with no margin predates the measurement rather than failing it")
+    assert factor_names.DISPLAY_MARGIN == 0.25

@@ -96,7 +96,8 @@ def get_factors(
     # the index rather than fetched per factor: it is the evidence for the axis,
     # and an axis whose evidence costs an extra round trip is one most readers
     # will take on trust.
-    detail = factor_detail.detail(scorer, bank, variant, report["groups"], texts)
+    detail = factor_detail.detail(scorer, bank, variant, report["groups"], texts,
+                                  distance=report.get("distance"))
 
     payload = {
         "scorer": scorer,

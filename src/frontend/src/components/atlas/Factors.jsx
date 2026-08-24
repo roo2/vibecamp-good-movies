@@ -94,7 +94,6 @@ export function Factors({ data }) {
   const named = data.factors || []
   const shown = named.length
   const bar = Math.round((data.display_margin ?? CLEAR_MARGIN) * 100)
-  const strict = data.estimator === 'strict'
 
   // Method first, then results. The derivation used to sit underneath the axes,
   // which asked a reader to judge eleven moral claims and only afterwards told
@@ -139,25 +138,21 @@ export function Factors({ data }) {
         <Scree eigenvalues={data.eigenvalues} thresholds={data.null_threshold} />
 
         <p className="atlas-note">
-          {strict ? (
-            <>
-              <b>How silence is handled.</b> A film&apos;s verdict is recorded only for the
-              propositions it takes a position on, and these axes are built by correlating two
-              propositions over the films that answered <em>both</em> — so agreement is what is
-              measured, not which films happen to talk about the same things. Each film is also
-              judged against its own rate of agreement, because the scorers say &ldquo;affirms&rdquo;
-              far more often than &ldquo;denies&rdquo; and that habit would otherwise be the
-              largest pattern in the data. Read the other way, silence counted as an answer and
-              the biggest axis turned out to be how talkative a film is.
-            </>
-          ) : (
-            <>
-              <b>One limit, stated plainly.</b> Scoring is sparse and silence counts here as a
-              third answer, so two propositions can group because the same films <em>engage</em>
-              them rather than because those films <em>agree</em> about them. Some of what is
-              measured this way is salience rather than stance.
-            </>
-          )}
+          <b>How silence is handled.</b> A film&apos;s verdict is recorded only for the
+          propositions it takes a position on, and two propositions are compared over the
+          films that answered <em>both</em> — so what is measured is agreement, not which
+          films happen to talk about the same things. Each film is also judged against its
+          own rate of agreement, because the scorers say &ldquo;affirms&rdquo; far more often
+          than &ldquo;denies&rdquo; and that habit would otherwise be the largest pattern in
+          the data. Read the other way, with silence counted as an answer, the biggest axis
+          turned out to be how talkative a film is.
+        </p>
+        <p className="atlas-note">
+          <b>Where this is weakest.</b> The count holds up as long as silence is a property
+          of films — a film argues about more or fewer things — rather than scattered at
+          random over propositions. On the second kind of data it inflates badly, and this
+          corpus is the first kind, but that is an assumption the number rests on rather than
+          something it proves.
         </p>
       </section>
 

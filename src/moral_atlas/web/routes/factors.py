@@ -81,8 +81,7 @@ def get_factors(
     factors = factor_names.load(scorer, variant, bank)
     try:
         estimator = factor_names.estimator_for(scorer, variant, bank)
-        report = latent.analyse(scorer, bank, n_iter=n_iter, variant=variant,
-                                strict=estimator == "strict")
+        report = latent.analyse(scorer, bank, n_iter=n_iter, variant=variant)
     except RuntimeError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

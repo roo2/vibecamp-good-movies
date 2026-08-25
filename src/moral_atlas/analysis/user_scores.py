@@ -46,6 +46,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 
 from .. import db
+from ..llm.schemas import MAX_STRENGTH
 
 DEFAULT_DIM_VERSION = "d1"
 DEFAULT_BANK_VERSION = "b1"
@@ -330,5 +331,6 @@ def factor_stances(
             continue
         factor, loading = assignment
         direction = -1.0 if (loading is not None and loading < 0) else 1.0
-        stances[row["film_id"]][factor].append(float(row["value"]) * direction)
+        stances[row["film_id"]][factor].append(
+            float(row["value"]) * direction / MAX_STRENGTH)
     return {film: dict(by_factor) for film, by_factor in stances.items()}

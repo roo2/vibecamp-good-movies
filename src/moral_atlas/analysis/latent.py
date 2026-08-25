@@ -73,6 +73,7 @@ import statistics as st
 from typing import Any, Iterable
 
 from .. import db
+from ..llm.schemas import MAX_STRENGTH
 
 # An item scored on one film contributes a spike rather than a covariance, and
 # 224 of them would dominate the eigenvalues with noise.
@@ -140,7 +141,10 @@ def response_matrix(
         for item in items:
             values = cells.get((film, item))
             if values:
-                matrix[row_index, index[item]] = sum(values) / len(values)
+                # Verdicts are stored graded (-2..2 for strongly denies..strongly
+                # affirms) and normalised here, so everything downstream keeps
+                # working on the -1..1 it was written for.
+                matrix[row_index, index[item]] = sum(values) / len(values) / MAX_STRENGTH
 
     return {"films": films, "items": items, "matrix": matrix, "variant": variant,
             "dropped_items": dropped, "density": float((matrix != 0).mean())}

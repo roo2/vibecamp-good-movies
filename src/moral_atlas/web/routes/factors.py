@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, status
 from ... import db
 from ...analysis import factor_detail, factor_names, latent
 from ...config import settings
+from ...llm.schemas import MAX_STRENGTH
 
 router = APIRouter(prefix="/api/factors", tags=["factors"])
 
@@ -215,7 +216,8 @@ def film_on_factors(
             continue
         loading = loadings.get(row["item_id"])
         direction = -1.0 if (loading is not None and loading < 0) else 1.0
-        by_factor.setdefault(factor, []).append(row["value"] * direction)
+        by_factor.setdefault(factor, []).append(
+            row["value"] * direction / MAX_STRENGTH)
 
     scored = []
     for factor in factors:

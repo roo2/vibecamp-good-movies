@@ -669,3 +669,42 @@
 .film-factor-why li.affirms .film-why-points { color: #eda36b; }
 .film-factor-why li.denies .film-why-points { color: #5cc3c0; }
 .film-factor-why li span { display: block; }
+
+
+/* One verdict row, used by the atlas and the film page alike.
+   Colour means one thing only: teal subtracts, orange adds. The sign chip
+   carries it, so a reader never has to reconcile the word "affirms" with a
+   colour that means the opposite — which is what made these unreadable. */
+.verdicts { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+.verdicts li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.verdict-sign {
+  display: grid; place-items: center; inline-size: 22px; block-size: 22px;
+  border-radius: 5px; font-family: ui-monospace, monospace; font-size: 14px;
+  font-weight: 700; line-height: 1;
+}
+.verdicts li.adds .verdict-sign { color: #171310; background: #eda36b; }
+.verdicts li.subtracts .verdict-sign { color: #171310; background: #5cc3c0; }
+.verdict-body { display: grid; gap: 5px; }
+.verdict-text { color: #d5ccc1; font-size: 13.5px; line-height: 1.5; }
+.verdict-effect {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  font-size: 11px; letter-spacing: .03em;
+}
+.verdict-effect b { color: #968c7f; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
+.verdict-effect i { font-style: normal; color: #6b645d; }
+.verdict-effect em { font-style: normal; font-weight: 600; }
+.verdicts li.adds .verdict-effect em { color: #eda36b; }
+.verdicts li.subtracts .verdict-effect em { color: #5cc3c0; }
+.verdict-effect u {
+  text-decoration: none; color: #968c7f; font-size: 10px; font-weight: 650;
+  letter-spacing: .07em; text-transform: uppercase;
+  border: 1px solid #3a312a; border-radius: 3px; padding: 1px 5px;
+}
+/* How central the proposition is to the axis — deliberately quiet, because it
+   is not how much this verdict moved the score. Every verdict moves it equally;
+   this says how much the proposition defines the axis in the first place. */
+.verdict-weight { display: block; block-size: 2px; background: #241e19; border-radius: 1px; max-inline-size: 120px; }
+.verdict-weight i { display: block; block-size: 2px; border-radius: 1px; opacity: .8; }
+.verdicts li.adds .verdict-weight i { background: #eda36b; }
+.verdicts li.subtracts .verdict-weight i { background: #5cc3c0; }
+.verdict-evidence { color: #8d8478; font-size: 11.5px; line-height: 1.45; }

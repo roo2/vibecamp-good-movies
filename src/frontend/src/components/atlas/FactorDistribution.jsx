@@ -1,4 +1,5 @@
 import React from 'react'
+import Verdicts from './Verdicts.jsx'
 
 // Where every film sits on one axis.
 //
@@ -149,24 +150,9 @@ export function FilmOnAxis({ scorer, factorId, film }) {
         {' '}— which is what puts it at <b>{signed(film.score)}</b>.
         {!!flipped && ` ${flipped} of them by denying the opposite.`}
       </p>
-      <ul>
-        {verdicts.map((verdict) => (
-          <li key={verdict.item_id} className={verdict.points_to === 'high' ? 'affirms' : 'denies'}>
-            <b>{verdict.verdict}</b>
-            <span>
-              {verdict.text}
-              <i className="film-why-points">
-                {/* How much this proposition counts toward the axis, and which
-                    end its answer supports. */}
-                <u style={{ inlineSize: `${Math.round(((verdict.weight || 0) / heaviest) * 100)}%` }} />
-                {verdict.points_to === 'high' ? state.factor.pole_high_label : state.factor.pole_low_label}
-                {verdict.reverse_keyed && <b className="flip">reversed</b>}
-              </i>
-            </span>
-            {verdict.evidence && <em>{verdict.evidence}</em>}
-          </li>
-        ))}
-      </ul>
+      <Verdicts verdicts={verdicts}
+                poleHigh={state.factor.pole_high_label}
+                poleLow={state.factor.pole_low_label} />
     </div>
   )
 }

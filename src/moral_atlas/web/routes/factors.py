@@ -121,7 +121,8 @@ def get_factors(
     # and an axis whose evidence costs an extra round trip is one most readers
     # will take on trust.
     detail = factor_detail.detail(scorer, bank, variant, report["groups"], texts,
-                                  distance=report.get("distance"))
+                                  distance=report.get("distance"),
+                                  loadings=report.get("loading"))
 
     payload = {
         "scorer": scorer,
@@ -193,6 +194,9 @@ def film_on_factors(
         groups = {r["item_id"]: r["factor_id"] for r in con.execute(
             "SELECT item_id, factor_id FROM latent_factor_items WHERE scorer=? "
             "AND variant=? AND bank_version=?", [scorer, variant, bank])}
+        loadings = {r["item_id"]: r["loading"] for r in con.execute(
+            "SELECT item_id, loading FROM latent_factor_items WHERE scorer=? "
+            "AND variant=? AND bank_version=?", [scorer, variant, bank])}
         rows = con.execute(
             "SELECT item_id, value FROM model_verdicts WHERE scorer=? AND variant=? "
             "AND bank_version=? AND film_id=?", [scorer, variant, bank, film_id],
@@ -200,11 +204,18 @@ def film_on_factors(
         title = con.execute("SELECT title FROM films WHERE film_id=?",
                             [film_id]).fetchone()
 
-    by_factor: dict[int, list[int]] = {}
+    # Each verdict counted in the direction its proposition points. A factor can
+    # hold a proposition and its opposite — films answer them together — so a
+    # denial of one is an affirmation of the other, and averaging the raw values
+    # would put a film that took a clear side at zero and call it undecided.
+    by_factor: dict[int, list[float]] = {}
     for row in rows:
         factor = groups.get(row["item_id"])
-        if factor is not None:
-            by_factor.setdefault(factor, []).append(row["value"])
+        if factor is None:
+            continue
+        loading = loadings.get(row["item_id"])
+        direction = -1.0 if (loading is not None and loading < 0) else 1.0
+        by_factor.setdefault(factor, []).append(row["value"] * direction)
 
     scored = []
     for factor in factors:
@@ -223,7 +234,8 @@ def film_on_factors(
             "score": round(sum(values) / len(values), 3) if values else None,
             "items": len(values),
             "verdicts": factor_detail.film_justification(
-                scorer, bank, variant, groups, texts, film_id, factor["factor_id"]),
+                scorer, bank, variant, groups, texts, film_id, factor["factor_id"],
+                loadings=loadings),
         })
     return {"film_id": film_id, "title": title["title"] if title else film_id,
             "scorer": scorer, "factors": scored}

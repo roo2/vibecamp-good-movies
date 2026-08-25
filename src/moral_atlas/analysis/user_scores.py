@@ -52,7 +52,16 @@ DEFAULT_BANK_VERSION = "b1"
 MAIN_PASS = "main"
 
 # Reaction -> pull on the film's asserted positions.
-REACTION_WEIGHTS = {"loved_it": 1.0, "not_for_me": -1.0, "havent_seen": 0.0}
+#
+# `neutral` and `havent_seen` both weigh nothing, and are kept apart anyway.
+# One says "I watched this and it did not move me", the other says "I cannot
+# tell you". Collapsing them would lose the difference between a person who has
+# seen everything and shrugged and a person who has seen nothing — and only the
+# second should be dealt more films.
+REACTION_WEIGHTS = {"loved_it": 1.0, "not_for_me": -1.0, "neutral": 0.0, "havent_seen": 0.0}
+
+# Reactions that mean the person actually watched the film.
+SEEN_REACTIONS = {"loved_it", "not_for_me", "neutral"}
 
 # A pair is one contrast, so its two halves together weigh the same as one rating.
 PAIR_WEIGHT = 0.5
@@ -283,10 +292,27 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
 def factor_stances(
     scorer: str, variant: str, bank_version: str,
 ) -> dict[str, dict[int, list[float]]]:
-    """{film_id: {factor_id: [verdict per item]}} from one model's own verdicts."""
+    """{film_id: {factor_id: [verdict per item]}}, each verdict pointed the right way.
+
+    A verdict is flipped when its proposition is reverse-keyed. A factor can
+    hold both "selfishness is necessary for survival" and "altruism is morally
+    superior" — they belong together because films answer them together, and
+    they point in opposite directions. Averaging the raw verdicts treats a film
+    that DENIES the first as leaning the same way as one that DENIES the second,
+    when they are saying opposite things.
+
+    Measured on the corpus before this was fixed: 85 of 298 propositions loaded
+    against their own factor's majority, the mean film position moved by 0.367
+    on a scale of -1..1, and 4.4% of positions sat on the wrong side of the
+    axis entirely. Apollo 13 read +1.00 on absurdity-versus-order and belongs at
+    -1.00.
+
+    Items with no recorded loading are counted as written, which is what they
+    were before the column existed.
+    """
     with db.connect(read_only=True) as con:
-        assignments = {r["item_id"]: r["factor_id"] for r in con.execute(
-            "SELECT item_id, factor_id FROM latent_factor_items WHERE scorer=? "
+        assignments = {r["item_id"]: (r["factor_id"], r["loading"]) for r in con.execute(
+            "SELECT item_id, factor_id, loading FROM latent_factor_items WHERE scorer=? "
             "AND variant=? AND bank_version=?", [scorer, variant, bank_version])}
         rows = con.execute(
             "SELECT film_id, item_id, value FROM model_verdicts WHERE scorer=? "
@@ -295,7 +321,10 @@ def factor_stances(
 
     stances: dict[str, dict[int, list[float]]] = defaultdict(lambda: defaultdict(list))
     for row in rows:
-        factor = assignments.get(row["item_id"])
-        if factor is not None:
-            stances[row["film_id"]][factor].append(float(row["value"]))
+        assignment = assignments.get(row["item_id"])
+        if assignment is None:
+            continue
+        factor, loading = assignment
+        direction = -1.0 if (loading is not None and loading < 0) else 1.0
+        stances[row["film_id"]][factor].append(float(row["value"]) * direction)
     return {film: dict(by_factor) for film, by_factor in stances.items()}

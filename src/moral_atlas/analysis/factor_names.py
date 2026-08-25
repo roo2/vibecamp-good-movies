@@ -220,10 +220,11 @@ def persist(
               int(bool(f.get("coherent", True))), estimator, f["n_items"], f["eigenvalue"],
               f["margin"], model, run_id, db.now()) for f in named],
         )
+        loadings = report.get("loading") or {}
         con.executemany(
             "INSERT OR REPLACE INTO latent_factor_items (scorer, variant, bank_version, "
-            "item_id, factor_id) VALUES (?,?,?,?,?)",
-            [(alias, variant, bank_version, item, factor)
+            "item_id, factor_id, loading) VALUES (?,?,?,?,?,?)",
+            [(alias, variant, bank_version, item, factor, loadings.get(item))
              for item, factor in report["groups"].items()],
         )
     db.finish_run(run_id, usage or {})

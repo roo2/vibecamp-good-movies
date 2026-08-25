@@ -57,7 +57,7 @@ def _titles() -> dict[str, str]:
 def detail(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
     texts: dict[str, str], per_pole: int = 10, per_factor_items: int = 40,
-    distance: dict[str, float] | None = None,
+    distance: dict[str, float] | None = None, loadings: dict[str, float] | None = None,
 ) -> dict[int, dict[str, Any]]:
     """Per factor: where the corpus sits, which films anchor each pole, and why."""
     rows = _verdicts(scorer, bank_version, variant)
@@ -129,6 +129,9 @@ def detail(
                     "affirms": per_item.get(item, [0, 0])[0],
                     "denies": per_item.get(item, [0, 0])[1],
                     "distance": round((distance or {}).get(item, 0.0), 4),
+                    "weight": (round(abs((loadings or {}).get(item)), 4)
+                               if (loadings or {}).get(item) is not None else None),
+                    "reverse_keyed": ((loadings or {}).get(item) or 0) < 0,
                 } for item in item_ids),
                 key=lambda row: ((distance or {}).get(row["item_id"], 0.0),
                                  -(row["affirms"] + row["denies"])),
@@ -139,22 +142,53 @@ def detail(
 
 def film_justification(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
-    texts: dict[str, str], film_id: str, factor: int, limit: int = 8,
+    texts: dict[str, str], film_id: str, factor: int, limit: int | None = None,
+    loadings: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
-    """The individual verdicts that placed one film on one axis.
+    """Every verdict that placed one film on one axis, with which way each points.
 
-    The bottom of the drill-down: a reader who doubts a film's position can read
-    the propositions it was judged on and the direction of each judgement.
+    The bottom of the drill-down, and it has to be complete: a reader checking a
+    position against eight of the twenty propositions behind it is checking a
+    sample somebody else chose. `limit` stays available and defaults to off.
+
+    Each verdict carries its proposition's signed loading, which answers a
+    question the page could not previously answer — whether a film is affirming
+    a position or DENYING ITS OPPOSITE. Both happen, and they mean the same
+    thing. A factor holds "selfishness is necessary for survival" alongside
+    "altruism is morally superior"; a film that denies the first and one that
+    affirms the second have taken the same side.
+
+    `points_to` resolves that to the pole the verdict actually supports, and
+    `weight` is how much the proposition counts toward this axis at all.
+    Strongest contributors first, so the reader meets the evidence that decided
+    the position rather than whatever was recorded first.
     """
+    loadings = loadings or {}
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, value, evidence FROM model_verdicts WHERE scorer=? "
             "AND bank_version=? AND variant=? AND film_id=?",
             [scorer, bank_version, variant, film_id],
         ).fetchall()
-    return [
-        {"item_id": row["item_id"], "text": texts.get(row["item_id"], row["item_id"]),
-         "verdict": "affirms" if row["value"] > 0 else "denies",
-         "evidence": row["evidence"]}
-        for row in rows if groups.get(row["item_id"]) == factor
-    ][:limit]
+
+    out = []
+    for row in rows:
+        item = row["item_id"]
+        if groups.get(item) != factor:
+            continue
+        loading = loadings.get(item)
+        # No loading recorded means the proposition is counted as written, which
+        # is what every row did before the column existed.
+        direction = -1 if (loading is not None and loading < 0) else 1
+        affirmed = row["value"] > 0
+        out.append({
+            "item_id": item,
+            "text": texts.get(item, item),
+            "verdict": "affirms" if affirmed else "denies",
+            "reverse_keyed": direction < 0,
+            "points_to": "high" if (affirmed == (direction > 0)) else "low",
+            "weight": round(abs(loading), 4) if loading is not None else None,
+            "evidence": row["evidence"],
+        })
+    out.sort(key=lambda row: -(row["weight"] or 0))
+    return out[:limit] if limit else out

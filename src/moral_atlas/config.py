@@ -13,7 +13,7 @@ load_dotenv(ROOT / ".env")
 
 # Every derived row is stamped with the prompt version that produced it, so a
 # rubric change never silently overwrites an earlier run's numbers.
-PROMPT_VERSION = "p1"
+PROMPT_VERSION = "p1b"
 
 USER_AGENT = "moral-atlas/0.1 (research; contact via repository owner)"
 

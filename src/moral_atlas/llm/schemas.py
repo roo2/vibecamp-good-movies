@@ -123,8 +123,15 @@ class PropositionSet(BaseModel):
 
 class ItemScore(BaseModel):
     item_id: str
-    verdict: Literal["affirms", "denies"]
-    confidence: float = Field(ge=0.0, le=1.0)
+    verdict: Literal[
+        "strongly_affirms", "affirms", "denies", "strongly_denies", "not_addressed",
+    ] = Field(
+        description="How firmly the film takes this position. Use not_addressed "
+                    "when the film never raises the subject — that is NOT a denial.")
+    confidence: float = Field(
+        ge=0.0, le=1.0,
+        description="How sure YOU are of the reading. Separate from how firmly "
+                    "the FILM holds it, which is the verdict.")
     evidence: str = Field(description="Brief grounding from the supplied evidence.")
 
 
@@ -139,4 +146,12 @@ class ScoreSet(BaseModel):
     scores: list[ItemScore]
 
 
-VERDICT_TO_INT = {"affirms": 1, "denies": -1, "not_addressed": 0}
+# A film can hold a position centrally or glancingly, and flattening those to
+# one value threw away the difference between a film ABOUT revenge and one that
+# mentions it. Stored at this scale; every reader normalises to -1..1.
+VERDICT_TO_INT = {
+    "strongly_affirms": 2, "affirms": 1,
+    "denies": -1, "strongly_denies": -2,
+    "not_addressed": 0,
+}
+MAX_STRENGTH = 2

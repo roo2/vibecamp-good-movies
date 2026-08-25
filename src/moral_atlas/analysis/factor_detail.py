@@ -33,6 +33,7 @@ from collections import defaultdict
 from typing import Any
 
 from .. import db
+from ..llm.schemas import MAX_STRENGTH
 
 # Below this a film has taken a position on too little of the axis for its
 # score to mean much, and listing it as evidence would be misleading.
@@ -71,7 +72,7 @@ def detail(
         factor = groups.get(row["item_id"])
         if factor is None:
             continue
-        by_film[(row["film_id"], factor)].append(row["value"])
+        by_film[(row["film_id"], factor)].append(row["value"] / MAX_STRENGTH)
         per_item[row["item_id"]][0 if row["value"] > 0 else 1] += 1
 
     items_by_factor: dict[int, list[str]] = defaultdict(list)
@@ -185,6 +186,9 @@ def film_justification(
             "item_id": item,
             "text": texts.get(item, item),
             "verdict": "affirms" if affirmed else "denies",
+            # How much weight the film put there, as distinct from which way.
+            "strength": abs(row["value"]),
+            "emphatic": abs(row["value"]) >= MAX_STRENGTH,
             "reverse_keyed": direction < 0,
             "points_to": "high" if (affirmed == (direction > 0)) else "low",
             "weight": round(abs(loading), 4) if loading is not None else None,

@@ -124,14 +124,28 @@ on, and which way.
 
 HOW TO ANSWER
 
-Return ONLY the items this film actually engages. Most films engage a minority
-of any large bank, and that is expected — an omitted item means "this work does
-not take a position on this", which is a real and informative state, not a
-neutral middle. A comedy that never raises the question of legitimate authority
-is telling you something different from one that is even-handed about it.
+DENYING IS A CLAIM, NOT A DEFAULT. `denies` means the film asserts the OPPOSITE
+of the proposition — it takes the other side and puts weight there. It does not
+mean the subject never came up. If a war picture never mentions animals, the
+proposition about engineering other species is `not_addressed`; answering
+`denies` would record the film as arguing for animal welfare, which it never
+did. Ask yourself: could I name what the film says INSTEAD? If not, it is
+`not_addressed`.
+
+Use `not_addressed` freely. Most films engage a minority of any large bank and
+that is expected — it is a real and informative state, not a failure to find
+something. A comedy that never raises the question of legitimate authority is
+telling you something different from one that is even-handed about it.
+
+HOW FIRMLY. For the items the film does engage, say how much weight it puts
+there. `strongly_affirms` and `strongly_denies` are for positions the film is
+built around — what the ending validates, what the protagonist pays for, what
+the work would stop making sense without. Plain `affirms` and `denies` are for
+positions the film clearly takes in passing. A film ABOUT revenge and a film
+that mentions a grudge are not making the same claim.
 
 Do not stretch. If you find yourself reasoning "well, in a sense the film
-implies...", omit the item. Only score what the work puts weight on.
+implies...", answer `not_addressed`. Only score what the work puts weight on.
 
 Watch for reversed pairs. Some propositions in the bank are near-inversions of
 each other, and a film cannot sincerely affirm both. If you are about to, you

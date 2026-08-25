@@ -536,11 +536,36 @@ def test_a_reverse_keyed_proposition_counts_the_way_it_points(scored_atlas):
 
     stances = user_scores.factor_stances("t", "subs", "b")
 
-    assert stances["f"][0] == [1.0, 1.0], (
-        "both verdicts assert the factor's high pole, so both must count as +1")
-    assert sum(stances["f"][0]) / 2 == 1.0, (
-        "the film sits at the high pole; averaging the raw verdicts would have "
-        "put it at zero and called it undecided")
+    both = stances["f"][0]
+    assert both[0] == both[1] > 0, (
+        "both verdicts assert the factor's high pole, so both must count the "
+        "same way; averaging the raw values would have put this film at zero "
+        "and called it undecided")
+
+
+def test_a_film_built_around_a_position_counts_for_more_than_one_that_mentions_it(scored_atlas):
+    """Verdicts are graded, because "about revenge" and "mentions a grudge" differ.
+
+    Stored at -2..2 and normalised to -1..1 on the way out, so everything
+    downstream keeps working on the scale it was written for.
+    """
+    from moral_atlas import db
+    from moral_atlas.analysis import user_scores
+
+    with db.connect() as con:
+        con.execute("DELETE FROM latent_factor_items WHERE scorer='g'")
+        con.execute("DELETE FROM model_verdicts WHERE scorer='g'")
+        con.execute("INSERT INTO latent_factor_items (scorer, variant, bank_version, item_id, "
+                    "factor_id, loading) VALUES ('g','subs','b','item', 0, 0.5)")
+        con.execute("INSERT INTO model_verdicts (scorer, variant, bank_version, film_id, "
+                    "item_id, value) VALUES ('g','subs','b','central','item', 2)")
+        con.execute("INSERT INTO model_verdicts (scorer, variant, bank_version, film_id, "
+                    "item_id, value) VALUES ('g','subs','b','passing','item', 1)")
+
+    stances = user_scores.factor_stances("g", "subs", "b")
+
+    assert stances["central"][0][0] == 1.0, "a film built around it sits at the pole"
+    assert stances["passing"][0][0] == 0.5, "one that takes the position in passing sits halfway"
 
 
 def test_a_shrug_pushes_away_from_a_film_and_not_having_seen_it_does_nothing():

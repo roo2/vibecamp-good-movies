@@ -50,7 +50,7 @@ from .. import db
 from ..config import PROMPT_VERSION
 from ..llm import prompts
 from ..llm.providers import Refusal, SCORERS, client_for
-from ..llm.schemas import ScoreSet
+from ..llm.schemas import VERDICT_TO_INT, ScoreSet
 from ..sources import packet as packet_mod
 from . import dimensions as dim_mod
 
@@ -97,10 +97,25 @@ def scan(
 
     def save(_p, result):
         p, scoreset = result
+        # `not_addressed` is dropped rather than stored as zero: absence is
+        # recorded by the row not existing, which is what every reader expects.
+        # It is offered to the model anyway, because the alternative — hoping it
+        # stays silent — produced denials whose own evidence read "Not relevant."
         rows = [(alias, scorer.model, p.film_id, s.item_id, bank_version, variant, run_id,
-                 1 if s.verdict == "affirms" else -1, s.confidence, s.evidence, db.now())
-                for s in scoreset.scores if s.item_id in valid]
+                 VERDICT_TO_INT[s.verdict], s.confidence, s.evidence, db.now())
+                for s in scoreset.scores
+                if s.item_id in valid and VERDICT_TO_INT.get(s.verdict)]
         with db.connect() as con:
+            # Clear this film's previous verdicts first. INSERT OR REPLACE only
+            # touches rows the new run writes, so an item the model used to
+            # answer and now calls `not_addressed` kept its old verdict — and a
+            # re-scored film silently became a mixture of two runs. Measured on
+            # a six-film trial: 162 of 570 rows were survivors of the run before.
+            con.execute(
+                "DELETE FROM model_verdicts WHERE scorer=? AND film_id=? "
+                "AND bank_version=? AND variant=?",
+                [alias, p.film_id, bank_version, variant],
+            )
             con.executemany(
                 "INSERT OR REPLACE INTO model_verdicts (scorer, model, film_id, item_id, "
                 "bank_version, variant, run_id, value, confidence, evidence, created_at) "

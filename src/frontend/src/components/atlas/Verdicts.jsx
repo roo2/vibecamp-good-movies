@@ -28,7 +28,9 @@ export default function Verdicts({ verdicts, poleHigh, poleLow }) {
             <span className="verdict-body">
               <span className="verdict-text">{verdict.text}</span>
               <span className="verdict-effect">
-                <b>{verdict.verdict === 'affirms' ? 'Affirmed' : 'Denied'}</b>
+                <b>{verdict.emphatic
+                  ? (verdict.verdict === 'affirms' ? 'Strongly affirmed' : 'Strongly denied')
+                  : (verdict.verdict === 'affirms' ? 'Affirmed' : 'Denied')}</b>
                 <i aria-hidden="true">→</i>
                 <em>{pole}</em>
                 {verdict.reverse_keyed && (

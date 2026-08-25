@@ -12,8 +12,12 @@ import React from 'react'
 
 function Bar({ score }) {
   const magnitude = Math.abs(score) * 50
+  // A span rather than a div: this sits inside a <button>, which may only
+  // contain phrasing content. The stylesheet gives it `display: block`, without
+  // which an inline box would ignore its height and collapse to zero width —
+  // pinning every bar to the left.
   return (
-    <div className="film-factor-track">
+    <span className="film-factor-track">
       <u className="film-factor-mid" />
       <i
         className={score >= 0 ? 'film-factor-bar high' : 'film-factor-bar low'}
@@ -21,7 +25,7 @@ function Bar({ score }) {
           ? { insetInlineStart: '50%', inlineSize: `${magnitude}%` }
           : { insetInlineEnd: '50%', inlineSize: `${magnitude}%` }}
       />
-    </div>
+    </span>
   )
 }
 
@@ -77,9 +81,17 @@ function Row({ factor }) {
           {!!factor.verdicts?.length && (
             <ul>
               {factor.verdicts.map((verdict) => (
-                <li key={verdict.item_id} className={verdict.verdict}>
-                  <b>{verdict.verdict === 'affirms' ? 'affirms' : 'denies'}</b>
-                  <span>{verdict.text}</span>
+                <li key={verdict.item_id}
+                    className={verdict.points_to === 'high' ? 'affirms' : 'denies'}>
+                  <b>{verdict.verdict}</b>
+                  <span>
+                    {verdict.text}
+                    <i className="film-why-points">
+                      <u style={{ inlineSize: `${Math.round((verdict.weight || 0) * 220)}%` }} />
+                      {verdict.points_to === 'high' ? factor.pole_high_label : factor.pole_low_label}
+                      {verdict.reverse_keyed && <b className="flip">reversed</b>}
+                    </i>
+                  </span>
                   {verdict.evidence && <em>{verdict.evidence}</em>}
                 </li>
               ))}

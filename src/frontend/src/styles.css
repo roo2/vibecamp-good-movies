@@ -40,7 +40,10 @@ button { cursor: pointer; }
 .movie-card::after { position: absolute; inset: 0; background: radial-gradient(120% 90% at 70% 12%, rgba(237, 163, 107, .16), transparent 60%); content: ''; }
 .movie-card > span { position: absolute; top: 20px; left: 24px; z-index: 1; color: rgba(245, 239, 230, .42); font-size: 10px; font-weight: 650; letter-spacing: .18em; text-transform: uppercase; }
 .movie-card > div { position: relative; z-index: 1; }.movie-card h2 { margin: 0; color: #f5efe6; font-family: Georgia, serif; font-size: 40px; font-weight: 400; line-height: 1; }.movie-card p { margin: 10px 0 0; color: #b3aa9e; font-size: 13px; }
-.movie-reactions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }.movie-reaction { display: flex; min-height: 58px; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid #3a312a; border-radius: 14px; color: #d5ccc1; background: #1c1713; }.movie-reaction:hover:not(:disabled) { border-color: #766254; background: #241d18; }.movie-reaction strong { font-size: 21px; font-weight: 400; line-height: 1; }.movie-reaction span { font-size: 16px; font-weight: 650; line-height: 1.2; }.movie-reaction.loved { border-color: #eda36b; color: #eda36b; background: rgba(237, 163, 107, .12); }.movie-reaction.unseen { grid-column: 1 / -1; min-height: 54px; color: #b3aa9e; background: transparent; }.movie-reaction.selected { box-shadow: 0 0 0 2px #f5efe6 inset; }.movie-reaction:disabled { cursor: wait; }
+.movie-reactions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }.movie-reaction { display: flex; min-height: 58px; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border: 1px solid #3a312a; border-radius: 14px; color: #d5ccc1; background: #1c1713; }.movie-reaction:hover:not(:disabled) { border-color: #766254; background: #241d18; }.movie-reaction strong { font-size: 21px; font-weight: 400; line-height: 1; }.movie-reaction span { font-size: 16px; font-weight: 650; line-height: 1.2; }.movie-reaction.loved { border-color: #eda36b; color: #eda36b; background: rgba(237, 163, 107, .12); }/* The two that carry a signal sit on the top row; the two that do not sit
+   under them, quieter, so the layout says which answers are doing work. */
+.movie-reaction.neutral, .movie-reaction.unseen { min-height: 50px; color: #b3aa9e; background: transparent; }
+.movie-reaction.neutral span, .movie-reaction.unseen span { font-size: 14px; }.movie-reaction.selected { box-shadow: 0 0 0 2px #f5efe6 inset; }.movie-reaction:disabled { cursor: wait; }
 .seen-it-note { display: flex; gap: 10px; align-items: flex-start; margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #1c1713; }.seen-it-note span { margin-top: 1px; color: #7e766c; font-size: 15px; }.seen-it-note p { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; }.seen-it-note em { color: #b3aa9e; }
 .back-button { width: 20px; padding: 0; border: 0; color: #b3aa9e; background: transparent; font-size: 22px; line-height: 1; }
 .back-button:disabled { opacity: .28; cursor: default; }
@@ -103,12 +106,17 @@ button { cursor: pointer; }
 .moral-axis-poles span { flex: 1; }
 .moral-axis-poles span:last-child { text-align: right; }
 .moral-axis-poles .lit { color: #f5efe6; }
-.moral-axis-poles .lit { color: #f5efe6; }
 .moral-axis.low .moral-axis-poles .lit { color: #5cc3c0; }
 .moral-axis.high .moral-axis-poles .lit { color: #eda36b; }
 .moral-axis-pole b { display: block; margin-bottom: 2px; color: #7e766c; font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
 .moral-axis-pole.lit b { color: inherit; }
-.moral-axis-track { position: relative; height: 10px; }
+/* MUST be a block. It is a <span> — a button may only contain phrasing content —
+   and an inline box ignores `height` and takes its width from in-flow content.
+   Every child here is absolutely positioned, so there is no in-flow content and
+   the width resolves to zero: `left: 65%` becomes 65% of nothing, and every
+   marker stacks at the far left. That is what "both sliders were all the way
+   left" was. */
+.moral-axis-track { display: block; position: relative; height: 10px; }
 .moral-axis-track::before { position: absolute; top: 3.5px; right: 0; left: 0; height: 3px; border-radius: 2px; background: #241e19; content: ''; }
 .moral-axis-mid { position: absolute; top: 0; left: 50%; width: 1px; height: 10px; background: #3a312a; }
 .moral-axis-band { position: absolute; top: 3.5px; height: 3px; border-radius: 2px; background: #3a312a; }

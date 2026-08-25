@@ -278,7 +278,7 @@ def parallel_analysis(
 
 
 def item_groups(matrix, items: list[str], k: int,
-                seed: int = 11) -> tuple[dict[str, int], dict[str, float]]:
+                seed: int = 11) -> tuple[dict[str, int], dict[str, float], dict[str, float]]:
     """Sort items into k groups by how films responded to them.
 
     Clustering the loadings rather than the raw columns: two items answered the
@@ -297,9 +297,10 @@ def item_groups(matrix, items: list[str], k: int,
     # group would hand the namer every proposition in the bank and get an axis
     # back — a named, plausible, entirely invented axis with no margin behind it.
     if k < 1:
-        return {}, {}
+        return {}, {}, {}
     if k < 2:
-        return {item: 0 for item in items}, {item: 0.0 for item in items}
+        return ({item: 0 for item in items}, {item: 0.0 for item in items},
+                {item: 1.0 for item in items})
     # Cluster the LOADINGS of the agreement matrix — eigenvectors scaled by the
     # square root of their eigenvalues — so membership is decided by the same
     # reading of the data that decided the count.
@@ -327,8 +328,33 @@ def item_groups(matrix, items: list[str], k: int,
     model = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(loadings)
     labels = model.labels_
     distances = np.linalg.norm(loadings - model.cluster_centers_[labels], axis=1)
+
+    # Each item's signed loading on the factor it was assigned to.
+    #
+    # This is the number that says which way a proposition points and how much
+    # it counts, and its absence was a real fault. A factor's items do not all
+    # run the same way: 85 of 298 here load against their own group's majority,
+    # because "selfishness is necessary for survival" and "altruism is superior"
+    # belong to one axis while pointing in opposite directions. DENYING the
+    # first asserts what AFFIRMING the second asserts.
+    #
+    # Each factor is oriented so its majority is positive, which keeps the
+    # direction the naming step was shown. An item with a negative loading is
+    # reverse-keyed: a film that denies it is taking the factor's high position.
+    signed: dict[str, float] = {}
+    for factor in range(k):
+        members = [i for i, label in enumerate(labels) if label == factor]
+        if not members:
+            continue
+        column = loadings[members, factor]
+        if float(np.sign(column).sum()) < 0:
+            column = -column
+        for position, value in zip(members, column):
+            signed[items[position]] = float(value)
+
     return ({item: int(label) for item, label in zip(items, labels)},
-            {item: float(distance) for item, distance in zip(items, distances)})
+            {item: float(distance) for item, distance in zip(items, distances)},
+            signed)
 
 
 def analyse(
@@ -339,8 +365,8 @@ def analyse(
     """The whole thing for one scorer: how many dimensions, and which items."""
     data = response_matrix(scorer, bank_version, min_films, variant)
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
-    groups, distance = item_groups(data["matrix"], data["items"],
-                                   horn["n_clear_factors"], seed=seed)
+    groups, distance, loading = item_groups(data["matrix"], data["items"],
+                                            horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
         sizes[label] = sizes.get(label, 0) + 1
@@ -365,6 +391,9 @@ def analyse(
         # item is what the factor is about; large means it landed there because
         # it had to land somewhere.
         "distance": distance,
+        # Signed loading: direction and weight. Negative means reverse-keyed —
+        # denying it is what the factor's high pole asserts.
+        "loading": loading,
     }
 
 

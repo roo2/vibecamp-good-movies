@@ -265,6 +265,10 @@ CREATE TABLE IF NOT EXISTS latent_factors (
     PRIMARY KEY (scorer, variant, bank_version, factor_id)
 );
 
+-- `loading` is the item's signed weight on its factor: how much it counts, and
+-- which way it points. Negative means reverse-keyed — a film DENYING it is
+-- taking the factor's high position, because a factor can contain both
+-- "selfishness is necessary" and "altruism is superior".
 CREATE TABLE IF NOT EXISTS latent_factor_items (
     scorer       TEXT,
     variant      TEXT,
@@ -475,6 +479,7 @@ def init_db() -> None:
             _add_column_if_missing(con, "latent_factors", column, "TEXT")
         _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
         _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
+        _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")
 
 
 def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:

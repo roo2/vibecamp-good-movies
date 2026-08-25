@@ -10,7 +10,7 @@ from ..store import (Session, direct_session_films, extend_session_deck,
 from ..schemas import MovieRating, MovieRatingRequest
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
-VALID_MOVIE_REACTIONS = {"not_for_me", "havent_seen", "loved_it"}
+VALID_MOVIE_REACTIONS = {"not_for_me", "neutral", "havent_seen", "loved_it"}
 
 
 @router.get("/films")

@@ -133,19 +133,36 @@ export function FilmOnAxis({ scorer, factorId, film }) {
     return <p className="film-why-note">No recorded answers for this film on this axis.</p>
   }
 
-  const affirmed = state.factor.verdicts.filter((v) => v.verdict === 'affirms')
-  const denied = state.factor.verdicts.filter((v) => v.verdict === 'denies')
+  const verdicts = state.factor.verdicts
+  const high = verdicts.filter((v) => v.points_to === 'high').length
+  const flipped = verdicts.filter((v) => v.reverse_keyed).length
+  const heaviest = Math.max(...verdicts.map((v) => v.weight || 0), 0.0001)
+
   return (
     <div className="film-why">
+      {/* Counted by the pole each answer SUPPORTS, not by whether it was an
+          affirmation. Those differ: a factor holds propositions that contradict
+          each other, so denying one of them asserts what affirming another
+          does, and a bare tally of affirmations explains nothing. */}
       <p className="film-why-note">
-        {affirmed.length} affirmed · {denied.length} denied — which is what puts it at{' '}
-        <b>{signed(film.score)}</b>.
+        {high} of {verdicts.length} answers point to <b>{state.factor.pole_high_label}</b>
+        {' '}— which is what puts it at <b>{signed(film.score)}</b>.
+        {!!flipped && ` ${flipped} of them by denying the opposite.`}
       </p>
       <ul>
-        {state.factor.verdicts.map((verdict) => (
-          <li key={verdict.item_id} className={verdict.verdict}>
+        {verdicts.map((verdict) => (
+          <li key={verdict.item_id} className={verdict.points_to === 'high' ? 'affirms' : 'denies'}>
             <b>{verdict.verdict}</b>
-            <span>{verdict.text}</span>
+            <span>
+              {verdict.text}
+              <i className="film-why-points">
+                {/* How much this proposition counts toward the axis, and which
+                    end its answer supports. */}
+                <u style={{ inlineSize: `${Math.round(((verdict.weight || 0) / heaviest) * 100)}%` }} />
+                {verdict.points_to === 'high' ? state.factor.pole_high_label : state.factor.pole_low_label}
+                {verdict.reverse_keyed && <b className="flip">reversed</b>}
+              </i>
+            </span>
             {verdict.evidence && <em>{verdict.evidence}</em>}
           </li>
         ))}

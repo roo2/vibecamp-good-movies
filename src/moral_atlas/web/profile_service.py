@@ -44,7 +44,7 @@ def moral_profile(user_id: str) -> MoralProfile:
         return MoralProfile(
             user_id=user_id, dim_version=scorer, bank_version=factor_bank, scores=[],
             evidence=ProfileEvidence(
-                films_rated=sum(1 for _film_id, reaction in ratings if reaction != "havent_seen"),
+                films_rated=sum(1 for _film_id, reaction in ratings if reaction in user_scores.SEEN_REACTIONS),
                 films_not_seen=sum(1 for _film_id, reaction in ratings if reaction == "havent_seen"),
                 pairs_answered=sum(1 for choice, _film_ids in pairs if choice in ("a", "b")),
                 films_used=0, films_without_scores=[],
@@ -68,7 +68,7 @@ def moral_profile(user_id: str) -> MoralProfile:
         bank_version=factor_bank,
         scores=[MoralScore(**vars(score)) for score in scored],
         evidence=ProfileEvidence(
-            films_rated=sum(1 for _f, reaction in ratings if reaction != "havent_seen"),
+            films_rated=sum(1 for _f, reaction in ratings if reaction in user_scores.SEEN_REACTIONS),
             films_not_seen=sum(1 for _f, reaction in ratings if reaction == "havent_seen"),
             pairs_answered=sum(1 for choice, _f in pairs if choice in ("a", "b")),
             films_used=len({p.film_id for p in preferences} - set(unscored)),

@@ -554,7 +554,7 @@
 .film-factor.high .film-factor-scale em.lit { color: #eda36b; }
 .film-factor.low .film-factor-scale em.lit { color: #5cc3c0; }
 .film-factor-poles .pole b { display: block; margin: 0 0 2px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
-.film-factor-track { position: relative; height: 8px; border-radius: 3px; background: #171310; }
+.film-factor-track { display: block; position: relative; height: 8px; border-radius: 3px; background: #171310; }
 .film-factor-bar { position: absolute; inset-block: 0; border-radius: 3px; }
 .film-factor-bar.high { background: #eda36b; }
 .film-factor-bar.low { background: #5cc3c0; }
@@ -645,3 +645,27 @@
 .corpus-footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid #241e19; }
 .corpus-footer .quiet-link { color: #968c7f; font-size: 13px; text-decoration: none; }
 .corpus-footer .quiet-link:hover { color: #eda36b; }
+
+
+/* How much a proposition counts toward an axis, and which end its answer
+   supports. The bar is the weight; the label is the pole. "Reversed" marks a
+   proposition whose answer means the opposite of how it reads — a film denying
+   "selfishness is necessary" has asserted what affirming "altruism is superior"
+   asserts, and without the marker those look like opposite verdicts. */
+.film-why-points {
+  display: flex; align-items: center; gap: 7px; margin-top: 4px;
+  font-style: normal; font-size: 10.5px; letter-spacing: .04em; color: #968c7f;
+}
+.film-why-points u {
+  display: block; block-size: 3px; min-inline-size: 2px; max-inline-size: 64px;
+  border-radius: 2px; background: currentColor; opacity: .55; text-decoration: none;
+}
+.film-why li.affirms .film-why-points { color: #eda36b; }
+.film-why li.denies .film-why-points { color: #5cc3c0; }
+.film-why-points .flip {
+  color: #968c7f; font-size: 9.5px; font-weight: 650; letter-spacing: .08em;
+  text-transform: uppercase; border: 1px solid #3a312a; border-radius: 2px; padding: 0 4px;
+}
+.film-factor-why li.affirms .film-why-points { color: #eda36b; }
+.film-factor-why li.denies .film-why-points { color: #5cc3c0; }
+.film-factor-why li span { display: block; }

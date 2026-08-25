@@ -3,9 +3,14 @@ import FlowProgress from '../components/FlowProgress.jsx'
 import useSwipeDecision from '../hooks/useSwipeDecision.js'
 import { loadMoreOnboardingFilms, loadOnboardingFilms } from '../services/movieService.js'
 
+// Four answers, because three forced a lie. Somebody who watched a film and
+// felt nothing had to either overstate a reaction or claim they had not seen it,
+// and those are different facts: one is a real answer worth nothing, the other
+// is an absence of one.
 const reactions = [
   { id: 'not_for_me', label: 'Not for me', icon: '×' },
   { id: 'loved_it', label: 'Loved it', icon: '♥' },
+  { id: 'neutral', label: 'It was fine', icon: '≈' },
   { id: 'havent_seen', label: "Haven't seen it", icon: '−' },
 ]
 
@@ -37,7 +42,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   async function choose(reaction) {
     if (!film || selected) return
     const isLastFilm = filmIndex === films.length - 1
-    const answered = seen + (reaction === 'havent_seen' ? 0 : 1)
+    const answered = seen + (reaction === 'loved_it' || reaction === 'not_for_me' ? 1 : 0)
     setSelected(reaction)
     setSeen(answered)
     if (!isLastFilm) {
@@ -95,7 +100,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
           </article>
           <div className="movie-reactions" aria-label={`Your reaction to ${film.title}`}>
             {reactions.map((reaction) => (
-              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${reaction.id === 'havent_seen' ? 'unseen' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected) || swipe.committed}>
+              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${reaction.id === 'neutral' ? 'neutral' : ''} ${reaction.id === 'havent_seen' ? 'unseen' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected) || swipe.committed}>
                 <strong aria-hidden="true">{reaction.icon}</strong><span>{selected === reaction.id ? 'Saving…' : reaction.label}</span>
               </button>
             ))}

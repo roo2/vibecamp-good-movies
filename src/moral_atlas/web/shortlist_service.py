@@ -121,7 +121,9 @@ def _sampled_order(ranked: list[dict[str, Any]], variation: float) -> list[dict[
     return sorted(ranked, key=key, reverse=True)
 
 
-SEEN_REACTIONS = {"loved_it", "not_for_me"}
+# Anything the person watched, however they felt about it — recommending a
+# film back to somebody who has already seen it is the one obvious failure.
+SEEN_REACTIONS = {"loved_it", "not_for_me", "neutral"}
 
 
 def _factor_bank() -> str:

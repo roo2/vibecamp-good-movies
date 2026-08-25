@@ -504,3 +504,40 @@ def test_variation_can_be_switched_off(scored_atlas):
     runs = [[film["id"] for film in ranked_shortlist([viewer], limit=8, variation=0)]
             for _ in range(5)]
     assert all(run == runs[0] for run in runs)
+
+
+def test_a_reverse_keyed_proposition_counts_the_way_it_points(scored_atlas):
+    """Denying "selfishness is necessary" is the same lean as affirming "altruism is superior".
+
+    A factor holds propositions that films answer together, and some of those
+    point in opposite directions. Averaging the raw verdicts treated a denial of
+    a reverse-keyed proposition as a lean toward the low pole, when it asserts
+    the high one. Measured before this was fixed: 85 of 298 propositions loaded
+    against their own factor, mean film position moved 0.367 on a -1..1 scale,
+    and 4.4% of positions sat on the wrong side of the axis outright.
+    """
+    from moral_atlas import db
+    from moral_atlas.analysis import user_scores
+
+    with db.connect() as con:
+        con.execute("DELETE FROM latent_factor_items WHERE scorer='t'")
+        con.execute("DELETE FROM model_verdicts WHERE scorer='t'")
+        # Two propositions on one factor, pointing opposite ways.
+        con.execute("INSERT INTO latent_factor_items (scorer, variant, bank_version, item_id, "
+                    "factor_id, loading) VALUES ('t','subs','b',  'plain', 0,  0.5)")
+        con.execute("INSERT INTO latent_factor_items (scorer, variant, bank_version, item_id, "
+                    "factor_id, loading) VALUES ('t','subs','b','reversed', 0, -0.5)")
+        # One film affirms the plain one and denies the reversed one — which are
+        # two ways of saying the same thing.
+        con.execute("INSERT INTO model_verdicts (scorer, variant, bank_version, film_id, "
+                    "item_id, value) VALUES ('t','subs','b','f','plain', 1)")
+        con.execute("INSERT INTO model_verdicts (scorer, variant, bank_version, film_id, "
+                    "item_id, value) VALUES ('t','subs','b','f','reversed', -1)")
+
+    stances = user_scores.factor_stances("t", "subs", "b")
+
+    assert stances["f"][0] == [1.0, 1.0], (
+        "both verdicts assert the factor's high pole, so both must count as +1")
+    assert sum(stances["f"][0]) / 2 == 1.0, (
+        "the film sits at the high pole; averaging the raw verdicts would have "
+        "put it at zero and called it undecided")

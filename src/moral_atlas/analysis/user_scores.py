@@ -53,12 +53,16 @@ MAIN_PASS = "main"
 
 # Reaction -> pull on the film's asserted positions.
 #
-# `neutral` and `havent_seen` both weigh nothing, and are kept apart anyway.
-# One says "I watched this and it did not move me", the other says "I cannot
-# tell you". Collapsing them would lose the difference between a person who has
-# seen everything and shrugged and a person who has seen nothing — and only the
-# second should be dealt more films.
-REACTION_WEIGHTS = {"loved_it": 1.0, "not_for_me": -1.0, "neutral": 0.0, "havent_seen": 0.0}
+# `neutral` pushes AWAY, gently. A film that argues hard for something and left
+# you unmoved is evidence about you: indifference to a conviction is a mild form
+# of not sharing it. Not the same evidence as disliking it, which is why the
+# weight is roughly a third — a shrug should be able to be outvoted by a single
+# film you loved.
+#
+# `havent_seen` is the one reaction that stays at zero, and the distinction
+# matters: one is an answer, the other is the absence of one. Only the second
+# means we should deal more films.
+REACTION_WEIGHTS = {"loved_it": 1.0, "not_for_me": -1.0, "neutral": -0.35, "havent_seen": 0.0}
 
 # Reactions that mean the person actually watched the film.
 SEEN_REACTIONS = {"loved_it", "not_for_me", "neutral"}

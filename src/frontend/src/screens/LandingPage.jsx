@@ -1,6 +1,5 @@
 import React from 'react'
 
-import { APP_VERSION } from '../config/version'
 
 // The way in, and the only place the two paths diverge.
 //
@@ -68,8 +67,6 @@ function LandingPage({ onStart, joining = false }) {
           <a className="quiet-link" href="#/corpus">Look up a film →</a>
           <br />
           <a className="quiet-link" href="#/atlas">See the dataset behind it →</a>
-          <br />
-          <span className="build-marker">v{APP_VERSION}</span>
         </p>
       </section>
     </main>

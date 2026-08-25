@@ -541,3 +541,25 @@ def test_a_reverse_keyed_proposition_counts_the_way_it_points(scored_atlas):
     assert sum(stances["f"][0]) / 2 == 1.0, (
         "the film sits at the high pole; averaging the raw verdicts would have "
         "put it at zero and called it undecided")
+
+
+def test_a_shrug_pushes_away_from_a_film_and_not_having_seen_it_does_nothing():
+    """Indifference is evidence; ignorance is not.
+
+    A film that argues hard for something and left you unmoved says something
+    about you — mildly, which is why the weight is about a third of disliking
+    it, so one film you loved outvotes one you shrugged at. Not having seen a
+    film says nothing at all, and must produce no pull in either direction.
+    """
+    from moral_atlas.analysis import user_scores
+
+    prefs = {p.film_id: p.weight for p in user_scores.rating_preferences(
+        [("shrugged", "neutral"), ("loved", "loved_it"),
+         ("disliked", "not_for_me"), ("unseen", "havent_seen")])}
+
+    assert prefs["shrugged"] < 0, "a shrug counts against the film"
+    assert abs(prefs["shrugged"]) < abs(prefs["disliked"]), (
+        "but far less than actively disliking it")
+    assert prefs["loved"] + prefs["shrugged"] > 0, (
+        "one film you loved should outweigh one you shrugged at")
+    assert "unseen" not in prefs, "not having seen it is not an opinion"

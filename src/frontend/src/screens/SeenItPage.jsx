@@ -7,12 +7,15 @@ import { loadMoreOnboardingFilms, loadOnboardingFilms } from '../services/movieS
 // felt nothing had to either overstate a reaction or claim they had not seen it,
 // and those are different facts: one is a real answer worth nothing, the other
 // is an absence of one.
+// A scale, read left to right, with the middle where it belongs: disliked,
+// indifferent, loved. Not having seen it is not a point on that scale, so it
+// sits underneath with room of its own.
 const reactions = [
   { id: 'not_for_me', label: 'Not for me', icon: '×' },
-  { id: 'loved_it', label: 'Loved it', icon: '♥' },
   { id: 'neutral', label: 'It was fine', icon: '≈' },
-  { id: 'havent_seen', label: "Haven't seen it", icon: '−' },
+  { id: 'loved_it', label: 'Loved it', icon: '♥' },
 ]
+const SKIP = { id: 'havent_seen', label: "Haven't seen it", icon: '−' }
 
 function formatRuntime(minutes) {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
@@ -42,7 +45,7 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
   async function choose(reaction) {
     if (!film || selected) return
     const isLastFilm = filmIndex === films.length - 1
-    const answered = seen + (reaction === 'loved_it' || reaction === 'not_for_me' ? 1 : 0)
+    const answered = seen + (reaction === 'havent_seen' ? 0 : 1)
     setSelected(reaction)
     setSeen(answered)
     if (!isLastFilm) {
@@ -100,10 +103,13 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
           </article>
           <div className="movie-reactions" aria-label={`Your reaction to ${film.title}`}>
             {reactions.map((reaction) => (
-              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${reaction.id === 'neutral' ? 'neutral' : ''} ${reaction.id === 'havent_seen' ? 'unseen' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected) || swipe.committed}>
+              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${reaction.id === 'neutral' ? 'neutral' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected) || swipe.committed}>
                 <strong aria-hidden="true">{reaction.icon}</strong><span>{selected === reaction.id ? 'Saving…' : reaction.label}</span>
               </button>
             ))}
+            <button className={`movie-reaction unseen ${selected === SKIP.id ? 'selected' : ''}`} type="button" onClick={() => choose(SKIP.id)} disabled={Boolean(selected) || swipe.committed}>
+              <strong aria-hidden="true">{SKIP.icon}</strong><span>{selected === SKIP.id ? 'Saving…' : SKIP.label}</span>
+            </button>
           </div>
         </div>
         <aside className="seen-it-note"><span aria-hidden="true">ⓘ</span><p>{topUps > 0

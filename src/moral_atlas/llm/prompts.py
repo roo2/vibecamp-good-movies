@@ -137,6 +137,13 @@ that is expected — it is a real and informative state, not a failure to find
 something. A comedy that never raises the question of legitimate authority is
 telling you something different from one that is even-handed about it.
 
+A NOTE ON WHY THIS IS WORDED SO FIRMLY. Softening it does not work. Adding a
+symmetrical warning — that a film taking the other side must be recorded as
+`denies`, not waved away — was tried and measured: denials returned to 14% of
+verdicts, and 14% of THOSE were irrelevance again, undoing the whole fix. The
+reader cannot reliably hold both instructions at once, so the pipeline accepts
+fewer denials in exchange for denials that mean something.
+
 HOW FIRMLY. For the items the film does engage, say how much weight it puts
 there. `strongly_affirms` and `strongly_denies` are for positions the film is
 built around — what the ending validates, what the protagonist pays for, what

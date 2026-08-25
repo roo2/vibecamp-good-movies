@@ -21,8 +21,8 @@ the films that took a position on BOTH of them.
     item loadings shared one sign, and a film's place on it correlated +0.87
     with how many propositions it engaged.
 
-    At 465 films every pair shares at least one film, the mean overlap is 96 and
-    the median 86. Normalising the dense reading does not substitute for this:
+    At 422 films every pair shares at least one film, the mean overlap is 89 and
+    the median 74. Normalising the dense reading does not substitute for this:
     centring and scaling each film moves that correlation from +0.87 to -0.86,
     flipping the sign and keeping the coupling, because silence is 63% of the
     matrix and normalising values cannot touch a pattern of zeros.
@@ -59,12 +59,12 @@ factors whose observed eigenvalue clears the 95th percentile of the null.
 This is what makes the count a finding rather than a setting.
 
 A REAL LIMIT, STATED ONCE. Factor analysis conventionally wants several times
-more respondents than variables. With 465 films and 298 items that is no longer
+more respondents than variables. With 422 films and 297 items that is no longer
 inverted, but the correlation matrix still has rank at most the number of films,
 so the recoverable ceiling is reported alongside the count. What would carry
 most weight is agreement between models: if scorers that harvested different
 propositions keep landing on the same k, that is evidence the corpus has that
-many joints. They do not currently — one finds eleven and another finds none —
+many joints. They do not currently — one finds twenty and another finds none —
 and that disagreement is itself the finding.
 """
 from __future__ import annotations
@@ -160,9 +160,10 @@ def _pairwise_correlation(matrix) -> Any:
 
     The strict reading of the question, and the one the module docstring records
     as unanswerable — at 40 films, 82% of item pairs shared no film at all and
-    the mean overlap was 0.21. That is no longer true: at 465 films every pair
-    shares at least one, the mean overlap is 96 and the median 86, so the
-    estimator this corpus could not support is now the estimator it can.
+    the mean overlap was 0.21. That is no longer true: at 422 films every pair
+    shares at least one, the mean overlap is 89 and the median 74, and only 5%
+    fall under MIN_PAIR_OVERLAP — so the estimator this corpus could not support
+    is now the estimator it can.
 
     It matters because the dense reading cannot be rescued by normalising.
     Silence is 63% of the matrix, so an estimator that treats silence as a value

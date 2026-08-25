@@ -263,6 +263,15 @@ def score_preferences(
 # because auditing the corpus is exactly what that page is for.
 PRODUCT_AXES = 6
 
+# A factor needs items before it is a factor. Three of the twenty axes the last
+# rebuild produced were built from a SINGLE proposition, and one of those was
+# strong enough by eigenvalue to reach the product — so a person was being read
+# on "collective science vs individual conscience" from one sentence that
+# happened to correlate with nothing else. That is not a dimension of moral
+# disagreement, it is an orphan item with a name on it. The atlas still shows
+# them, because seeing that they exist is the point of an audit page.
+MIN_AXIS_ITEMS = 3
+
 
 def factor_axes(scorer: str, variant: str, bank_version: str,
                 limit: int | None = PRODUCT_AXES) -> list[dict[str, Any]]:
@@ -278,12 +287,13 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
             "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
             "pole_low_label, eigenvalue FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? "
+            "AND n_items>=? "
             # An axis the namer would not call coherent should not be handed to
             # somebody as a reading of what they believe. It stays in the atlas,
             # where the warning beside it is the point.
             "AND (coherent IS NULL OR coherent=1) "
             "ORDER BY eigenvalue DESC",
-            [scorer, variant, bank_version],
+            [scorer, variant, bank_version, MIN_AXIS_ITEMS],
         ).fetchall()
     # The short labels ride along with the sentences: a score is a point on a
     # line, and a line needs a word at each end before the number means anything.

@@ -1,4 +1,5 @@
 import React from 'react'
+import Verdicts from './Verdicts.jsx'
 
 // One film against every axis, and the verdicts that put it there.
 //
@@ -78,25 +79,9 @@ function Row({ factor }) {
             </p>
           </div>
 
-          {!!factor.verdicts?.length && (
-            <ul>
-              {factor.verdicts.map((verdict) => (
-                <li key={verdict.item_id}
-                    className={verdict.points_to === 'high' ? 'affirms' : 'denies'}>
-                  <b>{verdict.verdict}</b>
-                  <span>
-                    {verdict.text}
-                    <i className="film-why-points">
-                      <u style={{ inlineSize: `${Math.round((verdict.weight || 0) * 220)}%` }} />
-                      {verdict.points_to === 'high' ? factor.pole_high_label : factor.pole_low_label}
-                      {verdict.reverse_keyed && <b className="flip">reversed</b>}
-                    </i>
-                  </span>
-                  {verdict.evidence && <em>{verdict.evidence}</em>}
-                </li>
-              ))}
-            </ul>
-          )}
+          <Verdicts verdicts={factor.verdicts}
+                    poleHigh={factor.pole_high_label}
+                    poleLow={factor.pole_low_label} />
 
           {/* The count still has to be said. One proposition at -1.00 looks
               exactly as certain as forty, and is not. */}

@@ -131,6 +131,25 @@ def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that a
     console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
 
 
+@app.command("backfill-metadata")
+def backfill_metadata(
+    limit: Optional[int] = typer.Option(None, help="Only this many films; omit for all."),
+) -> None:
+    """Fill genre, country, language, director and source from Wikidata.
+
+    The subtitle-corpus ingest never called TMDB, so most films arrived with an
+    IMDb id and twelve empty columns. This fills the ones that can group films
+    for an analysis or filter them in the app, from a CC0 source — TMDB's terms
+    forbid using their content to develop a model, which the factor analysis is.
+    No API key needed.
+    """
+    from .sources import wikidata as wd
+    result = wd.backfill(limit=limit, progress=lambda m: console.print(f"[dim]{m}[/]"))
+    console.print(
+        f"[green]metadata[/] looked at {result['looked_at']}, matched {result['matched']}, "
+        f"updated {result['updated']} films across {result['columns']} column writes")
+
+
 @app.command("opus-index")
 def opus_index(
     version: str = typer.Option("v2024", help="OPUS release: v2018 or v2024."),

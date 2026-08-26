@@ -293,6 +293,71 @@ def build(rows: list[Any], client, distance: float = NEIGHBOUR_DISTANCE,
     }
 
 
+def build_unreduced(rows: list[Any], sample: int | None = None,
+                    distance: float = NEIGHBOUR_DISTANCE,
+                    seed: int = 11, progress=None) -> dict[str, Any]:
+    """Every distinct proposition as its own item, labelled with its neighbourhood.
+
+    The alternative to merging, and the reason it is worth preferring: deciding
+    that two propositions are "the same" is the factor analysis's job, and it
+    makes that decision from how films RESPOND rather than from how the
+    sentences read. Merging beforehand pre-empts it with a weaker criterion
+    applied before any evidence exists — and near-duplicate items are not a
+    problem for factor analysis, they are confirmation. Two items that load on
+    one factor are evidence the factor is there; collapsing them first replaces
+    that evidence with an assumption.
+
+    Measured on the deepseek harvest, the case is not close: of 2,392
+    propositions only 5 were exact duplicates, so the old cut from 2,392 to 298
+    was 87% judgement rather than deduplication, and one of those judgements
+    produced the highest-support item in the bank — a hedge nearly every film
+    affirms.
+
+    So the neighbourhood is kept as a LABEL rather than applied as a merge. That
+    turns an unfalsifiable decision into a prediction: if the factor analysis
+    independently groups items that share a neighbourhood, both methods are
+    corroborated; if it does not, the statistics win and nothing was lost.
+
+    `sample` takes a random subset, for pilots where scoring the whole bank is
+    not worth the money. Random rather than one-per-neighbourhood on purpose:
+    picking a representative is the merge this exists to avoid, and redundancy
+    is part of what a faithful miniature has to keep.
+    """
+    import numpy as np
+
+    seen: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        key = lexical._normalise(row["text"])
+        if key and key not in seen:
+            seen[key] = row
+    unique = list(seen.values())
+    if progress:
+        progress(f"{len(rows)} propositions, {len(unique)} distinct "
+                 f"({len(rows) - len(unique)} exact duplicates)")
+
+    if sample and sample < len(unique):
+        rng = np.random.default_rng(seed)
+        unique = [unique[i] for i in
+                  sorted(rng.choice(len(unique), sample, replace=False))]
+        if progress:
+            progress(f"sampled {len(unique)} for the pilot")
+
+    groups = neighbourhoods(unique, distance, progress=progress)
+    label: dict[int, int] = {}
+    polarity: dict[int, str] = {}
+    for index, group in enumerate(groups):
+        for member in group["members"]:
+            label[id(member)] = index
+            polarity[id(member)] = group["polarity"]
+
+    items = [{"item_id": f"I{n:04d}", "text": row["text"],
+              "cluster_id": label.get(id(row), -1), "support": 1, "active": True,
+              "note": f"{polarity.get(id(row), '')}|{row['film_id']}"}
+             for n, row in enumerate(unique, 1)]
+    return {"items": items, "n_propositions": len(rows),
+            "n_distinct": len(seen), "n_neighbourhoods": len(groups)}
+
+
 def write_bank(bank_version: str, claims: list[dict[str, Any]],
                model: str | None, run_id: str) -> dict[str, int]:
     """Persist claims as an item bank, in the shape the rest of the pipeline reads."""

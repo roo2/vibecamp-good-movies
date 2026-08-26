@@ -122,7 +122,7 @@ def test_structureless_responses_yield_no_factors():
 def test_items_are_grouped_with_the_ones_sharing_their_factor():
     matrix = planted(n_films=60, per_factor=20, k=3, noise=0.3)
     items = [f"I{i:03d}" for i in range(matrix.shape[1])]
-    groups, distance, loading = latent.item_groups(matrix, items, 3)
+    groups, distance, loading, _dominant = latent.item_groups(matrix, items, 3)
 
     # Items 0-19 were built from factor 0, 20-39 from factor 1, 40-59 from 2.
     blocks = [ {groups[items[i]] for i in range(start, start + 20)}
@@ -230,7 +230,7 @@ def test_item_groups_reports_how_far_each_item_sits_from_its_centre():
         [-1.0, -1.0, 1.0, 1.0],
         [1.0, 1.0, 1.0, -1.0],
     ])
-    groups, distance, loading = item_groups(matrix, ["a", "b", "c", "d"], 2)
+    groups, distance, loading, _dominant = item_groups(matrix, ["a", "b", "c", "d"], 2)
 
     assert set(groups) == {"a", "b", "c", "d"}
     assert groups["a"] == groups["b"] and groups["c"] != groups["a"]
@@ -248,18 +248,20 @@ def test_the_atlas_hides_nothing_and_the_product_shows_a_handful():
     whole purpose is to show them. The null test at 5% is the only bar on the
     atlas now.
 
-    The product still shows a few, because somebody choosing a film is not
-    auditing a corpus. That limit is honest about being about a screen.
+    The product shows few, and that limit stopped being about a screen. Split
+    the films in half and ask whether both halves find the same variation: the
+    first factor returns at 0.59 against a chance floor of 0.003, the second at
+    0.35, and by the fifth it is 0.21 and falling into the floor. Clearing a
+    permutation null and surviving a change of sample are different tests, and
+    most of the twenty pass only the first.
     """
     from moral_atlas.analysis import factor_names, user_scores
 
     assert not hasattr(factor_names, "DISPLAY_MARGIN"), (
         "the editorial threshold is gone; nothing should filter the atlas")
-    assert user_scores.PRODUCT_AXES == 6
-
-    axes = [{"dim_id": i, "name": f"axis {i}", "question": "?", "pole_high": "h",
-             "pole_low": "l"} for i in range(11)]
-    assert len(axes[:user_scores.PRODUCT_AXES]) == 6
+    assert user_scores.PRODUCT_AXES <= 3, (
+        "the product's axis count is a claim about what replicates, not a layout "
+        "decision — raising it needs replication evidence behind it")
 def test_the_strict_estimator_ignores_silence_entirely():
     """Two items only ever answered by different films cannot be correlated."""
     matrix = np.array([
@@ -317,7 +319,7 @@ def test_every_factor_is_oriented_by_its_majority():
     """
     matrix = like_the_corpus(k=3, seed=4)
     items = [f"I{i:03d}" for i in range(matrix.shape[1])]
-    groups, _distance, loading = latent.item_groups(matrix, items, 3)
+    groups, _distance, loading, _dominant = latent.item_groups(matrix, items, 3)
 
     assert set(loading) == set(items), "every item carries a signed weight"
     for factor in sorted(set(groups.values())):

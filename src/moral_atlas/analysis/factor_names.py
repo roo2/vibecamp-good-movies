@@ -170,6 +170,7 @@ def name_factors(
 
     margins = report.get("margins") or []
     eigenvalues = report.get("eigenvalues") or []
+    dominant = {int(k): int(v) for k, v in (report.get("dominant") or {}).items()}
     named = []
     for factor in result.factors:
         index = factor.factor_id
@@ -185,7 +186,13 @@ def name_factors(
             "pole_low_label": factor.pole_low_label.strip(),
             "coherent": bool(factor.coherent),
             "n_items": len(grouped[index]),
-            "eigenvalue": eigenvalues[index] if index < len(eigenvalues) else None,
+            # The eigenvalue of the factor this GROUP loads on, not of the
+            # group's arbitrary k-means label. Ordering the axes by the latter
+            # put a cluster of eleven propositions at the top of the product
+            # carrying the largest eigenvalue in the corpus by accident.
+            "eigenvalue": (eigenvalues[dominant[index]]
+                           if index in dominant and dominant[index] < len(eigenvalues)
+                           else (eigenvalues[index] if index < len(eigenvalues) else None)),
             "margin": margins[index] if index < len(margins) else None,
         })
         if progress:

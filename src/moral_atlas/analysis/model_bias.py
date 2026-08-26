@@ -61,9 +61,23 @@ INCUMBENT = "opus"
 # Running a scorer over the corpus
 # --------------------------------------------------------------------------
 
+# How many propositions one call is asked to judge. A verdict is an act of
+# attention, and a call asked for three hundred of them at once spends very
+# little on each; at forty the model can weigh a proposition against the film
+# rather than skim it. Above the bank size this does nothing, so a small bank
+# still runs in one call and the old cache arrangement still applies.
+BATCH_ITEMS = 40
+
+
+def _slices(items: list[dict[str, Any]], size: int):
+    for i in range(0, len(items), size):
+        yield items[i:i + size]
+
+
 def scan(
     alias: str, film_ids: Iterable[str], bank_version: str = "b1",
     variant: str = "spine", client=None, progress=None,
+    batch_size: int | None = None,
 ) -> dict[str, Any]:
     """Score every film with one scorer, into `model_verdicts`.
 
@@ -89,11 +103,73 @@ def scan(
          "n_films": len(packets), "n_items": len(items)},
     )
     stats = {"scorer": alias, "model": scorer.model, "run_id": run_id,
-             "films": len(packets), "scored": 0, "refused": 0, "failed": 0}
+             "films": len(packets), "scored": 0, "refused": 0, "failed": 0,
+             # Propositions that were asked about twice and answered neither
+             # time. Reported rather than absorbed: unanswered is not silence.
+             "unanswered": 0, "lost_slices": 0}
+
+    batched = bool(batch_size) and len(items) > batch_size
 
     def work(p):
-        return p, client.parse(system=system, user=_user_block(p),
-                               output_model=ScoreSet, max_tokens=16000)
+        if not batched:
+            return p, client.parse(system=system, user=_user_block(p),
+                                   output_model=ScoreSet, max_tokens=16000)
+        # The film is the cached prefix here and the propositions vary, which is
+        # the reverse of the single-call path — see `scoring_batched_system`.
+        # These slices run in SEQUENCE deliberately: the second call is what
+        # makes the first one's evidence cheap, and issuing them together would
+        # have every one of them miss. Concurrency is across films, above.
+        film_system = prompts.scoring_batched_system(_user_block(p))
+
+        def ask(part):
+            listing = "\n".join(f"{i['item_id']}. {i['text']}" for i in part)
+            return client.parse(
+                system=film_system,
+                user=f"Judge these {len(part)} propositions:\n\n{listing}",
+                output_model=ScoreSet,
+                # 40 verdicts with evidence strings overran 8000 and the reply
+                # was cut mid-object, which surfaces as "no usable structured
+                # output" rather than as truncation.
+                max_tokens=16000,
+            ).scores
+
+        collected = []
+        for part in _slices(items, batch_size):
+            # A slice that fails must not take the film down with it. One bad
+            # slice used to raise out of `work` and mark the whole packet
+            # failed, discarding every slice that had already succeeded — in one
+            # 150-film run that turned scattered slice errors into 58 lost
+            # films, most of which had 19 good slices in hand.
+            try:
+                scores = ask(part)
+            except Exception as error:
+                stats["lost_slices"] += 1
+                stats["unanswered"] += len(part)
+                if progress:
+                    progress(f"[yellow]{p.film_id}: slice of {len(part)} failed, "
+                             f"keeping the rest — {type(error).__name__}[/]")
+                continue
+            # A slice that comes back short is the one failure mode this
+            # arrangement adds, and it is silent: an item the model simply
+            # omitted is indistinguishable downstream from one it judged
+            # `not_addressed`, which is exactly the ambiguity `not_addressed`
+            # was introduced to remove. Measured on Troy, one slice of 40 came
+            # back with 34. So ask again for what is missing, and count what
+            # never arrives rather than letting it read as silence.
+            answered = {s.item_id for s in scores}
+            missing = [i for i in part if i["item_id"] not in answered]
+            if missing:
+                for s in ask(missing):
+                    if s.item_id not in answered:
+                        scores.append(s)
+                        answered.add(s.item_id)
+                still = [i for i in missing if i["item_id"] not in answered]
+                stats["unanswered"] += len(still)
+                if still and progress:
+                    progress(f"[yellow]{p.film_id}: {len(still)} of {len(part)} "
+                             f"never answered[/]")
+            collected.extend(scores)
+        return p, ScoreSet(scores=collected)
 
     def save(_p, result):
         p, scoreset = result

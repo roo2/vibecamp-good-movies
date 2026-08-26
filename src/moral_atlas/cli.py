@@ -13,7 +13,7 @@ from . import db
 from .analysis import ab as ab_mod
 from .analysis import bank as bank_mod
 from .analysis import dimensions as dim_mod
-from .config import settings
+from .config import PROMPT_VERSION, settings
 from .sources import ingest as ingest_mod
 from .sources import packet as packet_mod
 
@@ -129,6 +129,108 @@ def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that a
     from .sources import wikipedia as wiki_mod
     result = wiki_mod.populate_artwork(force=force)
     console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
+
+
+@app.command("sample-films")
+def sample_films(
+    n: int = typer.Option(100, help="How many films to pick."),
+    scorer: str = typer.Option("deepseek", help="Whose harvest already exists."),
+    variant: str = typer.Option("subs"),
+    show: int = typer.Option(15, help="How many of the picks to print."),
+) -> None:
+    """Pick the next films to harvest propositions from, by coverage rather than by chance.
+
+    The first harvest took whichever films had subtitles first: 122 of 135 in
+    English, 119 in the US or UK. Everything downstream inherits that, because
+    the films that write the propositions decide what the instrument can ask.
+    """
+    from .analysis import sampling
+
+    films = sampling.corpus()
+    done = sampling.already_harvested(scorer, variant)
+    picks = sampling.select(films, n, already=done)
+    before = sampling.coverage([f for f in films if f["film_id"] in done])
+    after = sampling.coverage([f for f in films if f["film_id"] in done] + picks)
+
+    console.print(f"[bold]{len(films)}[/] films with subtitles, [bold]{len(done)}[/] already harvested")
+    table = Table("facet", "distinct now", "distinct after", "largest share now",
+                  "after", box=None)
+    for facet in sorted(before["distinct"]):
+        table.add_row(facet, str(before["distinct"][facet]), str(after["distinct"].get(facet, 0)),
+                      f"{before['dominance'][facet]:.0%}", f"{after['dominance'].get(facet, 0):.0%}")
+    console.print(table)
+    console.print(f"\n[bold]first {min(show, len(picks))} picks[/]")
+    for film in picks[:show]:
+        console.print(f"  {film['title'][:44]:<44} {film['year']}  {film['original_language'] or '-'}")
+    ids = ",".join(f["film_id"] for f in picks)
+    console.print(f"\n[dim]atlas model-propose --films \"{ids}\"[/]")
+
+
+@app.command("semantic-bank")
+def semantic_bank_cmd(
+    scorer: str = typer.Option("deepseek"),
+    variant: str = typer.Option("subs"),
+    prefix: str = typer.Option("", help="Bank version prefix; defaults to <alias>-semantic."),
+    distance: float = typer.Option(0.45, help="Cosine distance for topical neighbourhoods."),
+    write: bool = typer.Option(False, help="Persist the bank. Off by default: writing a bank "
+                                          "invalidates every verdict scored against that version."),
+) -> None:
+    """Cut the harvest into an item bank by meaning rather than by wording.
+
+    Embeddings propose topical neighbourhoods, polarity blocks them, and a model
+    reads the MEMBER sentences and says how many distinct claims each really
+    holds. The lexical cut it replaces merged "the ends justify the means when
+    the end is the collective good" with "the ends do not justify immoral
+    means", then canonicalised from the representative alone and produced a
+    hedge that nearly every film affirms.
+    """
+    from .analysis import semantic_bank
+    from .llm.providers import client_for
+
+    rows = semantic_bank.harvest(scorer, variant)
+    if not rows:
+        console.print(f"[yellow]{scorer} has no {variant!r} harvest[/]")
+        raise typer.Exit(1)
+    client = client_for(scorer)
+    report = semantic_bank.build(rows, client, distance=distance,
+                                 progress=lambda m: console.print(f"[dim]{m}[/]"))
+    console.print(f"\n[bold]{report['n_propositions']}[/] propositions → "
+                  f"[bold]{report['n_neighbourhoods']}[/] neighbourhoods → "
+                  f"[bold]{report['n_claims']}[/] distinct claims")
+    console.print(f"  {json.dumps(client.usage.as_dict())}")
+
+    if not write:
+        console.print("[yellow]not written[/] — pass --write to persist, which discards "
+                      "every verdict scored against that bank version")
+        return
+    version = f"{prefix or scorer}-semantic"
+    run_id = db.start_run("bank", client.model, PROMPT_VERSION,
+                          {"bank_version": version, "semantic": True,
+                           "n_claims": report["n_claims"]})
+    invalidated = semantic_bank.write_bank(version, report["claims"], client.model, run_id)
+    db.finish_run(run_id, client.usage.as_dict())
+    console.print(f"[green]bank {version}[/] {report['n_claims']} items")
+    if invalidated:
+        console.print(f"[yellow]discarded {invalidated}[/]")
+
+
+@app.command("backfill-metadata")
+def backfill_metadata(
+    limit: Optional[int] = typer.Option(None, help="Only this many films; omit for all."),
+) -> None:
+    """Fill genre, country, language, director and source from Wikidata.
+
+    The subtitle-corpus ingest never called TMDB, so most films arrived with an
+    IMDb id and twelve empty columns. This fills the ones that can group films
+    for an analysis or filter them in the app, from a CC0 source — TMDB's terms
+    forbid using their content to develop a model, which the factor analysis is.
+    No API key needed.
+    """
+    from .sources import wikidata as wd
+    result = wd.backfill(limit=limit, progress=lambda m: console.print(f"[dim]{m}[/]"))
+    console.print(
+        f"[green]metadata[/] looked at {result['looked_at']}, matched {result['matched']}, "
+        f"updated {result['updated']} films across {result['columns']} column writes")
 
 
 @app.command("opus-index")
@@ -503,6 +605,11 @@ def model_scan(
     variant: str = typer.Option("spine", help="Evidence condition; the same one for every scorer."),
     limit: Optional[int] = typer.Option(None, help="Score only the first N films."),
     films: str = typer.Option("", help="Only these films (ids or title fragments, comma-separated)."),
+    batch_size: Optional[int] = typer.Option(
+        None, help="Propositions per call. Omit to send the whole bank in one call, which is "
+                   "right for a small bank. Set it for a large one: a call asked for hundreds "
+                   "of verdicts at once spends little attention on each, and batching puts the "
+                   "film in the cached prefix so its evidence is not resent per slice."),
 ) -> None:
     """Score films again with other models, to see whose morals the scores are.
 
@@ -532,7 +639,8 @@ def model_scan(
         raise typer.Exit(1)
     for alias in aliases:
         console.print(f"\n[bold]{alias}[/] over {len(film_ids)} films ({variant})")
-        stats = model_bias.scan(alias, film_ids, bank, variant, progress=console.print)
+        stats = model_bias.scan(alias, film_ids, bank, variant, progress=console.print,
+                                batch_size=batch_size)
         console.print(f"  scored {stats['scored']}, refused [yellow]{stats['refused']}[/], "
                       f"failed [red]{stats['failed']}[/]  {json.dumps(stats['usage'])}")
 

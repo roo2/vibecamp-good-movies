@@ -163,3 +163,76 @@ THE PROPOSITION BANK
 
 {bank_block}
 """
+
+
+def scoring_batched_system(evidence_block: str) -> str:
+    """Scoring with the FILM cached and the propositions varying.
+
+    `scoring_system` puts the whole bank in the system prompt and the film in
+    the user turn, which is right while the bank fits in one call: the bank is
+    then a byte-identical prefix across every film in the run, and the cache
+    pays for the sweep.
+
+    It stops being right once the bank is too large to judge in one pass. Asking
+    for a verdict on a thousand propositions in a single call spends very little
+    attention on each, and splitting the bank the obvious way — same system
+    prompt, one call per slice — would resend the film's evidence with every
+    slice. Evidence is the expensive half: a subtitle packet runs 16-25k tokens
+    against roughly 6k for a 300-item bank, so that arrangement multiplies the
+    dominant cost by the number of slices.
+
+    So the two are swapped. The film goes in the system prompt, where it is a
+    stable prefix across all of that film's slices and is charged once at full
+    rate and then at cache rates; the propositions go in the user turn, where
+    they are small. This only pays if a film's slices are issued in sequence —
+    concurrency belongs ACROSS films, not within one.
+    """
+    return f"""\
+You decide which of a list of moral propositions a film takes a position on,
+and which way.
+
+{EVIDENCE_DISCIPLINE}
+
+{STANCE_DISCIPLINE}
+
+HOW TO ANSWER
+
+DENYING IS A CLAIM, NOT A DEFAULT. `denies` means the film asserts the OPPOSITE
+of the proposition — it takes the other side and puts weight there. It does not
+mean the subject never came up. If a war picture never mentions animals, the
+proposition about engineering other species is `not_addressed`; answering
+`denies` would record the film as arguing for animal welfare, which it never
+did. Ask yourself: could I name what the film says INSTEAD? If not, it is
+`not_addressed`.
+
+Use `not_addressed` freely. Most films engage a minority of any large bank and
+that is expected — it is a real and informative state, not a failure to find
+something. A comedy that never raises the question of legitimate authority is
+telling you something different from one that is even-handed about it.
+
+A NOTE ON WHY THIS IS WORDED SO FIRMLY. Softening it does not work. Adding a
+symmetrical warning — that a film taking the other side must be recorded as
+`denies`, not waved away — was tried and measured: denials returned to 14% of
+verdicts, and 14% of THOSE were irrelevance again, undoing the whole fix. The
+reader cannot reliably hold both instructions at once, so the pipeline accepts
+fewer denials in exchange for denials that mean something.
+
+HOW FIRMLY. For the items the film does engage, say how much weight it puts
+there. `strongly_affirms` and `strongly_denies` are for positions the film is
+built around — what the ending validates, what the protagonist pays for, what
+the work would stop making sense without. Plain `affirms` and `denies` are for
+positions the film clearly takes in passing. A film ABOUT revenge and a film
+that mentions a grudge are not making the same claim.
+
+Do not stretch. If you find yourself reasoning "well, in a sense the film
+implies...", answer `not_addressed`. Only score what the work puts weight on.
+
+YOU ARE SEEING A SLICE OF A LARGER BANK. Judge only the propositions in front
+of you, and judge every one of them. Do not adjust a verdict to balance the
+slice: there is no expected number of affirmations in any given batch, and a
+slice where the film addresses nothing at all is a normal result.
+
+THE FILM
+
+{evidence_block}
+"""

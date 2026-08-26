@@ -21,8 +21,8 @@ the films that took a position on BOTH of them.
     item loadings shared one sign, and a film's place on it correlated +0.87
     with how many propositions it engaged.
 
-    At 465 films every pair shares at least one film, the mean overlap is 96 and
-    the median 86. Normalising the dense reading does not substitute for this:
+    At 422 films every pair shares at least one film, the mean overlap is 89 and
+    the median 74. Normalising the dense reading does not substitute for this:
     centring and scaling each film moves that correlation from +0.87 to -0.86,
     flipping the sign and keeping the coupling, because silence is 63% of the
     matrix and normalising values cannot touch a pattern of zeros.
@@ -59,12 +59,12 @@ factors whose observed eigenvalue clears the 95th percentile of the null.
 This is what makes the count a finding rather than a setting.
 
 A REAL LIMIT, STATED ONCE. Factor analysis conventionally wants several times
-more respondents than variables. With 465 films and 298 items that is no longer
+more respondents than variables. With 422 films and 297 items that is no longer
 inverted, but the correlation matrix still has rank at most the number of films,
 so the recoverable ceiling is reported alongside the count. What would carry
 most weight is agreement between models: if scorers that harvested different
 propositions keep landing on the same k, that is evidence the corpus has that
-many joints. They do not currently — one finds eleven and another finds none —
+many joints. They do not currently — one finds twenty and another finds none —
 and that disagreement is itself the finding.
 """
 from __future__ import annotations
@@ -160,9 +160,10 @@ def _pairwise_correlation(matrix) -> Any:
 
     The strict reading of the question, and the one the module docstring records
     as unanswerable — at 40 films, 82% of item pairs shared no film at all and
-    the mean overlap was 0.21. That is no longer true: at 465 films every pair
-    shares at least one, the mean overlap is 96 and the median 86, so the
-    estimator this corpus could not support is now the estimator it can.
+    the mean overlap was 0.21. That is no longer true: at 422 films every pair
+    shares at least one, the mean overlap is 89 and the median 74, and only 5%
+    fall under MIN_PAIR_OVERLAP — so the estimator this corpus could not support
+    is now the estimator it can.
 
     It matters because the dense reading cannot be rescued by normalising.
     Silence is 63% of the matrix, so an estimator that treats silence as a value
@@ -281,8 +282,62 @@ def parallel_analysis(
     }
 
 
+def split_half_overlap(matrix, k: int = 5, reps: int = 12, seed: int = 7) -> dict[str, Any]:
+    """Do the same factors come back from two random halves of the FILMS?
+
+    The question the factor count cannot answer. Parallel analysis says how many
+    factors beat chance in the data you have; it says nothing about whether the
+    same factors would appear in another sample of films. An instrument that
+    passes the null and fails this one is measuring this corpus rather than
+    measuring films.
+
+    Reported as SUBSPACE overlap, not as agreement factor by factor. Individual
+    factors are not separately identified when their eigenvalues are close — the
+    solution is free to rotate within the tied block — so matching factor 3 of
+    one half against factor 3 of the other punishes a stable structure for an
+    arbitrary choice of basis. The mean squared canonical correlation between
+    the two k-dimensional spaces has no such problem: it asks whether the halves
+    describe the same variation, however each chose to name its axes.
+
+    1.0 is identical, and `chance` (k / number of items) is what two unrelated
+    samples score. Read the gap between them, not the raw figure.
+
+    A caution that belongs with every number this returns: each half has half
+    the films, and the pairwise estimator degrades as films are removed — at 211
+    films 11.4% of item pairs fall under MIN_PAIR_OVERLAP against 4.9% at 422.
+    So this is a lower bound on the stability of the full corpus, and it is
+    most useful watched over time as films are added rather than read once.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    n_items = matrix.shape[1]
+    k = min(k, n_items)
+
+    def basis(sub):
+        corr = _pairwise_correlation(_film_centred(sub))
+        values, vectors = np.linalg.eigh(corr)
+        return vectors[:, np.argsort(values)[::-1][:k]]
+
+    scores = []
+    for _ in range(reps):
+        order = rng.permutation(matrix.shape[0])
+        half = len(order) // 2
+        a, b = basis(matrix[order[:half]]), basis(matrix[order[half:]])
+        singular = np.linalg.svd(a.T @ b, compute_uv=False)
+        scores.append(float((singular ** 2).sum() / k))
+
+    return {
+        "k": k, "reps": reps, "films": int(matrix.shape[0]), "items": int(n_items),
+        "overlap": float(np.mean(scores)),
+        "spread": float(np.std(scores)),
+        "chance": k / n_items,
+    }
+
+
 def item_groups(matrix, items: list[str], k: int,
-                seed: int = 11) -> tuple[dict[str, int], dict[str, float], dict[str, float]]:
+                seed: int = 11) -> tuple[dict[str, int], dict[str, float],
+                                         dict[str, float], dict[int, int]]:
     """Sort items into k groups by how films responded to them.
 
     Clustering the loadings rather than the raw columns: two items answered the
@@ -301,10 +356,10 @@ def item_groups(matrix, items: list[str], k: int,
     # group would hand the namer every proposition in the bank and get an axis
     # back — a named, plausible, entirely invented axis with no margin behind it.
     if k < 1:
-        return {}, {}, {}
+        return {}, {}, {}, {}
     if k < 2:
         return ({item: 0 for item in items}, {item: 0.0 for item in items},
-                {item: 1.0 for item in items})
+                {item: 1.0 for item in items}, {0: 0})
     # Cluster the LOADINGS of the agreement matrix — eigenvectors scaled by the
     # square root of their eigenvalues — so membership is decided by the same
     # reading of the data that decided the count.
@@ -345,12 +400,34 @@ def item_groups(matrix, items: list[str], k: int,
     # Each factor is oriented so its majority is positive, which keeps the
     # direction the naming step was shown. An item with a negative loading is
     # reverse-keyed: a film that denies it is taking the factor's high position.
+    # WHICH COLUMN. A k-means label is an arbitrary integer — the clusterer
+    # numbers groups by where its initialisation happened to land, not by any
+    # correspondence to an eigenvector. This used to read
+    # `loadings[members, factor]`, taking cluster 3's loading on eigenvector 3
+    # as though the two were the same object. Measured on this corpus, NONE of
+    # the twenty clusters had a label matching the eigenvector its members
+    # actually load on, and the column being read carried a median of 20% of
+    # the group's signal — for one group, 0.1%.
+    #
+    # That mattered twice over. The sign decides which propositions are
+    # reverse-keyed, and reverse-keying is what `user_scores.factor_stances`
+    # uses to flip a verdict before scoring a person. And the eigenvalue
+    # attached to each named axis is what the product orders "the strongest
+    # six" by. So a group was being described, oriented and ranked by a factor
+    # that was not its own.
+    #
+    # Each group is matched to the factor its members genuinely load on. Two
+    # groups may choose the same one; that is a real answer — they are facets
+    # of one factor — and better than a unique-but-arbitrary assignment.
+    dominant: dict[int, int] = {}
     signed: dict[str, float] = {}
     for factor in range(k):
         members = [i for i, label in enumerate(labels) if label == factor]
         if not members:
             continue
-        column = loadings[members, factor]
+        best = int(np.argmax(np.abs(loadings[members].mean(axis=0))))
+        dominant[factor] = best
+        column = loadings[members, best]
         if float(np.sign(column).sum()) < 0:
             column = -column
         for position, value in zip(members, column):
@@ -358,7 +435,7 @@ def item_groups(matrix, items: list[str], k: int,
 
     return ({item: int(label) for item, label in zip(items, labels)},
             {item: float(distance) for item, distance in zip(items, distances)},
-            signed)
+            signed, dominant)
 
 
 def analyse(
@@ -369,8 +446,8 @@ def analyse(
     """The whole thing for one scorer: how many dimensions, and which items."""
     data = response_matrix(scorer, bank_version, min_films, variant)
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
-    groups, distance, loading = item_groups(data["matrix"], data["items"],
-                                            horn["n_clear_factors"], seed=seed)
+    groups, distance, loading, dominant = item_groups(
+        data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
         sizes[label] = sizes.get(label, 0) + 1
@@ -398,6 +475,9 @@ def analyse(
         # Signed loading: direction and weight. Negative means reverse-keyed —
         # denying it is what the factor's high pole asserts.
         "loading": loading,
+        # Which eigenvector each k-means group actually loads on. Not the
+        # group's own label — see the note in `item_groups`.
+        "dominant": dominant,
     }
 
 

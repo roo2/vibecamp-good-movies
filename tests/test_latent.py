@@ -248,18 +248,20 @@ def test_the_atlas_hides_nothing_and_the_product_shows_a_handful():
     whole purpose is to show them. The null test at 5% is the only bar on the
     atlas now.
 
-    The product still shows a few, because somebody choosing a film is not
-    auditing a corpus. That limit is honest about being about a screen.
+    The product shows few, and that limit stopped being about a screen. Split
+    the films in half and ask whether both halves find the same variation: the
+    first factor returns at 0.59 against a chance floor of 0.003, the second at
+    0.35, and by the fifth it is 0.21 and falling into the floor. Clearing a
+    permutation null and surviving a change of sample are different tests, and
+    most of the twenty pass only the first.
     """
     from moral_atlas.analysis import factor_names, user_scores
 
     assert not hasattr(factor_names, "DISPLAY_MARGIN"), (
         "the editorial threshold is gone; nothing should filter the atlas")
-    assert user_scores.PRODUCT_AXES == 6
-
-    axes = [{"dim_id": i, "name": f"axis {i}", "question": "?", "pole_high": "h",
-             "pole_low": "l"} for i in range(11)]
-    assert len(axes[:user_scores.PRODUCT_AXES]) == 6
+    assert user_scores.PRODUCT_AXES <= 3, (
+        "the product's axis count is a claim about what replicates, not a layout "
+        "decision — raising it needs replication evidence behind it")
 def test_the_strict_estimator_ignores_silence_entirely():
     """Two items only ever answered by different films cannot be correlated."""
     matrix = np.array([

@@ -257,11 +257,19 @@ def score_preferences(
 # factor's items.
 
 
-# How many axes a person is shown. A presentation choice and nothing more: the
-# compass is read in one sitting by somebody deciding what to watch, and eleven
-# moral scales is a report rather than a reading. The atlas shows all of them,
-# because auditing the corpus is exactly what that page is for.
-PRODUCT_AXES = 6
+# How many axes a person is shown. Not a presentation choice any more — a claim
+# about how many the data supports, and the honest answer is: few.
+#
+# Split-half replication says it plainly. Split the films in two, run the
+# analysis on each half and ask whether the halves describe the same variation:
+# the first factor comes back at 0.59 against a chance floor of 0.003, the
+# second at 0.35, the third at 0.29, and by the fifth it is 0.21 and falling
+# into the floor. Clearing a permutation null and surviving a change of sample
+# are different tests, and most of the twenty pass only the first.
+#
+# So three, and the atlas still shows all twenty — auditing the corpus is what
+# that page is for.
+PRODUCT_AXES = 3
 
 # A factor needs items before it is a factor. Three of the twenty axes the last
 # rebuild produced were built from a SINGLE proposition, and one of those was
@@ -292,15 +300,35 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
             # somebody as a reading of what they believe. It stays in the atlas,
             # where the warning beside it is the point.
             "AND (coherent IS NULL OR coherent=1) "
-            "ORDER BY eigenvalue DESC",
+            # Ties are now common and meaningful: several groups can load on
+            # the same factor, which says they are facets of it rather than
+            # separate axes. Eigenvalue alone then leaves the order to whatever
+            # SQLite returns first, so the number of propositions behind a
+            # group breaks it — the more of the factor a group carries, the
+            # better it stands for it.
+            "ORDER BY eigenvalue DESC, n_items DESC",
             [scorer, variant, bank_version, MIN_AXIS_ITEMS],
         ).fetchall()
     # The short labels ride along with the sentences: a score is a point on a
     # line, and a line needs a word at each end before the number means anything.
-    axes = [{"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
-             "pole_high": r["pole_high"], "pole_low": r["pole_low"],
-             "pole_high_label": r["pole_high_label"] or r["name"],
-             "pole_low_label": r["pole_low_label"] or r["name"]} for r in rows]
+    # ONE AXIS PER FACTOR. Several groups can load on the same factor — eight of
+    # the twenty load on the first — which means they are facets of it, not
+    # separate questions. Showing six in a row implies six independent readings
+    # of a person when five of them may be one reading rephrased, and a reader
+    # has no way to tell. Groups sharing a factor share its eigenvalue, so that
+    # is what identifies them here; the group with the most propositions behind
+    # it stands for the factor, since it carries most of what the factor is.
+    seen: set[Any] = set()
+    axes: list[dict[str, Any]] = []
+    for r in rows:
+        key = round(r["eigenvalue"], 6) if r["eigenvalue"] is not None else id(r)
+        if key in seen:
+            continue
+        seen.add(key)
+        axes.append({"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
+                     "pole_high": r["pole_high"], "pole_low": r["pole_low"],
+                     "pole_high_label": r["pole_high_label"] or r["name"],
+                     "pole_low_label": r["pole_low_label"] or r["name"]})
     return axes[:limit] if limit else axes
 
 

@@ -257,3 +257,43 @@ def test_each_group_is_signed_by_the_factor_it_actually_loads_on():
         # and the signed value must be that column's magnitude, up to orientation
         assert np.allclose(sorted(abs(loading[items[i]]) for i in members),
                            sorted(abs(loadings[members, factor])))
+
+
+def test_the_product_never_shows_two_facets_of_one_factor():
+    """Eight of the twenty groups load on the first factor alone.
+
+    Listing several of them side by side implies several independent readings
+    of a person when they are one reading rephrased, and nothing on the screen
+    lets a reader tell. Groups sharing a factor share its eigenvalue, so that is
+    what deduplicates them; the group with the most propositions stands for it.
+    """
+    import sqlite3
+
+    from moral_atlas.analysis import user_scores
+
+    def row(**kw):
+        return kw
+
+    rows = [row(factor_id=1, name="a", question="?", pole_high="h", pole_low="l",
+                pole_high_label="A", pole_low_label="B", eigenvalue=68.2),
+            row(factor_id=2, name="b", question="?", pole_high="h", pole_low="l",
+                pole_high_label="C", pole_low_label="D", eigenvalue=68.2),
+            row(factor_id=3, name="c", question="?", pole_high="h", pole_low="l",
+                pole_high_label="E", pole_low_label="F", eigenvalue=31.4)]
+
+    class FakeCursor:
+        def fetchall(self): return rows
+
+    class FakeCon:
+        def execute(self, *a, **k): return FakeCursor()
+
+    import contextlib
+    from moral_atlas import db as db_mod
+    original = db_mod.connect
+    db_mod.connect = lambda *a, **k: contextlib.nullcontext(FakeCon())
+    try:
+        axes = user_scores.factor_axes("s", "v", "b", limit=None)
+    finally:
+        db_mod.connect = original
+    assert len(axes) == 2, f"two distinct factors, got {[a['dim_id'] for a in axes]}"
+    assert [a["dim_id"] for a in axes] == [1, 3]

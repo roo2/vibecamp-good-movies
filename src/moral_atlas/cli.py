@@ -689,8 +689,20 @@ def model_scan(
         console.print(f"\n[bold]{alias}[/] over {len(film_ids)} films ({variant})")
         stats = model_bias.scan(alias, film_ids, bank, variant, progress=console.print,
                                 batch_size=batch_size)
+        # lost_slices and unanswered were counted and never shown, which made a
+        # run that silently dropped most of its work report "failed 0". A
+        # partial result that looks complete is worse than a failure.
+        lost = stats.get("lost_slices", 0)
+        missed = stats.get("unanswered", 0)
         console.print(f"  scored {stats['scored']}, refused [yellow]{stats['refused']}[/], "
-                      f"failed [red]{stats['failed']}[/]  {json.dumps(stats['usage'])}")
+                      f"failed [red]{stats['failed']}[/]"
+                      + (f", [red]{lost} slices lost[/]" if lost else "")
+                      + (f", [yellow]{missed} propositions never answered[/]" if missed else "")
+                      + f"  {json.dumps(stats['usage'])}")
+        if lost:
+            console.print(f"  [red]{lost} slices were dropped[/] — this run is INCOMPLETE. "
+                          f"Re-run it; concurrent scans against one database are the "
+                          f"usual cause.")
 
 
 @app.command()

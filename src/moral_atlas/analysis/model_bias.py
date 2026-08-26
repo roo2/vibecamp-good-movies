@@ -106,7 +106,7 @@ def scan(
              "films": len(packets), "scored": 0, "refused": 0, "failed": 0,
              # Propositions that were asked about twice and answered neither
              # time. Reported rather than absorbed: unanswered is not silence.
-             "unanswered": 0}
+             "unanswered": 0, "lost_slices": 0}
 
     batched = bool(batch_size) and len(items) > batch_size
 
@@ -127,12 +127,28 @@ def scan(
                 system=film_system,
                 user=f"Judge these {len(part)} propositions:\n\n{listing}",
                 output_model=ScoreSet,
-                max_tokens=8000,
+                # 40 verdicts with evidence strings overran 8000 and the reply
+                # was cut mid-object, which surfaces as "no usable structured
+                # output" rather than as truncation.
+                max_tokens=16000,
             ).scores
 
         collected = []
         for part in _slices(items, batch_size):
-            scores = ask(part)
+            # A slice that fails must not take the film down with it. One bad
+            # slice used to raise out of `work` and mark the whole packet
+            # failed, discarding every slice that had already succeeded — in one
+            # 150-film run that turned scattered slice errors into 58 lost
+            # films, most of which had 19 good slices in hand.
+            try:
+                scores = ask(part)
+            except Exception as error:
+                stats["lost_slices"] += 1
+                stats["unanswered"] += len(part)
+                if progress:
+                    progress(f"[yellow]{p.film_id}: slice of {len(part)} failed, "
+                             f"keeping the rest — {type(error).__name__}[/]")
+                continue
             # A slice that comes back short is the one failure mode this
             # arrangement adds, and it is silent: an item the model simply
             # omitted is indistinguishable downstream from one it judged

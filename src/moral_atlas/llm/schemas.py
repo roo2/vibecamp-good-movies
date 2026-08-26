@@ -132,7 +132,13 @@ class ItemScore(BaseModel):
         ge=0.0, le=1.0,
         description="How sure YOU are of the reading. Separate from how firmly "
                     "the FILM holds it, which is the verdict.")
-    evidence: str = Field(description="Brief grounding from the supplied evidence.")
+    # Optional, because it is routinely omitted for `not_addressed` — there is
+    # nothing to quote when the film never raised the subject. Requiring it cost
+    # 58 of 150 films in one batched run: pydantic rejected the whole slice over
+    # a missing string on items the model had correctly called silent.
+    evidence: str = Field(
+        default="", description="Brief grounding from the supplied evidence. "
+                                "May be empty when the verdict is not_addressed.")
 
 
 class ScoreSet(BaseModel):

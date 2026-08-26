@@ -146,8 +146,12 @@ def scan(
                 stats["lost_slices"] += 1
                 stats["unanswered"] += len(part)
                 if progress:
+                    # The TYPE alone is not a diagnosis. Printing only
+                    # "HTTPStatusError" across 1,682 dropped slices said nothing
+                    # about which HTTP error, which is the whole question.
                     progress(f"[yellow]{p.film_id}: slice of {len(part)} failed, "
-                             f"keeping the rest — {type(error).__name__}[/]")
+                             f"keeping the rest — {type(error).__name__}: "
+                             f"{str(error)[:160]}[/]")
                 continue
             # A slice that comes back short is the one failure mode this
             # arrangement adds, and it is silent: an item the model simply

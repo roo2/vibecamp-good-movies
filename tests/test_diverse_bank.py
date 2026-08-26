@@ -221,3 +221,39 @@ def test_split_half_overlap_recovers_planted_structure():
     # of 0.02 — above chance, nowhere near reproducible.
     assert result["overlap"] > 0.6, (
         f"planted factors only reproduced at {result['overlap']:.2f}")
+
+
+def test_each_group_is_signed_by_the_factor_it_actually_loads_on():
+    """k-means labels are arbitrary integers, not factor indices.
+
+    The code used to read `loadings[members, factor]` — cluster 3's loading on
+    eigenvector 3 — as though a cluster's label named a factor. On the real
+    corpus none of the twenty clusters had a label matching the eigenvector its
+    members load on, and the column being read held a median 20% of the group's
+    signal. That sign decides which propositions are reverse-keyed, and the
+    matching eigenvalue decides which axes the product calls strongest.
+    """
+    import numpy as np
+    from moral_atlas.analysis import latent
+
+    rng = np.random.default_rng(11)
+    # Three well-separated factors; which label k-means gives each is arbitrary.
+    planted = _planted(300, 45, k=3, engagement=0.9, rng=rng, noise=0.25)
+    items = [f"I{n:03d}" for n in range(45)]
+    groups, _distance, loading, dominant = latent.item_groups(planted, items, 3)
+
+    assert set(dominant) == {0, 1, 2}, "every non-empty group needs a factor"
+    corr = latent._pairwise_correlation(latent._film_centred(planted))
+    values, vectors = np.linalg.eigh(corr)
+    order = np.argsort(values)[::-1][:3]
+    loadings = vectors[:, order] * np.sqrt(np.clip(values[order], 0, None))
+
+    for label, factor in dominant.items():
+        members = [i for i, item in enumerate(items) if groups[item] == label]
+        profile = np.abs(loadings[members].mean(axis=0))
+        assert factor == int(np.argmax(profile)), (
+            f"group {label} was signed by factor {factor}, but loads on "
+            f"{int(np.argmax(profile))}")
+        # and the signed value must be that column's magnitude, up to orientation
+        assert np.allclose(sorted(abs(loading[items[i]]) for i in members),
+                           sorted(abs(loadings[members, factor])))

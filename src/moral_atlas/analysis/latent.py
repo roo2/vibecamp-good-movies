@@ -336,7 +336,8 @@ def split_half_overlap(matrix, k: int = 5, reps: int = 12, seed: int = 7) -> dic
 
 
 def item_groups(matrix, items: list[str], k: int,
-                seed: int = 11) -> tuple[dict[str, int], dict[str, float], dict[str, float]]:
+                seed: int = 11) -> tuple[dict[str, int], dict[str, float],
+                                         dict[str, float], dict[int, int]]:
     """Sort items into k groups by how films responded to them.
 
     Clustering the loadings rather than the raw columns: two items answered the
@@ -355,10 +356,10 @@ def item_groups(matrix, items: list[str], k: int,
     # group would hand the namer every proposition in the bank and get an axis
     # back — a named, plausible, entirely invented axis with no margin behind it.
     if k < 1:
-        return {}, {}, {}
+        return {}, {}, {}, {}
     if k < 2:
         return ({item: 0 for item in items}, {item: 0.0 for item in items},
-                {item: 1.0 for item in items})
+                {item: 1.0 for item in items}, {0: 0})
     # Cluster the LOADINGS of the agreement matrix — eigenvectors scaled by the
     # square root of their eigenvalues — so membership is decided by the same
     # reading of the data that decided the count.
@@ -399,12 +400,34 @@ def item_groups(matrix, items: list[str], k: int,
     # Each factor is oriented so its majority is positive, which keeps the
     # direction the naming step was shown. An item with a negative loading is
     # reverse-keyed: a film that denies it is taking the factor's high position.
+    # WHICH COLUMN. A k-means label is an arbitrary integer — the clusterer
+    # numbers groups by where its initialisation happened to land, not by any
+    # correspondence to an eigenvector. This used to read
+    # `loadings[members, factor]`, taking cluster 3's loading on eigenvector 3
+    # as though the two were the same object. Measured on this corpus, NONE of
+    # the twenty clusters had a label matching the eigenvector its members
+    # actually load on, and the column being read carried a median of 20% of
+    # the group's signal — for one group, 0.1%.
+    #
+    # That mattered twice over. The sign decides which propositions are
+    # reverse-keyed, and reverse-keying is what `user_scores.factor_stances`
+    # uses to flip a verdict before scoring a person. And the eigenvalue
+    # attached to each named axis is what the product orders "the strongest
+    # six" by. So a group was being described, oriented and ranked by a factor
+    # that was not its own.
+    #
+    # Each group is matched to the factor its members genuinely load on. Two
+    # groups may choose the same one; that is a real answer — they are facets
+    # of one factor — and better than a unique-but-arbitrary assignment.
+    dominant: dict[int, int] = {}
     signed: dict[str, float] = {}
     for factor in range(k):
         members = [i for i, label in enumerate(labels) if label == factor]
         if not members:
             continue
-        column = loadings[members, factor]
+        best = int(np.argmax(np.abs(loadings[members].mean(axis=0))))
+        dominant[factor] = best
+        column = loadings[members, best]
         if float(np.sign(column).sum()) < 0:
             column = -column
         for position, value in zip(members, column):
@@ -412,7 +435,7 @@ def item_groups(matrix, items: list[str], k: int,
 
     return ({item: int(label) for item, label in zip(items, labels)},
             {item: float(distance) for item, distance in zip(items, distances)},
-            signed)
+            signed, dominant)
 
 
 def analyse(
@@ -423,8 +446,8 @@ def analyse(
     """The whole thing for one scorer: how many dimensions, and which items."""
     data = response_matrix(scorer, bank_version, min_films, variant)
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
-    groups, distance, loading = item_groups(data["matrix"], data["items"],
-                                            horn["n_clear_factors"], seed=seed)
+    groups, distance, loading, dominant = item_groups(
+        data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
         sizes[label] = sizes.get(label, 0) + 1
@@ -452,6 +475,9 @@ def analyse(
         # Signed loading: direction and weight. Negative means reverse-keyed —
         # denying it is what the factor's high pole asserts.
         "loading": loading,
+        # Which eigenvector each k-means group actually loads on. Not the
+        # group's own label — see the note in `item_groups`.
+        "dominant": dominant,
     }
 
 

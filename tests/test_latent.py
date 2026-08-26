@@ -122,7 +122,7 @@ def test_structureless_responses_yield_no_factors():
 def test_items_are_grouped_with_the_ones_sharing_their_factor():
     matrix = planted(n_films=60, per_factor=20, k=3, noise=0.3)
     items = [f"I{i:03d}" for i in range(matrix.shape[1])]
-    groups, distance, loading = latent.item_groups(matrix, items, 3)
+    groups, distance, loading, _dominant = latent.item_groups(matrix, items, 3)
 
     # Items 0-19 were built from factor 0, 20-39 from factor 1, 40-59 from 2.
     blocks = [ {groups[items[i]] for i in range(start, start + 20)}
@@ -230,7 +230,7 @@ def test_item_groups_reports_how_far_each_item_sits_from_its_centre():
         [-1.0, -1.0, 1.0, 1.0],
         [1.0, 1.0, 1.0, -1.0],
     ])
-    groups, distance, loading = item_groups(matrix, ["a", "b", "c", "d"], 2)
+    groups, distance, loading, _dominant = item_groups(matrix, ["a", "b", "c", "d"], 2)
 
     assert set(groups) == {"a", "b", "c", "d"}
     assert groups["a"] == groups["b"] and groups["c"] != groups["a"]
@@ -317,7 +317,7 @@ def test_every_factor_is_oriented_by_its_majority():
     """
     matrix = like_the_corpus(k=3, seed=4)
     items = [f"I{i:03d}" for i in range(matrix.shape[1])]
-    groups, _distance, loading = latent.item_groups(matrix, items, 3)
+    groups, _distance, loading, _dominant = latent.item_groups(matrix, items, 3)
 
     assert set(loading) == set(items), "every item carries a signed weight"
     for factor in sorted(set(groups.values())):

@@ -175,3 +175,49 @@ def test_wikidata_drops_unresolved_q_numbers():
     rows = [{"imdb": {"value": "tt2"}, "genresLabel": {"value": "Q12345"}},
             {"imdb": {"value": "tt2"}, "genresLabel": {"value": "epic film"}}]
     assert wikidata._fold(rows)["tt2"]["genres"] == ["epic film"]
+
+
+# --------------------------------------------------------------------------
+# Does the instrument reproduce itself?
+# --------------------------------------------------------------------------
+
+def _planted(n_films, n_items, k, engagement, rng, noise):
+    """Films x items where each item is driven by exactly one of k factors."""
+    import numpy as np
+
+    scores = rng.normal(size=(n_films, k))
+    owner = np.arange(n_items) % k
+    signal = scores[:, owner] + rng.normal(scale=noise, size=(n_films, n_items))
+    values = np.where(signal >= 0, 1.0, -1.0)
+    # Zero is the missing marker for this estimator, so silence is punched in
+    # rather than being a value the signal could take.
+    return np.where(rng.random((n_films, n_items)) < engagement, values, 0.0)
+
+
+def test_split_half_overlap_is_near_chance_on_noise():
+    """Two halves of structureless data must not look like they agree."""
+    import numpy as np
+    from moral_atlas.analysis import latent
+
+    rng = np.random.default_rng(3)
+    values = np.where(rng.random((300, 60)) < 0.6,
+                      rng.choice([-1.0, 1.0], size=(300, 60)), 0.0)
+    result = latent.split_half_overlap(values, k=5, reps=6)
+    assert result["overlap"] < 4 * result["chance"], (
+        f"noise reproduced itself at {result['overlap']:.2f}")
+
+
+def test_split_half_overlap_recovers_planted_structure():
+    """And real structure must come back from both halves, or the measure is useless."""
+    import numpy as np
+    from moral_atlas.analysis import latent
+
+    rng = np.random.default_rng(3)
+    planted = _planted(400, 60, k=4, engagement=0.85, rng=rng, noise=0.35)
+    result = latent.split_half_overlap(planted, k=4, reps=6)
+    # The threshold is set where the measure DISCRIMINATES rather than at some
+    # ideal: planted structure lands near 0.74 here and noise near 0.08. For
+    # scale, the real deepseek corpus scores 0.21 at k=5 against a chance floor
+    # of 0.02 — above chance, nowhere near reproducible.
+    assert result["overlap"] > 0.6, (
+        f"planted factors only reproduced at {result['overlap']:.2f}")

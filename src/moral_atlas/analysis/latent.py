@@ -282,6 +282,59 @@ def parallel_analysis(
     }
 
 
+def split_half_overlap(matrix, k: int = 5, reps: int = 12, seed: int = 7) -> dict[str, Any]:
+    """Do the same factors come back from two random halves of the FILMS?
+
+    The question the factor count cannot answer. Parallel analysis says how many
+    factors beat chance in the data you have; it says nothing about whether the
+    same factors would appear in another sample of films. An instrument that
+    passes the null and fails this one is measuring this corpus rather than
+    measuring films.
+
+    Reported as SUBSPACE overlap, not as agreement factor by factor. Individual
+    factors are not separately identified when their eigenvalues are close — the
+    solution is free to rotate within the tied block — so matching factor 3 of
+    one half against factor 3 of the other punishes a stable structure for an
+    arbitrary choice of basis. The mean squared canonical correlation between
+    the two k-dimensional spaces has no such problem: it asks whether the halves
+    describe the same variation, however each chose to name its axes.
+
+    1.0 is identical, and `chance` (k / number of items) is what two unrelated
+    samples score. Read the gap between them, not the raw figure.
+
+    A caution that belongs with every number this returns: each half has half
+    the films, and the pairwise estimator degrades as films are removed — at 211
+    films 11.4% of item pairs fall under MIN_PAIR_OVERLAP against 4.9% at 422.
+    So this is a lower bound on the stability of the full corpus, and it is
+    most useful watched over time as films are added rather than read once.
+    """
+    import numpy as np
+
+    rng = np.random.default_rng(seed)
+    n_items = matrix.shape[1]
+    k = min(k, n_items)
+
+    def basis(sub):
+        corr = _pairwise_correlation(_film_centred(sub))
+        values, vectors = np.linalg.eigh(corr)
+        return vectors[:, np.argsort(values)[::-1][:k]]
+
+    scores = []
+    for _ in range(reps):
+        order = rng.permutation(matrix.shape[0])
+        half = len(order) // 2
+        a, b = basis(matrix[order[:half]]), basis(matrix[order[half:]])
+        singular = np.linalg.svd(a.T @ b, compute_uv=False)
+        scores.append(float((singular ** 2).sum() / k))
+
+    return {
+        "k": k, "reps": reps, "films": int(matrix.shape[0]), "items": int(n_items),
+        "overlap": float(np.mean(scores)),
+        "spread": float(np.std(scores)),
+        "chance": k / n_items,
+    }
+
+
 def item_groups(matrix, items: list[str], k: int,
                 seed: int = 11) -> tuple[dict[str, int], dict[str, float], dict[str, float]]:
     """Sort items into k groups by how films responded to them.

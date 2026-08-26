@@ -355,7 +355,19 @@ class OpenAICompatibleClient:
                         f"It is answering at far greater length than the rubric asks "
                         f"for — the bank expects only the items a film engages.")
                 return content
-            except httpx.HTTPStatusError:
+            except httpx.HTTPStatusError as e:
+                # Re-raised unchanged in TYPE, because `_request` catches this
+                # to tell "you do not support that response_format" (400) from
+                # anything else, and a friendlier exception class would break
+                # that fallback. Only the message is enriched: 1,270 slices of a
+                # 143-film run failed as a bare "HTTPStatusError" with no way to
+                # tell a malformed request from an exhausted account without
+                # re-running the whole thing to find out.
+                try:
+                    e.args = (f"{self.model}: HTTP {e.response.status_code} — "
+                              f"{e.response.text[:200]}",)
+                except Exception:  # noqa: BLE001 — diagnostics must not raise
+                    pass
                 raise
             except httpx.HTTPError as e:
                 last = e

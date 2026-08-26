@@ -700,9 +700,10 @@ def model_scan(
                       + (f", [yellow]{missed} propositions never answered[/]" if missed else "")
                       + f"  {json.dumps(stats['usage'])}")
         if lost:
-            console.print(f"  [red]{lost} slices were dropped[/] — this run is INCOMPLETE. "
-                          f"Re-run it; concurrent scans against one database are the "
-                          f"usual cause.")
+            console.print(f"  [red]{lost} slices were dropped[/] — this run is INCOMPLETE, "
+                          f"and the films above are missing propositions they were never "
+                          f"asked about. Re-run it. The reason is in the failure lines: a "
+                          f"burst of provider errors is the common one, and it clears.")
 
 
 @app.command()

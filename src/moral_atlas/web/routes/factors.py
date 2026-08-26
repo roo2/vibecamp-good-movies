@@ -27,10 +27,19 @@ router = APIRouter(prefix="/api/factors", tags=["factors"])
 # "this model was tried and could not do it" is a finding about the model and
 # deleting it would leave the impression nobody had asked.
 WITHDRAWN = {
-    # 8B parameters, and it shows. 30 films scored out of 570 before it stopped
-    # producing usable structured output, and the axes it did yield came from
-    # too little to mean anything.
-    "dolphin": "too small a model to complete the corpus",
+    # 30 films scored out of 570 before it stopped producing usable structured
+    # output, and the axes it did yield came from too little to mean anything.
+    #
+    # The diagnosis in that first line used to read "8B parameters, and it
+    # shows", which was wrong twice over: the configured model is 24B, and the
+    # failure was not capacity. Asked for 298 verdicts in a single reply it
+    # broke; asked for 40 at a time it scored The Return of the King with zero
+    # failed slices and engaged 223 of 298 propositions — MORE than deepseek's
+    # 193 on the same film, at $0.03. Batched scoring postdates the withdrawal.
+    #
+    # Left withdrawn because one film is not evidence that it can carry a
+    # corpus, and the entry should be revisited rather than quietly deleted.
+    "dolphin": "withdrawn before batched scoring existed; worth re-testing",
     # Scored more films than any other model and engaged fewer propositions than
     # any other model: 564 films against 71 usable items, 8% of the grid. Two
     # propositions can only be compared over the films that answered both, and

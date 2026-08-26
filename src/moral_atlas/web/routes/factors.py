@@ -27,19 +27,25 @@ router = APIRouter(prefix="/api/factors", tags=["factors"])
 # "this model was tried and could not do it" is a finding about the model and
 # deleting it would leave the impression nobody had asked.
 WITHDRAWN = {
-    # 30 films scored out of 570 before it stopped producing usable structured
-    # output, and the axes it did yield came from too little to mean anything.
+    # Dolphin is BACK, and the entry it used to have was wrong. It read "8B
+    # parameters, and it shows": the configured model is 24B and the failure was
+    # never capacity. Asked for 298 verdicts in one reply it broke; asked for 40
+    # at a time it scores a film with no failed slices at all.
     #
-    # The diagnosis in that first line used to read "8B parameters, and it
-    # shows", which was wrong twice over: the configured model is 24B, and the
-    # failure was not capacity. Asked for 298 verdicts in a single reply it
-    # broke; asked for 40 at a time it scored The Return of the King with zero
-    # failed slices and engaged 223 of 298 propositions — MORE than deepseek's
-    # 193 on the same film, at $0.03. Batched scoring postdates the withdrawal.
+    # It is shown because the atlas is an audit page and a weak reader is a
+    # result. What it is weak at is worth being precise about, because it is not
+    # what anyone expected: it SCORES about as well as deepseek — engaging 223
+    # of 298 propositions on The Return of the King against deepseek's 193, and
+    # affirming 87% of what it engages against deepseek's 93%, so it is the less
+    # acquiescent of the two. What it cannot do is WRITE the propositions. 38%
+    # of its harvest are cross-film duplicates against deepseek's 0.3%, its
+    # three highest-support items are paraphrases of the prompt's own examples,
+    # and 188 of its 213 items are claims no film disagrees with. That leaves 25
+    # usable propositions and one axis, and the count does not move as films are
+    # added: 20 survivors at 43 films, 22 at 145.
     #
-    # Left withdrawn because one film is not evidence that it can carry a
-    # corpus, and the entry should be revisited rather than quietly deleted.
-    "dolphin": "withdrawn before batched scoring existed; worth re-testing",
+    # The picker prints its film and factor counts beside deepseek's, which is
+    # the honest way to show a reader the difference.
     # Scored more films than any other model and engaged fewer propositions than
     # any other model: 564 films against 71 usable items, 8% of the grid. Two
     # propositions can only be compared over the films that answered both, and

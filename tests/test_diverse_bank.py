@@ -392,3 +392,53 @@ def test_the_product_shortlist_is_a_subsequence_of_the_atlas_order():
     positions = [atlas.index(fid) for fid in product]
     assert positions == sorted(positions), (
         f"product order {product} is not a subsequence of atlas order {atlas}")
+
+
+def test_comparing_two_readers_counts_only_what_both_answered():
+    """Agreement over items only one reader engaged would be meaningless.
+
+    And it is direction that is compared, not strength: whether a film holds a
+    position firmly or in passing is a judgement the graded scale invites and
+    two readers calibrate differently, while affirm-versus-deny is the claim the
+    instrument actually makes.
+    """
+    import contextlib
+
+    from moral_atlas import db as db_mod
+    from moral_atlas.analysis import film_compare
+
+    bank = [{"item_id": "I1", "text": "one"}, {"item_id": "I2", "text": "two"},
+            {"item_id": "I3", "text": "three"}]
+    verdicts = {
+        "a": [{"item_id": "I1", "value": 2, "confidence": 0.9, "evidence": "x"},
+              {"item_id": "I2", "value": -1, "confidence": 0.9, "evidence": "y"}],
+        "b": [{"item_id": "I1", "value": 1, "confidence": 0.9, "evidence": "z"},
+              {"item_id": "I2", "value": 1, "confidence": 0.9, "evidence": "w"},
+              {"item_id": "I3", "value": 1, "confidence": 0.9, "evidence": "v"}],
+    }
+
+    class Cursor:
+        def __init__(self, rows): self.rows = rows
+        def fetchall(self): return self.rows
+        def fetchone(self): return self.rows[0] if self.rows else None
+        def __iter__(self): return iter(self.rows)
+
+    class Con:
+        def execute(self, sql, args=None):
+            if "item_bank" in sql: return Cursor(bank)
+            if "FROM films" in sql: return Cursor([{"title": "F", "year": 2000}])
+            return Cursor(verdicts[args[0]])
+
+    original = db_mod.connect
+    db_mod.connect = lambda *a, **k: contextlib.nullcontext(Con())
+    try:
+        out = film_compare.compare("f1", ["a", "b"], "bank")
+    finally:
+        db_mod.connect = original
+
+    assert out["engaged"] == {"a": 2, "b": 3}
+    assert out["shared"] == 2, "I3 was answered by one reader only"
+    assert out["only"] == {"a": 0, "b": 1}
+    # I1: +2 vs +1 is the SAME side despite differing strength.
+    assert out["agreed"] == 1
+    assert [r["item_id"] for r in out["split"]] == ["I2"]

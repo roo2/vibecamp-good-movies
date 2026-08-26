@@ -131,6 +131,54 @@ def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that a
     console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
 
 
+@app.command("compare-film")
+def compare_film(
+    film: str = typer.Argument(..., help="Film id, or a fragment of its title."),
+    scorers: str = typer.Option("deepseek,dolphin", help="Two or more aliases."),
+    bank: str = typer.Option("deepseek-subs", help="The bank BOTH read against."),
+    variant: str = typer.Option("subs"),
+    show: int = typer.Option(12, help="How many disagreements to print."),
+) -> None:
+    """Two readers on one film, and every proposition they answer differently.
+
+    The corpus-level comparison asks whether scorers recover the same axes,
+    which needs hundreds of films. This asks the smaller question that turned
+    out to be hiding inside it: handed the SAME propositions, where do two
+    readers actually differ, and does the difference have a shape?
+    """
+    from .analysis import film_compare
+
+    aliases = [a.strip() for a in scorers.split(",") if a.strip()]
+    matches = _match_films(film)
+    if not matches:
+        console.print(f"[red]no film matched {film!r}[/]")
+        raise typer.Exit(1)
+    result = film_compare.compare(matches[0], aliases, bank, variant)
+
+    console.print(f"\n[bold]{result['title']}[/] — {result['bank_size']} propositions "
+                  f"({result['bank_version']})")
+    table = Table("reader", "engaged", "only it", "affirms", box=None)
+    for alias in aliases:
+        table.add_row(alias, str(result["engaged"][alias]),
+                      str(result["only"].get(alias, 0)),
+                      f"{result['affirm_rate'][alias]:.0%}")
+    console.print(table)
+    shared, agreed = result["shared"], result["agreed"]
+    console.print(f"  both answered [bold]{shared}[/]; same side on [bold]{agreed}[/]"
+                  + (f" ({agreed / shared:.0%})" if shared else ""))
+
+    if not result["split"]:
+        console.print("[dim]  no disagreements[/]")
+        return
+    console.print(f"\n[bold]{len(result['split'])} propositions they read differently[/]")
+    for row in result["split"][:show]:
+        console.print(f"\n  [italic]{row['text']}[/]")
+        for alias in aliases:
+            v = row["by"][alias]
+            colour = "green" if v["value"] > 0 else "yellow"
+            console.print(f"    [{colour}]{alias:<9} {v['value']:+d}[/] {v['evidence'][:96]}")
+
+
 @app.command("sample-films")
 def sample_films(
     n: int = typer.Option(100, help="How many films to pick."),

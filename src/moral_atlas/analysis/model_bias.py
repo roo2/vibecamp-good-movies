@@ -103,7 +103,10 @@ def scan(
          "n_films": len(packets), "n_items": len(items)},
     )
     stats = {"scorer": alias, "model": scorer.model, "run_id": run_id,
-             "films": len(packets), "scored": 0, "refused": 0, "failed": 0}
+             "films": len(packets), "scored": 0, "refused": 0, "failed": 0,
+             # Propositions that were asked about twice and answered neither
+             # time. Reported rather than absorbed: unanswered is not silence.
+             "unanswered": 0}
 
     batched = bool(batch_size) and len(items) > batch_size
 
@@ -117,16 +120,39 @@ def scan(
         # makes the first one's evidence cheap, and issuing them together would
         # have every one of them miss. Concurrency is across films, above.
         film_system = prompts.scoring_batched_system(_user_block(p))
-        collected = []
-        for part in _slices(items, batch_size):
+
+        def ask(part):
             listing = "\n".join(f"{i['item_id']}. {i['text']}" for i in part)
-            result = client.parse(
+            return client.parse(
                 system=film_system,
                 user=f"Judge these {len(part)} propositions:\n\n{listing}",
                 output_model=ScoreSet,
                 max_tokens=8000,
-            )
-            collected.extend(result.scores)
+            ).scores
+
+        collected = []
+        for part in _slices(items, batch_size):
+            scores = ask(part)
+            # A slice that comes back short is the one failure mode this
+            # arrangement adds, and it is silent: an item the model simply
+            # omitted is indistinguishable downstream from one it judged
+            # `not_addressed`, which is exactly the ambiguity `not_addressed`
+            # was introduced to remove. Measured on Troy, one slice of 40 came
+            # back with 34. So ask again for what is missing, and count what
+            # never arrives rather than letting it read as silence.
+            answered = {s.item_id for s in scores}
+            missing = [i for i in part if i["item_id"] not in answered]
+            if missing:
+                for s in ask(missing):
+                    if s.item_id not in answered:
+                        scores.append(s)
+                        answered.add(s.item_id)
+                still = [i for i in missing if i["item_id"] not in answered]
+                stats["unanswered"] += len(still)
+                if still and progress:
+                    progress(f"[yellow]{p.film_id}: {len(still)} of {len(part)} "
+                             f"never answered[/]")
+            collected.extend(scores)
         return p, ScoreSet(scores=collected)
 
     def save(_p, result):

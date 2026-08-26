@@ -177,12 +177,21 @@ def _listing(members: list[Any]) -> str:
     return "\n".join(f"{n}. {m['text']}" for n, m in enumerate(members[:MAX_MEMBERS_SHOWN], 1))
 
 
+def _films_of(row: dict[str, Any]) -> set[str]:
+    """Which films stand behind a row, whether it is a proposition or a claim."""
+    if row.get("films"):
+        return set(row["films"])
+    return {row["film_id"]} if row.get("film_id") else set()
+
+
 def distinct_claims(group: dict[str, Any], client) -> list[dict[str, Any]]:
     """Ask the model what claims this neighbourhood actually contains."""
     members = group["members"][:MAX_MEMBERS_SHOWN]
     if len(members) == 1:
-        return [{"text": members[0]["text"], "support": 1,
-                 "films": {members[0]["film_id"]}, "polarity": group["polarity"]}]
+        only = members[0]
+        films = _films_of(only)
+        return [{"text": only["text"], "support": max(len(films), 1),
+                 "films": films, "polarity": group["polarity"]}]
 
     result = client.parse(
         system=SPLIT_SYSTEM,
@@ -195,14 +204,55 @@ def distinct_claims(group: dict[str, Any], client) -> list[dict[str, Any]]:
         picked = [members[n - 1] for n in claim.members if 1 <= n <= len(members)]
         if not claim.text.strip():
             continue
+        films: set[str] = set()
+        for m in picked:
+            films |= _films_of(m)
         out.append({
             "text": claim.text.strip(),
             # Support counts distinct FILMS, not sentences: two propositions
             # from one film are one film's opinion however they are worded.
-            "films": {m["film_id"] for m in picked},
-            "support": len({m["film_id"] for m in picked}),
+            "films": films,
+            "support": len(films),
             "polarity": group["polarity"],
         })
+    return out
+
+
+def consolidate(claims: list[dict[str, Any]], client,
+                distance: float = NEIGHBOUR_DISTANCE, progress=None) -> list[dict[str, Any]]:
+    """A second pass over the claims, because the first one only sees locally.
+
+    Each neighbourhood is adjudicated on its own, so a claim in one and its twin
+    in another never meet — which is why the first pass left sixteen separate
+    items about revenge, several of them saying the same thing. Re-embedding the
+    OUTPUT and adjudicating again puts those twins in the same group, and the
+    same "are these one claim or several?" question resolves them.
+
+    This does not simply shrink the bank. The pass is free to split as well as
+    merge, and both are the same operation: it is asked what is there, not to
+    reduce anything.
+    """
+    rows = [{"text": c["text"], "films": _films_of(c), "film_id": None} for c in claims]
+    groups = neighbourhoods(rows, distance, progress=progress)
+    plural = [g for g in groups if len(g["members"]) > 1]
+    if progress:
+        progress(f"consolidating: {len(groups)} neighbourhoods, {len(plural)} to re-read")
+
+    out: list[dict[str, Any]] = []
+    done = 0
+    for g in groups:
+        try:
+            out.extend(distinct_claims(g, client))
+        except Exception as error:
+            if progress:
+                progress(f"  group of {len(g['members'])} failed: {error}")
+            out.extend({"text": m["text"], "films": _films_of(m),
+                        "support": max(len(_films_of(m)), 1), "polarity": g["polarity"]}
+                       for m in g["members"])
+        if len(g["members"]) > 1:
+            done += 1
+            if progress and done % 25 == 0:
+                progress(f"  re-read {done}/{len(plural)} — {len(out)} claims so far")
     return out
 
 

@@ -708,3 +708,18 @@
 .verdicts li.adds .verdict-weight i { background: #eda36b; }
 .verdicts li.subtracts .verdict-weight i { background: #5cc3c0; }
 .verdict-evidence { color: #8d8478; font-size: 11.5px; line-height: 1.45; }
+
+
+/* Split-half replication: three numbers, read as a column. Deliberately plain
+   — this sits beside the scree and must not compete with it. */
+.replication { list-style: none; margin: 14px 0 18px; padding: 0; display: grid; gap: 6px; }
+.replication li {
+  display: grid; grid-template-columns: 3.5rem 1fr auto; gap: 12px; align-items: baseline;
+  padding: 8px 12px; border: 1px solid var(--atlas-rule, #d9dce4); border-radius: 3px;
+}
+.replication b { font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+.replication i { font-style: normal; opacity: 0.65; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) {
+  .replication li { grid-template-columns: 3.5rem 1fr; }
+  .replication i { grid-column: 2; }
+}

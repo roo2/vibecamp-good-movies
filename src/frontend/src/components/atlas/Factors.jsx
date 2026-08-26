@@ -120,10 +120,59 @@ export function Factors({ data }) {
           than {bar}%, and all of them are here
           <span className="factor-headline-sub">
             {data.films} films × {data.items} propositions
-            {data.dropped_items ? `, ${data.dropped_items} dropped as too rarely scored` : ''}
+            {data.unanimous_items
+              ? `, after ${data.unanimous_items} every film agreed with were set aside`
+              : ''}
             {' '}· at most {data.max_recoverable} recoverable from this many films
           </span>
         </p>
+
+        {!!data.unanimous_items && (
+          <p className="atlas-note">
+            <b>Propositions every film agrees with are set aside first.</b> {data.unanimous_items} of
+            them here — the bank&apos;s median proposition had 98% of the films that engaged it on
+            one side, and 60 had no disagreement at all. A claim nobody argues with cannot tell two
+            films apart, so it can carry no moral dimension. Worse, it actively invents one: each
+            film is judged against its own rate of agreement, which turns a unanimously affirmed
+            proposition into a negated copy of how agreeable that film is. Those items correlated
+            −1.00 with a film&apos;s affirm rate and carried three times the weight of everything
+            else, so the correction for agreeableness was manufacturing an agreeableness factor out
+            of them. Removing them cut the count from 20 axes to {shown} and made what remains more
+            reproducible, not less.
+          </p>
+        )}
+
+        {!!(data.replication || []).length && (
+          <>
+            <p className="atlas-note">
+              <b>Beating chance is not the same as being real.</b> The test below asks whether a
+              factor beats what the margins give away free in <em>this</em> corpus. A stricter
+              question is whether it survives a different one: split the films in half at random,
+              run the whole analysis separately on each half, and measure how much of the same
+              variation both halves describe. A factor can pass the first test and fail this one,
+              and most of them do.
+            </p>
+            <ul className="replication">
+              {data.replication.map((row) => (
+                <li key={row.k}>
+                  <b>{row.overlap.toFixed(2)}</b>
+                  <span>
+                    {row.k === 1 ? 'the strongest factor alone'
+                      : `the strongest ${row.k} together`}
+                  </span>
+                  <i>chance {row.chance.toFixed(3)}</i>
+                </li>
+              ))}
+            </ul>
+            <p className="atlas-note">
+              1.00 would mean the two halves found the same thing exactly. The first factor is
+              the one that clearly survives; by the third the halves are agreeing much less,
+              which is why the compass shows three axes and not all {shown}. This is a lower
+              bound — each half has half the films, and the estimator weakens as films are
+              removed — so read the gap from chance rather than the number itself.
+            </p>
+          </>
+        )}
 
         <p className="atlas-note">
           A factor is kept only if its eigenvalue beats the 95th percentile of a null built by

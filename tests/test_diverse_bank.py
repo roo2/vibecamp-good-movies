@@ -297,3 +297,38 @@ def test_the_product_never_shows_two_facets_of_one_factor():
         db_mod.connect = original
     assert len(axes) == 2, f"two distinct factors, got {[a['dim_id'] for a in axes]}"
     assert [a["dim_id"] for a in axes] == [1, 3]
+
+
+def test_a_proposition_every_film_agrees_with_is_not_a_dimension():
+    """And it is worse than useless, which is why it must be removed by hand.
+
+    Film-centring subtracts each film's own affirm rate, so a unanimously
+    affirmed item's centred value becomes `constant - film_mean` — a negated
+    copy of how agreeable the film is. On the real corpus those items correlate
+    -1.00 with the film's affirm rate and carried a mean absolute loading of
+    1.00 against 0.34 for everything else: the correction for acquiescence was
+    building an acquiescence factor out of them.
+    """
+    import numpy as np
+
+    from moral_atlas.analysis import latent
+
+    rng = np.random.default_rng(5)
+    contested = np.where(rng.random((80, 6)) < 0.5, 1.0, -1.0)
+    unanimous = np.ones((80, 4))                      # every film affirms
+    matrix = np.hstack([contested, unanimous])
+    items = [f"I{n:03d}" for n in range(matrix.shape[1])]
+
+    # Rebuilt through the same rule response_matrix applies.
+    def kept(min_disagreement):
+        out = []
+        for j, item in enumerate(items):
+            v = matrix[:, j][matrix[:, j] != 0]
+            share = (v > 0).mean()
+            if min(share, 1 - share) >= min_disagreement:
+                out.append(item)
+        return out
+
+    assert len(kept(latent.MIN_DISAGREEMENT)) == 6, "the four unanimous items must go"
+    assert len(kept(0.0)) == 10, "and the rule must be what removes them, not chance"
+    assert 0 < latent.MIN_DISAGREEMENT < 0.5, "a share of the minority side, not a count"

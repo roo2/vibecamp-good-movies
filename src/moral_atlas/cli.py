@@ -706,7 +706,8 @@ def dimension_count(
     for report in reports:
         console.print(f"\n[bold]{report['scorer']}[/] — {report['films']} films x "
                       f"{report['items']} items ({report['density']:.0%} dense, "
-                      f"{report['dropped_items']} items dropped as too rarely scored)")
+                      f"{report['dropped_items']} items dropped, of which "
+                      f"{report.get('unanimous_items', 0)} because no film disagreed)")
         table = Table("factor", "eigenvalue", "null 95th", "margin", box=None)
         for index, (observed, threshold) in enumerate(
                 zip(report["eigenvalues"][:14], report["null_threshold"][:14]), start=1):

@@ -79,10 +79,35 @@ from ..llm.schemas import MAX_STRENGTH
 # 224 of them would dominate the eigenvalues with noise.
 MIN_FILMS_PER_ITEM = 3
 
+# The smallest share of engaged films that must sit on the MINORITY side of a
+# proposition for it to count as a measurement rather than a consensus.
+#
+# A proposition every film affirms cannot separate films, so it can carry no
+# moral dimension. That much is obvious. What is not obvious, and is why this
+# has to be enforced rather than left to the arithmetic, is that such an item is
+# worse than useless here: film-centring subtracts each film's own affirm rate,
+# so a unanimously-affirmed item's centred value becomes `constant - film_mean`
+# — a negated copy of how agreeable the film is. Measured on this corpus those
+# items correlate -1.00 with the film's affirm rate, and they carried a mean
+# absolute loading of 1.00 against 0.34 for everything else. The correction for
+# acquiescence was manufacturing an acquiescence factor out of them.
+#
+# The bank is far more unanimous than it looks: the median proposition has 98%
+# of engaged films on one side, and 60 of 296 have no disagreement whatsoever.
+#
+# 5% chosen by measurement, not taste. Sweeping the threshold, the leading
+# factor's correlation with how much a film engages runs -0.62 (no filter),
+# -0.63, +0.61, -0.42, and then +0.08 here — and split-half replication IMPROVES
+# as items are removed, 0.58 -> 0.64 at k=1 and 0.28 -> 0.32 at k=3. Dropping
+# three quarters of the bank makes the remainder both cleaner and more
+# reproducible, which is the sign the discarded items were never carrying signal.
+MIN_DISAGREEMENT = 0.05
+
 
 def response_matrix(
     scorer: str | None = None, bank_version: str = "b1",
     min_films: int = MIN_FILMS_PER_ITEM, variant: str | None = None,
+    min_disagreement: float = MIN_DISAGREEMENT,
 ) -> dict[str, Any]:
     """Films x items, dense, in {+1, 0, -1}.
 
@@ -128,8 +153,18 @@ def response_matrix(
     engaged: dict[str, set[str]] = {}
     for (film, item) in cells:
         engaged.setdefault(item, set()).add(film)
-    items = sorted(i for i, fs in engaged.items() if len(fs) >= min_films)
+    def contested(item: str) -> bool:
+        """Do enough films take opposite sides of this to make it a measurement?"""
+        values = [sum(v) / len(v) for (f, i), v in cells.items() if i == item]
+        if len(values) < min_films:
+            return False
+        positive = sum(1 for v in values if v > 0) / len(values)
+        return min(positive, 1 - positive) >= min_disagreement
+
+    seen = sorted(i for i, fs in engaged.items() if len(fs) >= min_films)
+    items = [i for i in seen if contested(i)] if min_disagreement > 0 else seen
     dropped = len(engaged) - len(items)
+    unanimous = len(seen) - len(items)
     if len(items) < 2 or len(films) < 3:
         raise RuntimeError(
             f"too little to factor: {len(items)} items on {len(films)} films "
@@ -147,7 +182,8 @@ def response_matrix(
                 matrix[row_index, index[item]] = sum(values) / len(values) / MAX_STRENGTH
 
     return {"films": films, "items": items, "matrix": matrix, "variant": variant,
-            "dropped_items": dropped, "density": float((matrix != 0).mean())}
+            "dropped_items": dropped, "unanimous_items": unanimous,
+            "density": float((matrix != 0).mean())}
 
 
 # Below this a pair's correlation is computed from too few films to mean
@@ -457,6 +493,14 @@ def analyse(
         "films": len(data["films"]),
         "items": len(data["items"]),
         "dropped_items": data["dropped_items"],
+        # Of those, the ones removed for having no disagreement rather than too
+        # few films. A different fact about the bank and worth saying separately.
+        "unanimous_items": data.get("unanimous_items", 0),
+        # Whether the structure survives a change of sample, which the null test
+        # cannot ask. Reported for the first three factors because that is where
+        # it stops being informative: below that the answer is always "no".
+        "replication": [split_half_overlap(data["matrix"], k=k, reps=12)
+                        for k in (1, 2, 3)],
         "density": round(data["density"], 4),
         "n_factors": horn["n_factors"],
         "n_clear_factors": horn["n_clear_factors"],

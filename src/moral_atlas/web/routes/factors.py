@@ -140,6 +140,8 @@ def get_factors(
         "items": report["items"],
         "density": report["density"],
         "dropped_items": report["dropped_items"],
+        "unanimous_items": report.get("unanimous_items", 0),
+        "replication": report.get("replication", []),
         "max_recoverable": report["max_recoverable"],
         "n_factors": report["n_factors"],
         "n_clear_factors": report["n_clear_factors"],

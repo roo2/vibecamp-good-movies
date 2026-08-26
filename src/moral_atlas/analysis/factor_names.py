@@ -238,6 +238,34 @@ def persist(
     return run_id
 
 
+def by_support(factor: dict[str, Any]) -> tuple[float, int, str]:
+    """How well supported an axis is — the one ordering used everywhere.
+
+    Three screens show these groups: the atlas, the compass a person gets, and
+    a film's own reading. They were sorting differently, so the axis a reader
+    met first changed depending on where they met it, and nothing on any of
+    them explained why. One key, imported by all three.
+
+    Eigenvalue first: how much of the corpus's variation the factor accounts
+    for, which is the plainest statement of how much a reader should weigh it.
+
+    Then the number of propositions behind it. That tie-break stopped being
+    cosmetic once each group was matched to the factor it genuinely loads on —
+    several groups can share one factor, meaning they are facets of it, and the
+    facet carrying more of the factor should stand ahead of the one carrying
+    less.
+
+    Then the name, and finally the factor's own id, so the order is TOTAL. Two
+    axes equal on everything else would otherwise keep whatever order they
+    arrived in — stable while one query feeds them, and silently different the
+    day another does. A shared key is only shared if it decides every pair.
+    """
+    return (-(factor.get("eigenvalue") or 0.0),
+            -(factor.get("n_items") or 0),
+            str(factor.get("name") or ""),
+            int(factor.get("factor_id") or 0))
+
+
 def load(alias: str, variant: str = "subs", bank_version: str = "b1",
          min_margin: float | None = None) -> list[dict[str, Any]]:
     """Every named factor, strongest first by eigenvalue.
@@ -254,8 +282,7 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1",
             "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
             [alias, variant, bank_version],
         ).fetchall()
-    factors = sorted([_with_labels(dict(r)) for r in rows],
-                     key=lambda f: -(f["eigenvalue"] or 0))
+    factors = sorted([_with_labels(dict(r)) for r in rows], key=by_support)
     if min_margin is None:
         return factors
     # A margin of None predates the measurement rather than failing it, so it is

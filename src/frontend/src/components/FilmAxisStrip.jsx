@@ -13,9 +13,13 @@ import { loadProductFilmAxes } from '../services/factorService.js'
 // draw at the centre and read as "balanced", which is a claim the data does not
 // make.
 
-const strongest = (factors, limit) => factors
+// Server order, which is by how well supported the axis is — the same order the
+// atlas lists them in and the same order a person's own compass uses. This used
+// to sort by how hard THIS film leaned, which put a strong reading of a weak
+// axis above a moderate reading of the corpus's clearest one, and meant the
+// axes appeared in a different sequence on every screen that showed them.
+const shown = (factors, limit) => factors
   .filter((factor) => factor.score != null && factor.items > 0)
-  .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
   .slice(0, limit)
 
 function Axis({ factor, open, onToggle }) {
@@ -69,7 +73,7 @@ export default function FilmAxisStrip({ filmId, limit = 4 }) {
     setFactors(null)
     setOpenId(null)
     loadProductFilmAxes(filmId)
-      .then((data) => live && setFactors(strongest(data.factors || [], limit)))
+      .then((data) => live && setFactors(shown(data.factors || [], limit)))
       // A film nobody has scored yet is not an error worth a message on a card
       // whose job is to recommend it. The strip simply is not there.
       .catch(() => live && setFactors([]))

@@ -47,6 +47,7 @@ from typing import Any, Iterable
 
 from .. import db
 from ..llm.schemas import MAX_STRENGTH
+from . import factor_names
 
 DEFAULT_DIM_VERSION = "d1"
 DEFAULT_BANK_VERSION = "b1"
@@ -211,7 +212,13 @@ def score_preferences(
             films_seen[dim_id].add(preference.film_id)
 
     out = []
-    for dimension in sorted(dimensions, key=lambda d: d["dim_id"]):
+    # Caller order, deliberately. Re-sorting by dim_id here threw away the
+    # support order factor_axes had just applied, so a person's compass listed
+    # the axes by an internal id while the atlas and the film cards listed them
+    # by how well supported they are. Both loaders order their own rows — the
+    # legacy dimensions query by dim_id, factor_axes by factor_names.by_support
+    # — so preserving what arrives is right for either.
+    for dimension in dimensions:
         dim_id = dimension["dim_id"]
         evidence = mass[dim_id]
         score = numerator[dim_id] / (evidence + PRIOR_ITEMS) if evidence else 0.0
@@ -293,20 +300,21 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
-            "pole_low_label, eigenvalue FROM latent_factors "
+            # n_items is selected because by_support ties on it. Leaving it out
+            # made the tie-break silently inert and the order fell through to
+            # the axis name, which is alphabetical and means nothing.
+            "pole_low_label, eigenvalue, n_items FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? "
             "AND n_items>=? "
             # An axis the namer would not call coherent should not be handed to
             # somebody as a reading of what they believe. It stays in the atlas,
             # where the warning beside it is the point.
             "AND (coherent IS NULL OR coherent=1) "
-            # Ties are now common and meaningful: several groups can load on
-            # the same factor, which says they are facets of it rather than
-            # separate axes. Eigenvalue alone then leaves the order to whatever
-            # SQLite returns first, so the number of propositions behind a
-            # group breaks it — the more of the factor a group carries, the
-            # better it stands for it.
-            "ORDER BY eigenvalue DESC, n_items DESC",
+            # Ordered in Python by factor_names.by_support, not here: the atlas
+            # and the film reading sort through that same function, and a
+            # second ORDER BY kept in step by hand is one that eventually is
+            # not.
+            "",
             [scorer, variant, bank_version, MIN_AXIS_ITEMS],
         ).fetchall()
     # The short labels ride along with the sentences: a score is a point on a
@@ -318,6 +326,8 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
     # has no way to tell. Groups sharing a factor share its eigenvalue, so that
     # is what identifies them here; the group with the most propositions behind
     # it stands for the factor, since it carries most of what the factor is.
+    rows = sorted((dict(r) for r in rows), key=factor_names.by_support)
+
     seen: set[Any] = set()
     axes: list[dict[str, Any]] = []
     for r in rows:

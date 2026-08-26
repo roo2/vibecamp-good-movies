@@ -332,3 +332,63 @@ def test_a_proposition_every_film_agrees_with_is_not_a_dimension():
     assert len(kept(latent.MIN_DISAGREEMENT)) == 6, "the four unanimous items must go"
     assert len(kept(0.0)) == 10, "and the rule must be what removes them, not chance"
     assert 0 < latent.MIN_DISAGREEMENT < 0.5, "a share of the minority side, not a count"
+
+
+def test_every_screen_orders_the_axes_the_same_way():
+    """Three screens show these groups; they used to sort differently.
+
+    The atlas, a person's compass and a film's own reading each listed the axes
+    in their own order, so which axis a reader met first depended on where they
+    met it and nothing explained why. They now share one key, and the product's
+    shortlist must be a SUBSEQUENCE of the atlas order — same sequence, fewer
+    entries — rather than merely overlapping with it.
+    """
+    from moral_atlas.analysis import factor_names
+
+    factors = [
+        {"factor_id": 1, "name": "b axis", "eigenvalue": 11.6, "n_items": 8},
+        {"factor_id": 2, "name": "a axis", "eigenvalue": 11.6, "n_items": 20},
+        {"factor_id": 3, "name": "c axis", "eigenvalue": 6.0, "n_items": 14},
+        {"factor_id": 4, "name": "d axis", "eigenvalue": 6.0, "n_items": 7},
+        {"factor_id": 5, "name": "e axis", "eigenvalue": None, "n_items": 3},
+    ]
+    ordered = sorted(factors, key=factor_names.by_support)
+    assert [f["factor_id"] for f in ordered] == [2, 1, 3, 4, 5], (
+        "eigenvalue first, then propositions behind it, then the name")
+
+    # A missing eigenvalue must sort last rather than first, which is what a
+    # bare `-(None or 0)` would do if the fallback were ever removed.
+    assert ordered[-1]["factor_id"] == 5
+
+    # The key must be TOTAL, or the order depends on which query fed it. Two
+    # axes identical on every visible field still have to come out the same way
+    # whichever order they arrived in.
+    same = [{"factor_id": 9, "name": "x", "eigenvalue": 1.0, "n_items": 2},
+            {"factor_id": 8, "name": "x", "eigenvalue": 1.0, "n_items": 2}]
+    forwards = [f["factor_id"] for f in sorted(same, key=factor_names.by_support)]
+    backwards = [f["factor_id"] for f in sorted(reversed(same), key=factor_names.by_support)]
+    assert forwards == backwards == [8, 9]
+
+
+def test_the_product_shortlist_is_a_subsequence_of_the_atlas_order():
+    """Taking one axis per factor must not resequence what is left."""
+    from moral_atlas.analysis import factor_names
+
+    factors = [
+        {"factor_id": 1, "name": "a", "eigenvalue": 11.6, "n_items": 20},
+        {"factor_id": 2, "name": "b", "eigenvalue": 11.6, "n_items": 8},
+        {"factor_id": 3, "name": "c", "eigenvalue": 6.7, "n_items": 11},
+        {"factor_id": 4, "name": "d", "eigenvalue": 6.0, "n_items": 14},
+    ]
+    atlas = [f["factor_id"] for f in sorted(factors, key=factor_names.by_support)]
+
+    seen, product = set(), []
+    for f in sorted(factors, key=factor_names.by_support):
+        if f["eigenvalue"] in seen:
+            continue
+        seen.add(f["eigenvalue"])
+        product.append(f["factor_id"])
+
+    positions = [atlas.index(fid) for fid in product]
+    assert positions == sorted(positions), (
+        f"product order {product} is not a subsequence of atlas order {atlas}")

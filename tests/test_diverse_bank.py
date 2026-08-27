@@ -520,3 +520,34 @@ def test_a_proposition_counts_on_every_axis_it_speaks_to():
     # Axis 1: B denied at 0.6 against A affirmed at 0.1, so it goes the other
     # way — (0.1 - 0.6) / 0.7.
     assert sum(stances["f"][1]) / len(stances["f"][1]) == pytest.approx(-5 / 7)
+
+
+def test_a_factor_orientation_reaches_every_place_that_reads_direction():
+    """One orientation, applied everywhere, or the two disagree and films invert.
+
+    Each factor is flipped so its majority loads positive. That flip was applied
+    to the signed loading stored per item and NOT to the full per-factor vector
+    written beside it, so on the real reading 65 of 87 propositions carried
+    opposite signs depending on which column was read — and every film's
+    position on two of the three axes came out backwards.
+
+    Caught by a reader: The Passion of the Christ denies "revenge can be a valid
+    motivation for action", which should point away from instrumentalism, and
+    the page said it pointed toward it.
+    """
+    import numpy as np
+
+    from moral_atlas.analysis import latent
+
+    rng = np.random.default_rng(11)
+    planted = _planted(300, 45, k=3, engagement=0.9, rng=rng, noise=0.25)
+    items = [f"I{n:03d}" for n in range(45)]
+    _groups, _distance, loading, dominant, every = latent.item_groups(planted, items, 3)
+
+    assert every and set(every) == set(items)
+    for item, factor in ((i, f) for i, f in _groups.items()):
+        vector = every[item]
+        assert len(vector) == 3, "one loading per factor, indexed by factor_id"
+        assert (loading[item] >= 0) == (vector[factor] >= 0), (
+            f"{item}: signed loading {loading[item]:+.3f} disagrees with "
+            f"vector[{factor}] = {vector[factor]:+.3f}")

@@ -483,16 +483,23 @@ def item_groups(matrix, items: list[str], k: int,
         dominant[group] = factor
         taken.add(factor)
 
+    # Each factor is oriented so its majority is positive, and that orientation
+    # has to reach EVERYTHING that reads a direction off it — not just the
+    # column below. Written once and applied twice, because storing the oriented
+    # value in one place and the raw value in another put 65 of 87 propositions
+    # on this reading at opposite signs depending on which was read, and every
+    # film's position on two of the three axes came out inverted.
     signed: dict[str, float] = {}
+    orientation: dict[int, float] = {}
     for factor in range(k):
         members = members_of.get(factor) or []
         if not members:
             continue
         best = dominant[factor]
         column = loadings[members, best]
-        if float(np.sign(column).sum()) < 0:
-            column = -column
-        for position, value in zip(members, column):
+        flip = -1.0 if float(np.sign(column).sum()) < 0 else 1.0
+        orientation[factor] = flip
+        for position, value in zip(members, column * flip):
             signed[items[position]] = float(value)
 
     # Every factor's loading per item, ordered to match `dominant`'s factor
@@ -506,7 +513,8 @@ def item_groups(matrix, items: list[str], k: int,
     # by the other reads a real number off the wrong axis, which is the same
     # class of mistake as the label-as-factor-index bug this replaced.
     all_loadings = {
-        items[i]: [float(loadings[i, dominant[g]]) if g in dominant else 0.0
+        items[i]: [float(loadings[i, dominant[g]] * orientation.get(g, 1.0))
+                   if g in dominant else 0.0
                    for g in range(k)]
         for i in range(len(items))
     }

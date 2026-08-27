@@ -517,3 +517,51 @@ def test_an_axis_lists_its_propositions_strongest_first(monkeypatch, tmp_path):
     shown = [row["text"] for row in detail[0]["propositions"]]
     assert shown == ["strongest", "middling", "weak"], (
         "an axis must open with what defines it, whichever pole that is on")
+
+
+def test_a_films_position_is_the_sum_of_the_propositions_shown_under_it(monkeypatch, tmp_path):
+    """The drill-down must account for the number, not merely sit near it.
+
+    `weight` says how much a proposition could have mattered. It cannot be read
+    as influence: two propositions of equal weight pointing opposite ways
+    cancel, so a reader adding up the bars gets a figure that appears nowhere
+    on the page. `contribution` is the signed term each proposition actually
+    added, and these sum to the position exactly, because the position is the
+    weighted mean sum(v*w)/sum(w) and each term is v*w/sum(w).
+    """
+    from dataclasses import replace
+
+    from moral_atlas import db
+    from moral_atlas.analysis import factor_detail
+    from moral_atlas.config import settings
+
+    monkeypatch.setattr(db, "settings", lambda: replace(
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "isolated.sqlite"))
+    db.init_db()
+    with db.connect() as con:
+        con.execute("INSERT INTO films (film_id, title) VALUES ('f', 'A Film')")
+        con.executemany(
+            "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
+            "bank_version, variant, value) VALUES (?,?,?,?,?,?,?)",
+            [("x", "m", "f", "I1", "b", "v", 2),     # affirmed hard
+             ("x", "m", "f", "I2", "b", "v", -1),    # denied gently
+             ("x", "m", "f", "I3", "b", "v", 1)])    # affirms a reverse-keyed one
+
+    groups = {"I1": 0, "I2": 0, "I3": 0}
+    texts = {"I1": "one", "I2": "two", "I3": "three"}
+    vectors = {"I1": [0.8], "I2": [0.5], "I3": [-0.3]}
+
+    detail = factor_detail.detail(
+        scorer="x", bank_version="b", variant="v", groups=groups, texts=texts,
+        loadings={k: v[0] for k, v in vectors.items()}, vectors=vectors)
+    position = detail[0]["distribution"][0]["score"]
+
+    rows = factor_detail.film_justification(
+        "x", "b", "v", groups, texts, "f", 0, vectors=vectors,
+        loadings={k: v[0] for k, v in vectors.items()})
+
+    assert sum(row["contribution"] for row in rows) == pytest.approx(position, abs=5e-4)
+    # And the reverse-keyed one subtracts despite being affirmed, which is the
+    # case a reader most needs the sign for.
+    assert next(r for r in rows if r["item_id"] == "I3")["contribution"] < 0

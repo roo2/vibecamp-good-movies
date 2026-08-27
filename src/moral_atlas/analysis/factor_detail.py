@@ -202,6 +202,15 @@ def film_justification(
     `weight` is how much the proposition counts toward this axis at all.
     Strongest contributors first, so the reader meets the evidence that decided
     the position rather than whatever was recorded first.
+
+    `contribution` is the signed number this proposition added to the film's
+    position on this axis, and the set of them SUMS TO THAT POSITION exactly.
+    The position is a weighted mean, sum(v*w)/sum(w), so each term is
+    v*w/sum(w) and the arithmetic closes. `weight` alone cannot be read that
+    way: it says how much a proposition could have mattered, not which way or
+    how much it did, and two propositions of equal weight pointing opposite
+    ways cancel to nothing. A reader asking "why is this film HERE" needs the
+    signed term, and needs the terms to add up, or the answer is a vibe.
     """
     loadings = loadings or {}
     # EVERY proposition that speaks to this axis, not only those filed under it.
@@ -216,6 +225,18 @@ def film_justification(
             "AND bank_version=? AND variant=? AND film_id=?",
             [scorer, bank_version, variant, film_id],
         ).fetchall()
+
+    # The denominator of the weighted mean, over exactly the propositions
+    # listed below — computed first so each row can carry its own share of the
+    # result rather than leaving the reader to normalise a column by hand.
+    total_weight = 0.0
+    for row in rows:
+        vector = vectors.get(row["item_id"])
+        if vector is not None and factor < len(vector):
+            total_weight += abs(vector[factor])
+        elif groups.get(row["item_id"]) == factor:
+            weight = loadings.get(row["item_id"])
+            total_weight += abs(weight) if weight is not None else 1.0
 
     out = []
     for row in rows:
@@ -248,6 +269,13 @@ def film_justification(
             "home": groups.get(item) == factor,
             "points_to": "high" if (affirmed == (direction > 0)) else "low",
             "weight": round(abs(loading), 4) if loading is not None else None,
+            # This proposition's signed share of the film's position. These sum
+            # to the position itself, so the drill-down is an account of the
+            # number rather than a list of things near it.
+            "contribution": round(
+                (row["value"] / MAX_STRENGTH) * direction
+                * (abs(loading) if loading is not None else 1.0) / total_weight, 5
+            ) if total_weight else 0.0,
             "evidence": row["evidence"],
         })
     out.sort(key=lambda row: -(row["weight"] or 0))

@@ -595,3 +595,61 @@ def test_a_factor_name_always_agrees_with_its_own_poles():
     # same order as the line a reader is shown
     assert built.split(" vs ")[0] == Named.second_label
     assert factor_names.by_support({"margin": 1.0}) < factor_names.by_support({"margin": 0.5})
+
+
+def test_every_screen_computes_a_film_s_position_the_same_way():
+    """Three places compute it, and one of them used different arithmetic.
+
+    The per-axis distribution averaged the RAW verdicts of the propositions
+    filed under a factor: no flip for the ones that read backwards, no weight
+    for how much each speaks to the axis, and only that factor's own
+    propositions counted. So a film strongly affirming reverse-keyed
+    propositions was pushed toward the pole it was arguing against.
+
+    Wonder Woman read +0.59 toward "predestined order" from 11 propositions in
+    the distribution, while its own page read -0.44 toward self-determination
+    from 55 — with every proposition listed underneath saying
+    self-determination. Reported by a reader.
+    """
+    import contextlib
+    import json
+
+    from moral_atlas import db as db_mod
+    from moral_atlas.analysis import factor_detail
+
+    # One proposition points with the axis, one against it. The film affirms
+    # both, so the flip decides which way it lands.
+    verdicts = [{"film_id": "f", "item_id": "A", "value": 2, "evidence": ""},
+                {"film_id": "f", "item_id": "B", "value": 2, "evidence": ""},
+                {"film_id": "f", "item_id": "C", "value": 2, "evidence": ""}]
+    groups = {"A": 0, "B": 0, "C": 0}
+    loadings = {"A": 0.5, "B": -0.9, "C": -0.9}
+    vectors = {"A": [0.5], "B": [-0.9], "C": [-0.9]}
+
+    class Cursor:
+        def __init__(self, rows): self.rows = rows
+        def fetchall(self): return self.rows
+        def __iter__(self): return iter(self.rows)
+
+    class Con:
+        def execute(self, sql, args=None):
+            if "FROM films" in sql or "from films" in sql:
+                return Cursor([{"film_id": "f", "title": "F", "year": 2000}])
+            return Cursor(verdicts)
+
+    original = db_mod.connect
+    db_mod.connect = lambda *a, **k: contextlib.nullcontext(Con())
+    try:
+        out = factor_detail.detail("s", "b", "v", groups,
+                                   {"A": "a", "B": "b", "C": "c"},
+                                   loadings=loadings, vectors=vectors)
+    finally:
+        db_mod.connect = original
+
+    rows = {r["film_id"]: r for r in out[0]["distribution"]}
+    assert "f" in rows, "the film should be positioned"
+    # B is reverse-keyed and weighs more (0.9 vs 0.5), so affirming both should
+    # land NEGATIVE. Averaging the raw verdicts would have given +1.0.
+    assert rows["f"]["score"] < 0, (
+        f"reverse-keyed propositions were not flipped: got {rows['f']['score']:+.2f}")
+    assert rows["f"]["items"] == 3

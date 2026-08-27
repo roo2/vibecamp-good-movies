@@ -164,7 +164,8 @@ def get_factors(
     # will take on trust.
     detail = factor_detail.detail(scorer, bank, variant, report["groups"], texts,
                                   distance=report.get("distance"),
-                                  loadings=report.get("loading"))
+                                  loadings=report.get("loading"),
+                                  vectors=report.get("loadings"))
 
     payload = {
         "scorer": scorer,

@@ -59,21 +59,44 @@ def detail(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
     texts: dict[str, str], per_pole: int = 10, per_factor_items: int = 40,
     distance: dict[str, float] | None = None, loadings: dict[str, float] | None = None,
+    vectors: dict[str, list[float]] | None = None,
 ) -> dict[int, dict[str, Any]]:
     """Per factor: where the corpus sits, which films anchor each pole, and why."""
     rows = _verdicts(scorer, bank_version, variant)
     titles = _titles()
+    vectors = vectors or {}
 
-    # (film, factor) -> the verdicts that film gave on that factor's items.
-    by_film: dict[tuple[str, int], list[int]] = defaultdict(list)
-    # item -> affirm/deny counts across the whole corpus.
+    # THE SAME ARITHMETIC AS EVERYWHERE ELSE. This used to average the RAW
+    # verdicts of the propositions filed under a factor: no flip for the ones
+    # that read backwards, no weight for how much each speaks to the axis, and
+    # only its own propositions counted. So a film strongly affirming
+    # reverse-keyed propositions was pushed toward the pole it was arguing
+    # against. Wonder Woman read +0.59 toward "predestined order" from 11
+    # propositions while its own page read -0.44 toward self-determination from
+    # 55, and every proposition listed underneath said self-determination.
+    by_film: dict[tuple[str, int], list[tuple[float, float]]] = defaultdict(list)
     per_item: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    factors_seen = sorted({f for f in groups.values()})
     for row in rows:
-        factor = groups.get(row["item_id"])
-        if factor is None:
+        item = row["item_id"]
+        home = groups.get(item)
+        if home is None:
             continue
-        by_film[(row["film_id"], factor)].append(row["value"] / MAX_STRENGTH)
-        per_item[row["item_id"]][0 if row["value"] > 0 else 1] += 1
+        per_item[item][0 if row["value"] > 0 else 1] += 1
+        vector = vectors.get(item)
+        for factor in factors_seen:
+            if vector is not None and factor < len(vector):
+                strength = vector[factor]
+            elif home == factor:
+                strength = loadings.get(item) if loadings else 1.0
+                strength = 1.0 if strength is None else strength
+            else:
+                continue
+            if not strength:
+                continue
+            direction = -1.0 if strength < 0 else 1.0
+            by_film[(row["film_id"], factor)].append(
+                (row["value"] * direction / MAX_STRENGTH, abs(strength)))
 
     items_by_factor: dict[int, list[str]] = defaultdict(list)
     for item_id, factor in groups.items():
@@ -85,10 +108,13 @@ def detail(
         for (film_id, cell_factor), values in by_film.items():
             if cell_factor != factor or len(values) < MIN_ITEMS_FOR_A_FILM:
                 continue
+            total = sum(w for _v, w in values)
+            if total <= 0:
+                continue
             positions.append({
                 "film_id": film_id,
                 "title": titles.get(film_id, film_id),
-                "score": round(st.mean(values), 3),
+                "score": round(sum(v * w for v, w in values) / total, 3),
                 "items": len(values),
             })
         positions.sort(key=lambda row: -row["score"])

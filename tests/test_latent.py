@@ -474,7 +474,7 @@ def test_an_axis_carries_one_factors_eigenvalue_and_that_same_factors_margin():
     assert named[1]["eigenvalue"] == 15.95 and named[1]["margin"] == 2.671
 
 
-def test_an_axis_lists_its_propositions_strongest_first():
+def test_an_axis_lists_its_propositions_strongest_first(monkeypatch, tmp_path):
     """The evidence under an axis, in the order a reader meets it.
 
     Ordered by distance from the group centroid, which sounds like centrality
@@ -485,7 +485,25 @@ def test_an_axis_lists_its_propositions_strongest_first():
     and the largest in the solution, was 23rd of 23. The cap then cut the
     remainder by the same unrelated criterion.
     """
+    from dataclasses import replace
+
+    from moral_atlas import db
     from moral_atlas.analysis import factor_detail
+    from moral_atlas.config import settings
+
+    monkeypatch.setattr(db, "settings", lambda: replace(
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "isolated.sqlite"))
+    db.init_db()
+    with db.connect() as con:
+        con.executemany("INSERT INTO films (film_id, title) VALUES (?,?)",
+                        [("f1", "One"), ("f2", "Two"), ("f3", "Three")])
+        con.executemany(
+            "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
+            "bank_version, variant, value) VALUES (?,?,?,?,?,?,?)",
+            [("x", "m", film, item, "b", "v", value)
+             for film in ("f1", "f2", "f3")
+             for item, value in (("I1", 1), ("I2", -1), ("I3", 1))])
 
     detail = factor_detail.detail(
         scorer="x", bank_version="b", variant="v",

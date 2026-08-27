@@ -893,6 +893,12 @@ def name_factors_cmd(
     bank: str = typer.Option("b1"),
     iterations: int = typer.Option(200, help="Permutations for the parallel-analysis null."),
     min_films: int = typer.Option(3, help="Drop items scored on fewer films than this."),
+    # Literal rather than factor_names.NAMING_RUNS: typer evaluates option
+    # defaults at import time and this module imports the analysis packages
+    # inside the commands, to keep numpy off the path of every --help.
+    runs: int = typer.Option(
+        3, help="Name this many times and keep the most representative answer. "
+                "1 names once, as it used to."),
 ) -> None:
     """Name the axes the FILMS produced, rather than asking a model for eight.
 
@@ -921,6 +927,7 @@ def name_factors_cmd(
         from .llm.providers import client_for
         client = client_for(alias)
         named = factor_names.name_factors(report, texts, client=client, alias=alias,
+                                          runs=runs,
                                           progress=console.print)
         factor_names.persist(alias, report, named, bank, usage=client.usage.as_dict())
 

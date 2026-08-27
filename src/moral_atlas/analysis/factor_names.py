@@ -142,6 +142,20 @@ on it as a point on a line, and a line has to be labelled at both ends.
     is describing one end and captioning it with the other's name.
   - `question` is the axis as a question with two defensible sides, not a topic.
 
+DO NOT AVOID RELIGIOUS VOCABULARY. Films argue about providence, grace,
+judgement, sin, sacrifice, redemption and divine order directly and at length,
+and where a group is about one of those the religious word is usually the
+plainest and most accurate name for it, not the least neutral. "Divine order"
+is a better label than "Traditional structure" for propositions about a right
+order that precedes human choice, because it is what the propositions are
+about. Reach for a secular paraphrase only when it genuinely fits the
+propositions better, never to soften or to sound impartial.
+
+This is not licence to import religion where it is absent. A group about
+utility and sacrifice in wartime is not about martyrdom. Name what is there.
+
+Keep labels in sentence case: "Divine order", not "Divine Order".
+
 You are NOT asked which end is high or low, or to write the axis's name. Those
 are decided from the statistics and assembled around your labels.
 
@@ -210,9 +224,78 @@ def _items_by_factor(
             for factor, rows in out.items()}
 
 
+# How many times to name the same factors before choosing between the answers.
+#
+# The namer is SAMPLED, and the spread is not small. Asked three times for the
+# same group it returned "Intrinsic worth vs Instrumental lives", "Intrinsic
+# human worth vs Instrumental sacrifice" and "Absolute morality vs
+# Instrumentalist activism" — the third of which is a different reading, not a
+# rewording. Naming once means the axis a reader judges the whole method by is
+# whichever sample happened to come back last.
+#
+# It also makes small prompt changes untestable. An instruction was compared
+# against no instruction on one run each, appeared to change a name, and had
+# not: run-to-run variation on that factor spanned the same range unprompted.
+#
+# Three because the gain is in having a second opinion at all, and each run is
+# one cheap call. Set to 1 to name once.
+NAMING_RUNS = 3
+
+
+def _agreement(a: dict[int, dict[str, Any]], b: dict[int, dict[str, Any]]) -> float:
+    """How much two namings of the same factors say the same thing.
+
+    Token overlap on the reader-facing labels, averaged over the factors both
+    named. Crude on purpose: it has to rank candidates, not score prose, and
+    anything cleverer would need a model, which is the thing being averaged
+    over in the first place.
+    """
+    shared = set(a) & set(b)
+    if not shared:
+        return 0.0
+    total = 0.0
+    for factor in shared:
+        # The keys `_shape` actually emits. Reading `first_label`/`second_label`
+        # here — the names on the MODEL's schema, which is where they stop —
+        # scored every pair 0.0 and quietly turned the medoid into "whichever
+        # ran first", which is the behaviour this function exists to replace.
+        for key in ("pole_high_label", "pole_low_label"):
+            if key not in a[factor] or key not in b[factor]:
+                raise KeyError(
+                    f"naming rows are missing {key!r}; _agreement and _shape "
+                    "have drifted apart")
+            x = set(str(a[factor][key]).lower().split())
+            y = set(str(b[factor][key]).lower().split())
+            if x or y:
+                total += len(x & y) / len(x | y)
+    return total / (len(shared) * 2)
+
+
+def _consensus(runs: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """The run that most agrees with the others — a medoid, not a mode.
+
+    Per-FACTOR modes would be wrong here. The namer is shown every group at
+    once precisely so it has to tell them apart, and names assembled from
+    different runs lose that: two axes chosen independently can come back
+    describing the same thing, which is the failure the single call exists to
+    prevent. Choosing a whole run keeps the set internally consistent.
+
+    With an exact repeat among the candidates this lands on it anyway, since
+    identical runs each score a perfect agreement against the other.
+    """
+    live = [r for r in runs if r]
+    if len(live) < 2:
+        return live[0] if live else []
+    keyed = [{f["factor_id"]: f for f in run} for run in live]
+    scores = [sum(_agreement(a, b) for j, b in enumerate(keyed) if i != j)
+              for i, a in enumerate(keyed)]
+    return live[max(range(len(live)), key=lambda i: scores[i])]
+
+
 def name_factors(
     report: dict[str, Any], texts: dict[str, str], client=None,
     alias: str | None = None, sample: int = SAMPLE, progress=None,
+    runs: int = NAMING_RUNS,
 ) -> list[dict[str, Any]]:
     """Name each factor `latent.analyse` found. One call, all groups.
 
@@ -220,6 +303,10 @@ def name_factors(
     side. Shown a single group in isolation it will find a theme in anything and
     the names come back overlapping; shown all of them it has to tell them
     apart, which is the property the axes actually need.
+
+    That call is made `runs` times and the most representative answer kept, so
+    a published axis name is one the namer would give again rather than one
+    sample from a wide distribution. See `NAMING_RUNS`.
     """
     alias = alias or report["scorer"]
     grouped = _items_by_factor(report["groups"], texts, report.get("distance"),
@@ -255,9 +342,35 @@ def name_factors(
             + side(high, "ONE END affirms these") + "\n"
             + side(low, "THE OTHER END affirms these"))
 
-    result = client.parse(system=SYSTEM, user="\n\n".join(blocks),
-                          output_model=FactorNames, max_tokens=16000)
+    user = "\n\n".join(blocks)
+    candidates = []
+    for attempt in range(max(1, runs)):
+        try:
+            answer = client.parse(system=SYSTEM, user=user,
+                                  output_model=FactorNames, max_tokens=16000)
+        except Exception as error:
+            # One failed sample must not lose the naming when others succeeded.
+            if progress:
+                progress(f"  naming run {attempt + 1} failed: {type(error).__name__}")
+            continue
+        candidates.append(_shape(answer, grouped, report))
+        if progress and runs > 1:
+            names = ", ".join(f["name"] for f in candidates[-1])
+            progress(f"  run {attempt + 1}: {names}")
+    if not candidates:
+        raise RuntimeError("every naming run failed")
+    named = _consensus(candidates)
+    if progress:
+        if len(candidates) > 1:
+            progress(f"  kept: {', '.join(f['name'] for f in named)}")
+        for factor in named:
+            if not factor.get("coherent", True):
+                progress(f"  {factor['name']}  [yellow](would not cohere)[/]")
+    return named
 
+
+def _shape(result: "FactorNames", grouped, report: dict[str, Any]) -> list[dict[str, Any]]:
+    """One model answer, turned into the rows `persist` writes."""
     margins = report.get("margins") or []
     eigenvalues = report.get("eigenvalues") or []
     dominant = {int(k): int(v) for k, v in (report.get("dominant") or {}).items()}
@@ -305,10 +418,6 @@ def name_factors(
                        if index in dominant and dominant[index] < len(margins)
                        else (margins[index] if index < len(margins) else None)),
         })
-        if progress:
-            mark = "" if factor.coherent else "  [yellow](would not cohere)[/]"
-            progress(f"  {factor.second_label.strip()} vs "
-                     f"{factor.first_label.strip()}{mark}")
     return named
 
 

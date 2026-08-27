@@ -707,3 +707,89 @@ def test_an_axis_is_weighted_by_the_evidence_behind_it_not_the_count():
     # list in these tests — still reports its count, which is its true mass
     # when every proposition counts once.
     assert user_scores.evidence([1.0, -1.0, 1.0]) == 3.0
+
+
+def test_naming_keeps_the_answer_the_namer_would_give_again():
+    """The namer is sampled, and the spread is not small.
+
+    Asked three times for the same group it returned "Intrinsic worth vs
+    Instrumental lives", "Intrinsic human worth vs Instrumental sacrifice" and
+    "Absolute morality vs Instrumentalist activism" — the third a different
+    reading, not a rewording. Named once, the axis a reader judges the whole
+    method by is whichever sample came back last.
+
+    A WHOLE RUN is chosen, not a per-factor mode. The namer sees every group in
+    one call precisely so it has to tell them apart; names assembled from
+    different runs lose that, and two axes chosen independently can come back
+    describing the same thing.
+    """
+    from moral_atlas.analysis.factor_names import _consensus
+
+    # The keys `_shape` emits, not the ones on the model's schema. Building
+    # the fixture from the schema's names is how the first version of this
+    # test passed against a function that scored every pair zero.
+    def run(*pairs):
+        return [{"factor_id": i, "pole_high_label": a, "pole_low_label": b,
+                 "name": f"{b} vs {a}"} for i, (a, b) in enumerate(pairs)]
+
+    agreeing_a = run(("Divine order", "Self determination"), ("Revenge", "Forgiveness"))
+    agreeing_b = run(("Divine order", "Self determination"), ("Revenge", "Mercy"))
+    outlier = run(("Inherited power", "Personal freedom"), ("Fate", "Agency"))
+
+    # Deliberately first in the list: a scorer that fails silently returns 0
+    # for every pair and `max` then keeps whatever it was handed first.
+    kept = _consensus([outlier, agreeing_a, agreeing_b])
+    assert kept is agreeing_a or kept is agreeing_b, (
+        "the odd one out must not be published just because it ran first")
+
+    # The kept answer is internally whole: every factor comes from one run.
+    assert [f["name"] for f in kept] in (
+        [f["name"] for f in agreeing_a], [f["name"] for f in agreeing_b])
+
+    # And it reads the shape production hands it. If `_shape` renames a label
+    # column, this must break rather than silently pick the first run.
+    import pytest
+    with pytest.raises(KeyError, match="drifted apart"):
+        _consensus([[{"factor_id": 0, "first_label": "x", "second_label": "y"}],
+                    [{"factor_id": 0, "first_label": "x", "second_label": "z"}]])
+
+    # One run, or one surviving run, is used as-is rather than discarded.
+    assert _consensus([agreeing_a]) is agreeing_a
+    assert _consensus([[], agreeing_a]) is agreeing_a
+    assert _consensus([]) == []
+
+
+def test_a_failed_naming_run_does_not_lose_the_ones_that_worked():
+    """Three calls mean three chances to hit a provider error."""
+    import pytest
+
+    from moral_atlas.analysis import factor_names
+
+    calls = {"n": 0}
+
+    class Flaky:
+        def parse(self, system, user, output_model, max_tokens=None):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise RuntimeError("502 from the provider")
+            return factor_names.FactorNames(factors=[factor_names.FactorName(
+                factor_id=0, first_label="A", second_label="B", first="a",
+                second="b", question="q?", coherent=True)])
+
+    report = {"scorer": "stub", "groups": {"I1": 0, "I2": 0},
+              "loading": {"I1": 0.8, "I2": -0.6},
+              "distance": {"I1": 0.1, "I2": 0.2},
+              "dominant": {0: 0}, "eigenvalues": [9.0], "margins": [1.0]}
+    named = factor_names.name_factors(
+        report, {"I1": "one", "I2": "two"}, client=Flaky(), alias="stub", runs=3)
+    assert calls["n"] == 3, "a failure must not abort the remaining runs"
+    assert [f["name"] for f in named] == ["B vs A"]
+
+    # But if every run fails, that is an error and not an empty axis set.
+    class Broken:
+        def parse(self, **kw):
+            raise RuntimeError("down")
+
+    with pytest.raises(RuntimeError, match="every naming run failed"):
+        factor_names.name_factors(report, {"I1": "one", "I2": "two"},
+                                  client=Broken(), alias="stub", runs=2)

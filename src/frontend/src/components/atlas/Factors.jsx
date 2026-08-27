@@ -34,7 +34,7 @@ function Scree({ eigenvalues, thresholds }) {
   )
 }
 
-function Factor({ factor, scorer }) {
+function Factor({ factor, reading }) {
   const [open, setOpen] = React.useState(false)
   const clear = isClear(factor)
 
@@ -69,10 +69,10 @@ function Factor({ factor, scorer }) {
             <b>+&nbsp;{factor.pole_high_label}</b> {factor.pole_high}
           </p>
 
-          <FactorDistribution films={factor.distribution} scorer={scorer}
+          <FactorDistribution films={factor.distribution} reading={reading}
                              factorId={factor.factor_id}
                              poleLow={factor.pole_low_label} poleHigh={factor.pole_high_label} />
-          <FilmAnchors high={factor.high} low={factor.low} scorer={scorer}
+          <FilmAnchors high={factor.high} low={factor.low} reading={reading}
                        factorId={factor.factor_id}
                        poleHigh={factor.pole_high} poleLow={factor.pole_low}
                        highLabel={factor.pole_high_label} lowLabel={factor.pole_low_label} />
@@ -211,7 +211,9 @@ export function Factors({ data }) {
         {named.length ? (
           <ul className="factors">
             {named.map((factor) => (
-              <Factor key={factor.factor_id} factor={factor} scorer={data.scorer} />
+              <Factor key={factor.factor_id} factor={factor}
+                      reading={{ scorer: data.scorer, variant: data.variant,
+                                 bank_version: data.bank_version }} />
             ))}
           </ul>
         ) : (

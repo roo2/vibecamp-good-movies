@@ -303,7 +303,11 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
             # n_items is selected because by_support ties on it. Leaving it out
             # made the tie-break silently inert and the order fell through to
             # the axis name, which is alphabetical and means nothing.
-            "pole_low_label, eigenvalue, n_items FROM latent_factors "
+            # margin is selected because by_support orders on it. n_items was
+            # left out of this list once already and the tie-break it feeds went
+            # silently inert; the same omission here would put the axes in a
+            # different order from every other screen.
+            "pole_low_label, eigenvalue, n_items, margin FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? "
             "AND n_items>=? "
             # An axis the namer would not call coherent should not be handed to

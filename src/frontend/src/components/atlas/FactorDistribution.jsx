@@ -1,4 +1,5 @@
 import React from 'react'
+import { loadFilmAxes } from '../../services/factorService.js'
 import Verdicts from './Verdicts.jsx'
 
 // Where every film sits on one axis.
@@ -26,7 +27,7 @@ const sideOf = (index) => (index === (BINS - 1) / 2 ? 'mid' : index < (BINS - 1)
 
 const signed = (value) => `${value >= 0 ? '+' : ''}${value.toFixed(2)}`
 
-export function FactorDistribution({ films, poleLow, poleHigh, scorer, factorId }) {
+export function FactorDistribution({ films, poleLow, poleHigh, reading, factorId }) {
   const [open, setOpen] = React.useState(null)
   if (!films?.length) return null
 
@@ -95,7 +96,7 @@ export function FactorDistribution({ films, poleLow, poleHigh, scorer, factorId 
               : ` — ${poleHigh || 'toward +1'}`}
           </span>
           <AnchorList films={[...chosen].sort((a, b) => b.score - a.score)}
-                      scorer={scorer} factorId={factorId} />
+                      reading={reading} factorId={factorId} />
         </div>
       ) : (
         <p className="distribution-hint">Click a bar to see which films are in it.</p>
@@ -112,14 +113,13 @@ export function FactorDistribution({ films, poleLow, poleHigh, scorer, factorId 
 // this factor — the actual sentences it affirmed and denied, which is the
 // evidence the position was computed from and the thing a doubtful reader
 // wants first.
-export function FilmOnAxis({ scorer, factorId, film }) {
+export function FilmOnAxis({ reading, factorId, film }) {
   const [state, setState] = React.useState({ status: 'loading' })
 
   React.useEffect(() => {
     let live = true
     setState({ status: 'loading' })
-    fetch(`/api/factors/${encodeURIComponent(scorer)}/films/${encodeURIComponent(film.film_id)}`)
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+    loadFilmAxes(reading, film.film_id)
       .then((data) => {
         if (!live) return
         const match = (data.factors || []).find((f) => f.factor_id === factorId)
@@ -127,7 +127,7 @@ export function FilmOnAxis({ scorer, factorId, film }) {
       })
       .catch(() => live && setState({ status: 'failed' }))
     return () => { live = false }
-  }, [scorer, factorId, film.film_id])
+  }, [reading?.scorer, reading?.variant, reading?.bank_version, factorId, film.film_id])
 
   if (state.status === 'loading') return <p className="film-why-note">Reading its answers…</p>
   if (state.status === 'failed' || !state.factor?.verdicts?.length) {
@@ -157,7 +157,7 @@ export function FilmOnAxis({ scorer, factorId, film }) {
   )
 }
 
-function AnchorList({ films, scorer, factorId }) {
+function AnchorList({ films, reading, factorId }) {
   const [openId, setOpenId] = React.useState(null)
   return (
     <ul>
@@ -170,7 +170,7 @@ function AnchorList({ films, scorer, factorId }) {
             <span>{film.items} item{film.items === 1 ? '' : 's'}</span>
           </button>
           {openId === film.film_id && (
-            <FilmOnAxis scorer={scorer} factorId={factorId} film={film} />
+            <FilmOnAxis reading={reading} factorId={factorId} film={film} />
           )}
         </li>
       ))}
@@ -179,7 +179,7 @@ function AnchorList({ films, scorer, factorId }) {
 }
 
 export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel,
-                              scorer, factorId }) {
+                              reading, factorId }) {
   if (!high?.length && !low?.length) return null
   // Each column says what its end of the axis MEANS, not just which way it
   // points. "Furthest toward affirming" is only informative to a reader who has
@@ -189,12 +189,12 @@ export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel,
       <div className="anchors-side high">
         <span className="anchors-label">Most {highLabel || 'affirming'}</span>
         {poleHigh && <p className="anchors-pole">{poleHigh}</p>}
-        <AnchorList films={high} scorer={scorer} factorId={factorId} />
+        <AnchorList films={high} reading={reading} factorId={factorId} />
       </div>
       <div className="anchors-side low">
         <span className="anchors-label">Most {lowLabel || 'denying'}</span>
         {poleLow && <p className="anchors-pole">{poleLow}</p>}
-        <AnchorList films={low} scorer={scorer} factorId={factorId} />
+        <AnchorList films={low} reading={reading} factorId={factorId} />
       </div>
     </div>
   )

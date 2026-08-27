@@ -286,21 +286,29 @@ def by_support(factor: dict[str, Any]) -> tuple[float, int, str]:
     met first changed depending on where they met it, and nothing on any of
     them explained why. One key, imported by all three.
 
-    Eigenvalue first: how much of the corpus's variation the factor accounts
-    for, which is the plainest statement of how much a reader should weigh it.
+    MARGIN first: how far the factor's eigenvalue clears the 95th percentile of
+    a null built by permuting each proposition's own column. That is the
+    directest statement of how sure we are the axis is there at all, and it is
+    what a reader deserves to meet first.
 
-    Then the number of propositions behind it. That tie-break stopped being
-    cosmetic once each group was matched to the factor it genuinely loads on —
-    several groups can share one factor, meaning they are facets of it, and the
-    facet carrying more of the factor should stand ahead of the one carrying
-    less.
+    Not eigenvalue, which is a different question — how much of the corpus's
+    variation a factor accounts for — and which on the current reading gives a
+    different order outright: the axis clearing chance by 262% accounts for less
+    variation than one clearing it by 24%. Size and certainty are not the same
+    thing, and the ordering should promise certainty.
+
+    Then eigenvalue, then the number of propositions behind it. Those tie-breaks
+    stopped being cosmetic once each group was matched to the factor it
+    genuinely loads on — several groups can share one factor, meaning they are
+    facets of it, and the facet carrying more of it should stand ahead.
 
     Then the name, and finally the factor's own id, so the order is TOTAL. Two
     axes equal on everything else would otherwise keep whatever order they
     arrived in — stable while one query feeds them, and silently different the
     day another does. A shared key is only shared if it decides every pair.
     """
-    return (-(factor.get("eigenvalue") or 0.0),
+    return (-(factor.get("margin") or 0.0),
+            -(factor.get("eigenvalue") or 0.0),
             -(factor.get("n_items") or 0),
             str(factor.get("name") or ""),
             int(factor.get("factor_id") or 0))

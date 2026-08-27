@@ -1,5 +1,6 @@
 import React from 'react'
 import Verdicts from './Verdicts.jsx'
+import { loadFilmAxes } from '../../services/factorService.js'
 
 // One film against every axis, and the verdicts that put it there.
 //
@@ -108,10 +109,7 @@ export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
     if (!scorer || !filmId) return undefined
     let live = true
     setState({ status: 'loading' })
-    const query = new URLSearchParams({ variant, ...(bank ? { bank } : {}) })
-    fetch(`/api/factors/${encodeURIComponent(scorer)}/films/`
-          + `${encodeURIComponent(filmId)}?${query}`)
-      .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
+    loadFilmAxes({ scorer, variant, bank_version: bank }, filmId)
       .then((data) => live && setState({ status: 'ready', data }))
       .catch(() => live && setState({ status: 'failed' }))
     return () => { live = false }

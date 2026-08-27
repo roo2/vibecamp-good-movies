@@ -357,16 +357,26 @@ def test_every_screen_orders_the_axes_the_same_way():
     """
     from moral_atlas.analysis import factor_names
 
+    # Margin leads, and it is not a restatement of eigenvalue: on the live
+    # reading the axis clearing chance by 262% accounts for LESS variation than
+    # one clearing it by 24%. Size and certainty are different questions and the
+    # order promises certainty.
+    by_margin = [
+        {"factor_id": 1, "name": "big but unsure", "margin": 0.20, "eigenvalue": 15.7, "n_items": 28},
+        {"factor_id": 2, "name": "small but certain", "margin": 2.62, "eigenvalue": 4.5, "n_items": 22},
+    ]
+    assert [f["factor_id"] for f in sorted(by_margin, key=factor_names.by_support)] == [2, 1]
+
     factors = [
-        {"factor_id": 1, "name": "b axis", "eigenvalue": 11.6, "n_items": 8},
-        {"factor_id": 2, "name": "a axis", "eigenvalue": 11.6, "n_items": 20},
-        {"factor_id": 3, "name": "c axis", "eigenvalue": 6.0, "n_items": 14},
-        {"factor_id": 4, "name": "d axis", "eigenvalue": 6.0, "n_items": 7},
-        {"factor_id": 5, "name": "e axis", "eigenvalue": None, "n_items": 3},
+        {"factor_id": 1, "name": "b axis", "margin": 0.5, "eigenvalue": 11.6, "n_items": 8},
+        {"factor_id": 2, "name": "a axis", "margin": 0.5, "eigenvalue": 11.6, "n_items": 20},
+        {"factor_id": 3, "name": "c axis", "margin": 0.5, "eigenvalue": 6.0, "n_items": 14},
+        {"factor_id": 4, "name": "d axis", "margin": 0.5, "eigenvalue": 6.0, "n_items": 7},
+        {"factor_id": 5, "name": "e axis", "margin": None, "eigenvalue": None, "n_items": 3},
     ]
     ordered = sorted(factors, key=factor_names.by_support)
     assert [f["factor_id"] for f in ordered] == [2, 1, 3, 4, 5], (
-        "eigenvalue first, then propositions behind it, then the name")
+        "then eigenvalue, then propositions behind it, then the name")
 
     # A missing eigenvalue must sort last rather than first, which is what a
     # bare `-(None or 0)` would do if the fallback were ever removed.
@@ -375,8 +385,8 @@ def test_every_screen_orders_the_axes_the_same_way():
     # The key must be TOTAL, or the order depends on which query fed it. Two
     # axes identical on every visible field still have to come out the same way
     # whichever order they arrived in.
-    same = [{"factor_id": 9, "name": "x", "eigenvalue": 1.0, "n_items": 2},
-            {"factor_id": 8, "name": "x", "eigenvalue": 1.0, "n_items": 2}]
+    same = [{"factor_id": 9, "name": "x", "margin": 1.0, "eigenvalue": 1.0, "n_items": 2},
+            {"factor_id": 8, "name": "x", "margin": 1.0, "eigenvalue": 1.0, "n_items": 2}]
     forwards = [f["factor_id"] for f in sorted(same, key=factor_names.by_support)]
     backwards = [f["factor_id"] for f in sorted(reversed(same), key=factor_names.by_support)]
     assert forwards == backwards == [8, 9]

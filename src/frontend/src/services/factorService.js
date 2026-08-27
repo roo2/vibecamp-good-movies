@@ -24,6 +24,20 @@ export async function loadModels() {
 // which model backs the product is a server setting, and a phone screen that
 // hard-coded 'deepseek' would silently keep reading the old model the day that
 // setting changed.
+// One film on one READING's axes. A reading is {scorer, variant, bank_version}
+// and all three matter: the endpoint falls back to the bank a scorer wrote for
+// itself, so dropping the bank silently answers a different question. Two
+// components built this URL by hand and both omitted it, which put the axes of
+// one reading beside the films of another on the same screen.
+export async function loadFilmAxes(reading, filmId) {
+  const query = new URLSearchParams({
+    variant: reading?.variant || 'subs',
+    ...(reading?.bank_version ? { bank: reading.bank_version } : {}),
+  })
+  return get(`/api/factors/${encodeURIComponent(reading.scorer)}/films/`
+             + `${encodeURIComponent(filmId)}?${query}`)
+}
+
 export async function loadProductFilmAxes(filmId) {
   return get(`/api/factors/product/films/${encodeURIComponent(filmId)}`)
 }

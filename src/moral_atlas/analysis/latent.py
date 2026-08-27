@@ -492,10 +492,26 @@ def item_groups(matrix, items: list[str], k: int,
     # always exists. Claims are settled strongest-first: the group with the most
     # to lose gets its preference, and a group whose first choice is taken falls
     # to the strongest factor still free.
+    #
+    # HOW STRONGLY A GROUP CLAIMS A FACTOR IS A MAGNITUDE QUESTION, and this
+    # measured `abs(mean(signed))` — the size of the group's average loading,
+    # which is not the same thing as its average size. On a BIPOLAR group the
+    # difference is total: half the members load +0.6 and half -0.6, the mean
+    # is ~0, and the group makes almost no claim to the factor it is made of.
+    # It then wins some other factor by default, and every group shifts.
+    #
+    # Which is the same defect the note above describes, surviving the fix for
+    # it, because clustering on magnitudes is what MADE the groups bipolar.
+    # Measured here: 26 of 90 propositions sat on the factor they actually load
+    # most on, mean loading 0.19 against a ceiling of 0.45; the axis named from
+    # the strongest 23-item group was really the weakest factor, and the
+    # proposition loading 0.83 — the largest in the solution — was filed under
+    # a factor where it loads 0.17 and dropped below the threshold to be read
+    # at all. `mean(abs(signed))` puts 76 of 90 right, at mean loading 0.43.
     members_of = {factor: [i for i, label in enumerate(labels) if label == factor]
                   for factor in range(k)}
     claims = sorted(
-        ((float(np.abs(loadings[m].mean(axis=0))[f]), g, f)
+        ((float(np.abs(loadings[m]).mean(axis=0)[f]), g, f)
          for g, m in members_of.items() if m for f in range(k)),
         reverse=True)
     dominant: dict[int, int] = {}

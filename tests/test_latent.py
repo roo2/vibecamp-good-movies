@@ -120,9 +120,43 @@ def test_structureless_responses_yield_no_factors():
 
 
 def test_items_are_grouped_with_the_ones_sharing_their_factor():
-    matrix = planted(n_films=60, per_factor=20, k=3, noise=0.3)
+    """Including the items that point the OTHER WAY on the same factor.
+
+    An axis has two ends: a proposition at one loads +0.8 where its opposite
+    loads -0.8. Grouping on the signed loadings puts those as far apart as two
+    points can be, so it files the two ends of one axis as two different axes —
+    which is what it did on the real corpus, where two of three groups were both
+    drawn from factor 1 with every proposition in each pointing one way.
+
+    The planted data used to give every item the same sign, so it never
+    exercised the case and never caught it. Half of each block is reverse-keyed
+    here, as a real factor is.
+    """
+    # Built bipolar from the start. Flipping columns after the fact does not
+    # work: film-centring subtracts each film's mean across items, so reversing
+    # half of them redistributes the signal and leaves no clean factor to find.
+    rng = np.random.default_rng(4)
+    factors = rng.normal(size=(60, 3))
+    columns = []
+    for f in range(3):
+        for j in range(20):
+            pole = 1.0 if j % 2 == 0 else -1.0        # half at each end
+            columns.append(np.sign(pole * factors[:, f]
+                                   + rng.normal(scale=0.3, size=60)))
+    matrix = np.array(columns).T
     items = [f"I{i:03d}" for i in range(matrix.shape[1])]
     groups, distance, loading, _dominant, _all = latent.item_groups(matrix, items, 3)
+
+    # Both ends of each planted factor must land together.
+    for start in (0, 20, 40):
+        block = [groups[items[i]] for i in range(start, start + 20)]
+        assert len(set(block)) == 1, (
+            f"planted factor {start // 20} was split across groups {sorted(set(block))} "
+            "— its two poles were filed as different axes")
+    # And the sign must still separate the poles INSIDE the group.
+    for start in (0, 20, 40):
+        signs = [loading[items[i]] >= 0 for i in range(start, start + 20)]
+        assert 0 < sum(signs) < 20, "a real factor has propositions at both ends"
 
     # Items 0-19 were built from factor 0, 20-39 from factor 1, 40-59 from 2.
     blocks = [ {groups[items[i]] for i in range(start, start + 20)}

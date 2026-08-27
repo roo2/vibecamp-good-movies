@@ -422,9 +422,32 @@ def item_groups(matrix, items: list[str], k: int,
     values, vectors = np.linalg.eigh(correlation)
     order = np.argsort(values)[::-1][:k]
     loadings = vectors[:, order] * np.sqrt(np.clip(values[order], 0, None))
-    model = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(loadings)
+    # CLUSTER ON THE MAGNITUDES, NOT THE SIGNS. An axis has two ends, and a
+    # proposition at one end loads +0.8 where its opposite loads -0.8. In the
+    # space k-means measures, those are as far apart as two points can be — so
+    # clustering the signed loadings files the two ends of one axis as two
+    # different things. Measured here, it did exactly that: two of the three
+    # groups were both drawn from factor 1, each with 100% of its propositions
+    # pointing the same way. They were the poles of a single axis, torn apart
+    # and presented as separate axes.
+    #
+    # Which produced every symptom a reader reported at once: an axis whose
+    # "other end was not observed" (it was — in the other cluster), names that
+    # read as half an axis with the rest invented, and films with opposite
+    # moral messages sitting together because a one-ended group measures only
+    # how much a film affirms that end.
+    #
+    # On magnitudes the groups come back 58-68% one-sign, which is what a real
+    # bipolar axis looks like, and the SIGN then separates the poles inside the
+    # group — which is what the sign is for and what reverse-keying expects.
+    #
+    # The note above about rotation being inert is still true and was still the
+    # wrong thing to conclude from: distance between signed profiles is exactly
+    # what destroys the relationship between an axis's two ends.
+    magnitudes = np.abs(loadings)
+    model = KMeans(n_clusters=k, n_init=10, random_state=seed).fit(magnitudes)
     labels = model.labels_
-    distances = np.linalg.norm(loadings - model.cluster_centers_[labels], axis=1)
+    distances = np.linalg.norm(magnitudes - model.cluster_centers_[labels], axis=1)
 
     # Each item's signed loading on the factor it was assigned to.
     #

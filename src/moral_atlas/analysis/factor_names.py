@@ -355,7 +355,7 @@ def persist(
     return run_id
 
 
-def by_support(factor: dict[str, Any]) -> tuple[float, int, str]:
+def by_support(factor: dict[str, Any]) -> tuple[float, float, int, str, int]:
     """How well supported an axis is — the one ordering used everywhere.
 
     Three screens show these groups: the atlas, the compass a person gets, and
@@ -374,10 +374,11 @@ def by_support(factor: dict[str, Any]) -> tuple[float, int, str]:
     variation than one clearing it by 24%. Size and certainty are not the same
     thing, and the ordering should promise certainty.
 
-    Then eigenvalue, then the number of propositions behind it. Those tie-breaks
-    stopped being cosmetic once each group was matched to the factor it
-    genuinely loads on — several groups can share one factor, meaning they are
-    facets of it, and the facet carrying more of it should stand ahead.
+    Then eigenvalue, then the number of propositions behind it. Groups are
+    matched to factors one-to-one, so these no longer separate facets of one
+    factor from each other — they break ties between genuinely distinct
+    factors that cleared the null by the same margin, which the corpus does
+    produce.
 
     Then the name, and finally the factor's own id, so the order is TOTAL. Two
     axes equal on everything else would otherwise keep whatever order they

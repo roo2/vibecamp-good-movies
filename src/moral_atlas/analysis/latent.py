@@ -528,16 +528,21 @@ def item_groups(matrix, items: list[str], k: int,
     # value in one place and the raw value in another put 65 of 87 propositions
     # on this reading at opposite signs depending on which was read, and every
     # film's position on two of the three axes came out inverted.
+    #
+    # `group` and `factor` are different things and this loop reads both. A
+    # k-means label indexes `members_of` and `orientation`; the eigenvector it
+    # loads on indexes `loadings`. Naming the loop variable `factor` while it
+    # iterated GROUPS is how the two were confused in the first place, twice,
+    # so they are named apart here and everywhere below.
     signed: dict[str, float] = {}
     orientation: dict[int, float] = {}
-    for factor in range(k):
-        members = members_of.get(factor) or []
+    for group in range(k):
+        members = members_of.get(group) or []
         if not members:
             continue
-        best = dominant[factor]
-        column = loadings[members, best]
+        column = loadings[members, dominant[group]]
         flip = -1.0 if float(np.sign(column).sum()) < 0 else 1.0
-        orientation[factor] = flip
+        orientation[group] = flip
         for position, value in zip(members, column * flip):
             signed[items[position]] = float(value)
 

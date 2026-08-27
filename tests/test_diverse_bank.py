@@ -271,44 +271,41 @@ def test_each_group_is_signed_by_the_factor_it_actually_loads_on():
                            sorted(abs(loadings[members, factor])))
 
 
-def test_the_product_never_shows_two_facets_of_one_factor():
-    """Eight of the twenty groups load on the first factor alone.
+def test_two_groups_never_claim_the_same_factor():
+    """The product must not show two facets of one factor as two axes.
 
-    Listing several of them side by side implies several independent readings
-    of a person when they are one reading rephrased, and nothing on the screen
-    lets a reader tell. Groups sharing a factor share its eigenvalue, so that is
-    what deduplicates them; the group with the most propositions stands for it.
+    Eight of the twenty groups once loaded on the first factor alone. Listing
+    several side by side implies several independent readings of a person when
+    they are one reading rephrased, and nothing on the screen lets a reader
+    tell. `factor_axes` used to strip the duplicates afterwards, by shared
+    eigenvalue — a repair applied downstream of the thing that was broken.
+
+    The assignment itself is now one-to-one, so there is nothing to strip. This
+    pins that, because the moment it stops being true the product silently
+    starts showing facets again with no filter left to catch them.
     """
-    import sqlite3
+    import numpy as np
 
-    from moral_atlas.analysis import user_scores
+    from moral_atlas.analysis.latent import item_groups
 
-    def row(**kw):
-        return kw
+    # Three real factors, deliberately unequal in size so the claims are
+    # contested rather than settled by symmetry.
+    rng = np.random.default_rng(17)
+    films = 90
+    drivers = [rng.normal(size=films) for _ in range(3)]
+    columns, owners = [], []
+    for factor, driver in enumerate(drivers):
+        for i in range(6 - factor):                # 6, 5, 4 propositions
+            sign = 1 if i % 2 == 0 else -1         # both poles of each
+            columns.append(np.sign(driver * sign + rng.normal(0, .35, films)))
+            owners.append(factor)
+    matrix = np.column_stack(columns)
+    items = [f"I{i}" for i in range(len(columns))]
 
-    rows = [row(factor_id=1, name="a", question="?", pole_high="h", pole_low="l",
-                pole_high_label="A", pole_low_label="B", eigenvalue=68.2),
-            row(factor_id=2, name="b", question="?", pole_high="h", pole_low="l",
-                pole_high_label="C", pole_low_label="D", eigenvalue=68.2),
-            row(factor_id=3, name="c", question="?", pole_high="h", pole_low="l",
-                pole_high_label="E", pole_low_label="F", eigenvalue=31.4)]
+    _groups, _distance, _signed, dominant, _all = item_groups(matrix, items, 3)
 
-    class FakeCursor:
-        def fetchall(self): return rows
-
-    class FakeCon:
-        def execute(self, *a, **k): return FakeCursor()
-
-    import contextlib
-    from moral_atlas import db as db_mod
-    original = db_mod.connect
-    db_mod.connect = lambda *a, **k: contextlib.nullcontext(FakeCon())
-    try:
-        axes = user_scores.factor_axes("s", "v", "b", limit=None)
-    finally:
-        db_mod.connect = original
-    assert len(axes) == 2, f"two distinct factors, got {[a['dim_id'] for a in axes]}"
-    assert [a["dim_id"] for a in axes] == [1, 3]
+    assert len(set(dominant.values())) == len(dominant), (
+        f"two groups claimed one factor: {dominant}")
 
 
 def test_a_proposition_every_film_agrees_with_is_not_a_dimension():
@@ -653,3 +650,60 @@ def test_every_screen_computes_a_film_s_position_the_same_way():
     assert rows["f"]["score"] < 0, (
         f"reverse-keyed propositions were not flipped: got {rows['f']['score']:+.2f}")
     assert rows["f"]["items"] == 3
+
+
+def test_an_axis_is_weighted_by_the_evidence_behind_it_not_the_count():
+    """How much a film's position on one axis is worth.
+
+    `len(stance)` was the answer, and it stopped being one the moment every
+    proposition began counting on every axis in proportion to its loading:
+    every axis then draws on the same propositions, so the count is identical
+    across a film's axes by construction. Measured on the corpus, the spread
+    between a film's busiest and emptiest axis was exactly 0.00 for all 565
+    films — a weight that weighted nothing, while still varying between films
+    and so still looking like it worked.
+
+    `Stance.mass` is the loading weight actually behind the position, divided
+    by the axis's own mean loading so it stays denominated in propositions.
+    """
+    import contextlib
+    import json
+
+    from moral_atlas import db as db_mod
+    from moral_atlas.analysis import user_scores
+
+    # Both propositions speak to both axes, and both are answered — so the
+    # COUNT is two on each. They speak to axis 0 far more strongly.
+    items = [
+        {"item_id": "A", "factor_id": 0, "loading": 0.9, "loadings": json.dumps([0.9, 0.1])},
+        {"item_id": "B", "factor_id": 1, "loading": 0.9, "loadings": json.dumps([0.9, 0.1])},
+    ]
+    verdicts = [{"film_id": "f", "item_id": "A", "value": 2},
+                {"film_id": "f", "item_id": "B", "value": 2}]
+
+    class Cursor:
+        def __init__(self, rows): self.rows = rows
+        def fetchall(self): return self.rows
+        def __iter__(self): return iter(self.rows)
+
+    class Con:
+        def execute(self, sql, args=None):
+            return Cursor(items if "latent_factor_items" in sql else verdicts)
+
+    original = db_mod.connect
+    db_mod.connect = lambda *a, **k: contextlib.nullcontext(Con())
+    try:
+        stances = user_scores.factor_stances("s", "v", "b")
+    finally:
+        db_mod.connect = original
+
+    axis0, axis1 = stances["f"][0], stances["f"][1]
+    assert len(axis0) == len(axis1) == 2, (
+        "the count cannot tell these apart — that is the whole problem")
+    assert axis0.mass > axis1.mass, (
+        "the axis the propositions actually load on must carry more weight")
+
+    # And an unweighted stance — the legacy dimensions, and every hand-built
+    # list in these tests — still reports its count, which is its true mass
+    # when every proposition counts once.
+    assert user_scores.evidence([1.0, -1.0, 1.0]) == 3.0

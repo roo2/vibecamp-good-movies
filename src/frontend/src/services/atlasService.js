@@ -72,10 +72,6 @@ export async function loadFilmEvidence(filmId) {
 // Everything below is presentation arithmetic over the payload. It lives here
 // rather than in the components so the numbers on screen have one definition.
 
-export function dimensionsByItems(atlas) {
-  return [...(atlas.dimensions || [])].sort((a, b) => b.n_items - a.n_items)
-}
-
 export function fateDistribution(atlas) {
   const counts = new Map((atlas.fate_order || []).map((fate) => [fate, 0]))
   for (const film of atlas.films) {

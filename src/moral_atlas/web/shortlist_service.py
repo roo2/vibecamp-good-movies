@@ -131,14 +131,24 @@ def _factor_bank() -> str:
     return settings().factor_bank
 
 
-def _alignment(scores: dict[int, float], stances: dict[int, list[float]]) -> tuple[float, dict[int, float]]:
-    """One person against one film: the signed match, and the per-axis parts."""
+def _alignment(scores: dict[int, float],
+               stances: dict[int, user_scores.Stance]) -> tuple[float, dict[int, float]]:
+    """One person against one film: the signed match, and the per-axis parts.
+
+    Each axis counts for how much evidence the film gives ON THAT AXIS, which
+    `len(verdicts)` stopped measuring once every proposition began counting on
+    every axis: all three axes then drew on the same propositions, so the
+    count was identical across them for every film in the corpus and weighted
+    nothing. `Stance.mass` is the loading weight actually behind the position.
+    """
     numerator = denominator = 0.0
     parts: dict[int, float] = {}
     for dim_id, verdicts in stances.items():
+        if not verdicts:
+            continue
         person = scores.get(dim_id, 0.0)
         film = sum(verdicts) / len(verdicts)
-        weight = len(verdicts)
+        weight = user_scores.evidence(verdicts)
         parts[dim_id] = weight * person * film
         numerator += parts[dim_id]
         denominator += weight * abs(person)

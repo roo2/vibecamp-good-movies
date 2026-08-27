@@ -28,6 +28,17 @@ averaging per film means a film that engages an axis across twenty propositions
 counts for more on that axis than one that brushes it in two. It also makes the
 denominator a count of evidence, which is what the last term needs.
 
+That count has to be a count of evidence ON THIS AXIS, and for a while it was
+not. Once every proposition began counting on every axis in proportion to its
+loading, every axis drew on the same propositions, so `len()` of a film's
+stance became identical across axes — measured across 565 films, the spread
+between a film's busiest and emptiest axis was exactly zero. The number still
+varied between films and so still looked like it was working. `Stance.mass`
+is the fix: the loading weight actually behind the position, divided by the
+solution's mean loading so it stays denominated in propositions and
+PRIOR_ITEMS keeps its meaning. A film answering twenty propositions that barely touch an
+axis now counts as the little evidence it is.
+
 *PRIOR_ITEMS shrinks toward the middle.* Without it, one film with three items
 on an axis and no disagreement among them would report a perfect ±1.0. The
 constant is expressed in items, so it says plainly: until roughly eight items'
@@ -49,6 +60,31 @@ from typing import Any, Iterable
 from .. import db
 from ..llm.schemas import MAX_STRENGTH
 from . import factor_names
+
+class Stance(list):
+    """A film's verdicts on one axis, plus how much evidence they amount to.
+
+    A plain list of floats, pre-scaled so `sum(x)/len(x)` is the weighted mean
+    — every existing caller and test keeps working unchanged. `mass` rides
+    alongside for the callers that need to know how much the position is worth
+    rather than merely which way it points.
+
+    The unweighted stances built by `film_stances` and by tests are plain
+    lists, where every proposition counts once and the mass IS the count.
+    `evidence()` reads either.
+    """
+
+    __slots__ = ("mass",)
+
+    def __init__(self, values, mass: float | None = None):
+        super().__init__(values)
+        self.mass = float(len(self)) if mass is None else float(mass)
+
+
+def evidence(values) -> float:
+    """How many propositions' worth of evidence a stance represents."""
+    return float(getattr(values, "mass", len(values)))
+
 
 DEFAULT_DIM_VERSION = "d1"
 DEFAULT_BANK_VERSION = "b1"
@@ -208,8 +244,17 @@ def score_preferences(
         if not preference.weight:
             continue
         for dim_id, verdicts in stances.get(preference.film_id, {}).items():
-            numerator[dim_id] += preference.weight * sum(verdicts)
-            mass[dim_id] += abs(preference.weight) * len(verdicts)
+            if not verdicts:
+                continue
+            # Position and evidence, multiplied back together. Both halves of
+            # the fraction have to be denominated the same way: weighting the
+            # denominator by loading mass while the numerator still counted
+            # propositions would inflate every score whose propositions load
+            # weakly, which is precisely the case the mass exists to discount.
+            weight = evidence(verdicts)
+            numerator[dim_id] += (preference.weight * weight
+                                  * sum(verdicts) / len(verdicts))
+            mass[dim_id] += abs(preference.weight) * weight
             films_seen[dim_id].add(preference.film_id)
 
     out = []
@@ -221,8 +266,9 @@ def score_preferences(
     # — so preserving what arrives is right for either.
     for dimension in dimensions:
         dim_id = dimension["dim_id"]
-        evidence = mass[dim_id]
-        score = numerator[dim_id] / (evidence + PRIOR_ITEMS) if evidence else 0.0
+        accumulated = mass[dim_id]
+        score = (numerator[dim_id] / (accumulated + PRIOR_ITEMS)
+                 if accumulated else 0.0)
         leaning = ("high" if score >= LEAN_THRESHOLD else
                    "low" if score <= -LEAN_THRESHOLD else "balanced")
         out.append(DimensionScore(
@@ -239,9 +285,9 @@ def score_preferences(
             leaning=leaning,
             stance=(dimension["pole_high"] if leaning == "high" else
                     dimension["pole_low"] if leaning == "low" else BALANCED_STANCE),
-            evidence_items=round(evidence, 2),
+            evidence_items=round(accumulated, 2),
             films=len(films_seen[dim_id]),
-            confidence=round(evidence / (evidence + PRIOR_ITEMS), 4),
+            confidence=round(accumulated / (accumulated + PRIOR_ITEMS), 4),
         ))
     return out
 
@@ -291,12 +337,13 @@ MIN_AXIS_ITEMS = 3
 
 def factor_axes(scorer: str, variant: str, bank_version: str,
                 limit: int | None = PRODUCT_AXES) -> list[dict[str, Any]]:
-    """The strongest named factors, shaped like `dimensions` rows.
+    """The best-supported named factors, shaped like `dimensions` rows.
 
-    Strongest by eigenvalue — how much of the corpus's variation the factor
-    accounts for. Every one of these already beat the permutation null, so the
-    question is no longer whether they are real but which of them separate films
-    the most.
+    Ordered by `factor_names.by_support` — margin over the permutation null
+    first, then eigenvalue — the same function the atlas and the film pages
+    sort through, so an axis holds its position wherever a reader meets it.
+    Margin leads because every one of these already beat the null, so the
+    question is no longer whether they are real but how certainly.
     """
     with db.connect(read_only=True) as con:
         rows = con.execute(
@@ -324,32 +371,29 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
         ).fetchall()
     # The short labels ride along with the sentences: a score is a point on a
     # line, and a line needs a word at each end before the number means anything.
-    # ONE AXIS PER FACTOR. Several groups can load on the same factor — eight of
-    # the twenty load on the first — which means they are facets of it, not
-    # separate questions. Showing six in a row implies six independent readings
-    # of a person when five of them may be one reading rephrased, and a reader
-    # has no way to tell. Groups sharing a factor share its eigenvalue, so that
-    # is what identifies them here; the group with the most propositions behind
-    # it stands for the factor, since it carries most of what the factor is.
+    #
+    # ONE AXIS PER FACTOR, and no longer enforced here. Several groups used to
+    # be able to load on the same factor — eight of the twenty loaded on the
+    # first — so this deduplicated them by shared eigenvalue, because showing
+    # six axes in a row implies six independent readings of a person when five
+    # may be one reading rephrased. `item_groups` now assigns groups to factors
+    # one-to-one, so two groups cannot share a factor and there is nothing left
+    # to remove; the guarantee is pinned by
+    # `test_two_groups_never_claim_the_same_factor`. Keeping the filter meant
+    # keeping a rule that could only ever fire on a coincidence of two distinct
+    # factors rounding to the same eigenvalue — silently dropping a real axis.
     rows = sorted((dict(r) for r in rows), key=factor_names.by_support)
-
-    seen: set[Any] = set()
-    axes: list[dict[str, Any]] = []
-    for r in rows:
-        key = round(r["eigenvalue"], 6) if r["eigenvalue"] is not None else id(r)
-        if key in seen:
-            continue
-        seen.add(key)
-        axes.append({"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
-                     "pole_high": r["pole_high"], "pole_low": r["pole_low"],
-                     "pole_high_label": r["pole_high_label"] or r["name"],
-                     "pole_low_label": r["pole_low_label"] or r["name"]})
+    axes = [{"dim_id": r["factor_id"], "name": r["name"], "question": r["question"],
+             "pole_high": r["pole_high"], "pole_low": r["pole_low"],
+             "pole_high_label": r["pole_high_label"] or r["name"],
+             "pole_low_label": r["pole_low_label"] or r["name"]}
+            for r in rows]
     return axes[:limit] if limit else axes
 
 
 def factor_stances(
     scorer: str, variant: str, bank_version: str,
-) -> dict[str, dict[int, list[float]]]:
+) -> dict[str, dict[int, Stance]]:
     """{film_id: {factor_id: [verdict per item]}}, each verdict pointed the right way.
 
     A verdict is flipped when its proposition is reverse-keyed. A factor can
@@ -395,6 +439,14 @@ def factor_stances(
     # taking a plain mean get the weighted one: dividing each weight by the mean
     # weight leaves sum/len equal to the weighted average, and leaves len() still
     # counting how many propositions contributed.
+    #
+    # HOW MUCH the position is worth travels separately, as `Stance.mass`,
+    # because the pre-scaling destroys it — the scaled weights sum to len() by
+    # construction. That is why `len()` stopped meaning anything per-axis once
+    # every proposition began counting on every axis: the busiest and emptiest
+    # axis of a film came out identical, to the proposition. Mass is the real
+    # loading weight behind the position, divided by the solution's mean
+    # loading so it is still denominated in propositions.
     per_film: dict[str, dict[str, float]] = defaultdict(dict)
     for row in rows:
         per_film[row["film_id"]][row["item_id"]] = float(row["value"]) / MAX_STRENGTH
@@ -403,7 +455,30 @@ def factor_stances(
     # directly and nothing has to look up which eigen-factor a group sits on.
     factors = sorted({home for home, _l, _e in assignments.values()})
 
-    stances: dict[str, dict[int, list[float]]] = defaultdict(dict)
+    # What one proposition's worth of evidence weighs. ONE constant for the
+    # whole solution, not one per axis and not one per film. Anything that
+    # varies with the film cancels out of the comparison between that film's
+    # own axes, which is how `len()` came to weight nothing. A per-AXIS
+    # divisor is subtler and just as wrong: it measures a film against what
+    # that axis had to offer, so an axis whose propositions all load at 0.1
+    # would count a film answering all of them as heavily as an axis loading
+    # at 0.9, when the weak axis's verdicts are barely about it.
+    #
+    # Dividing by the mean loading keeps mass denominated in propositions, so
+    # PRIOR_ITEMS still means what its docstring says it means.
+    def strength_of(assignment, factor: int) -> float:
+        home, loading, every = assignment
+        if every and factor < len(every):
+            return abs(every[factor])
+        if home == factor:
+            return abs(loading) if loading is not None else 1.0
+        return 0.0
+
+    all_weights = [w for a in assignments.values() for factor in factors
+                   if (w := strength_of(a, factor))]
+    unit = (sum(all_weights) / len(all_weights)) if all_weights else 1.0
+
+    stances: dict[str, dict[int, Stance]] = defaultdict(dict)
     for film, verdicts in per_film.items():
         for factor in factors:
             weighted: list[tuple[float, float]] = []
@@ -424,8 +499,11 @@ def factor_stances(
                 weighted.append((value * direction, abs(strength)))
             if not weighted:
                 continue
-            mean_weight = sum(w for _v, w in weighted) / len(weighted)
+            total_weight = sum(w for _v, w in weighted)
+            mean_weight = total_weight / len(weighted)
             if not mean_weight:
                 continue
-            stances[film][factor] = [v * (w / mean_weight) for v, w in weighted]
+            stances[film][factor] = Stance(
+                (v * (w / mean_weight) for v, w in weighted),
+                mass=total_weight / (unit or 1.0))
     return {film: dict(by_factor) for film, by_factor in stances.items()}

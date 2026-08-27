@@ -35,7 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       infra: ${{ steps.filter.outputs.infra }}
-      code: ${{ steps.filter.outputs.code }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,20 +61,12 @@ jobs:
              || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             echo "no usable base commit — treating everything as changed"
             echo "infra=true" >> "$GITHUB_OUTPUT"
-            echo "code=true"  >> "$GITHUB_OUTPUT"
             exit 0
           fi
           CHANGED=$(git diff --name-only "$BEFORE" '${{ github.sha }}')
           echo "$CHANGED"
-          grep -qE '^infra/'                        <<<"$CHANGED" && I=true || I=false
-          # infra/ counts as code for the runner's sake: the runner has this
-          # repository checked out, and the scripts it runs — load-corpus.sh
-          # and its loader — live there. Without it they land in main and never
-          # reach the machine that is supposed to run them, which is exactly
-          # what happened the first time they shipped.
-          grep -qE '^(src/|seeds/|infra/|pyproject\.toml)' <<<"$CHANGED" && C=true || C=false
+          grep -qE '^infra/' <<<"$CHANGED" && I=true || I=false
           echo "infra=$I" >> "$GITHUB_OUTPUT"
-          echo "code=$C"  >> "$GITHUB_OUTPUT"
 
   test:
     name: tests
@@ -158,8 +149,18 @@ jobs:
 
   runner:
     name: update runner
-    needs: [changes, test]
-    if: needs.changes.outputs.code == 'true'
+    needs: [test]
+    # EVERY green push, with no path filter. There used to be one, matching
+    # src/ seeds/ infra/ pyproject.toml against the PREVIOUS PUSH — which is
+    # not the question. The question is whether the runner is behind, and the
+    # diff since last push does not answer it: a push whose tests fail skips
+    # this job, and the follow-up push that fixes the test touches only tests/,
+    # matches nothing, and skips it again. The runner then sits on old code
+    # while every job reports success. That happened, and the code sat stale
+    # until someone thought to check the runner's HEAD by hand.
+    #
+    # `atlas-update` is a git pull and a pip install into an existing venv. The
+    # seconds it saves on a docs-only push are not worth a deploy that lies.
     runs-on: ubuntu-latest
     steps:
       - uses: aws-actions/configure-aws-credentials@v4

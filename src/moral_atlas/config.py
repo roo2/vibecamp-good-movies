@@ -57,6 +57,17 @@ class Settings:
     # to re-run when the corpus grows.
     product_scorer: str = os.environ.get("ATLAS_PRODUCT_SCORER", "deepseek")
     product_variant: str = os.environ.get("ATLAS_PRODUCT_VARIANT", "subs")
+    # Whose PROPOSITIONS the product reads, which stopped being the same
+    # question as whose verdicts it reads. Four combinations of two models were
+    # measured, and the roles came apart: dolphin writes propositions films
+    # actually divide on (40% of its bank against deepseek's 24%), and deepseek
+    # answers them far more consistently (three axes replicating at 0.85 across
+    # 565 films, against six at 0.66 on its own bank). Neither model is better
+    # at both, so the product uses each for the job it is better at.
+    #
+    # Empty means "the bank this scorer wrote for itself", which is what every
+    # call site used to assume.
+    product_bank: str = os.environ.get("ATLAS_PRODUCT_BANK", "dolphin-subs")
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 
@@ -67,6 +78,16 @@ class Settings:
     frontend_url: str = os.environ.get("ATLAS_FRONTEND_URL", "http://localhost:5173")
     datasette_url: str = os.environ.get("ATLAS_DATASETTE_URL", "http://localhost:8001")
     sqliteweb_url: str = os.environ.get("ATLAS_SQLITEWEB_URL", "http://localhost:8002")
+
+    @property
+    def factor_bank(self) -> str:
+        """The bank the product's axes come from. One place, deliberately.
+
+        Three services rebuilt this string themselves as f"{scorer}-{variant}",
+        which silently hard-coded the assumption that a model can only read its
+        own questions.
+        """
+        return self.product_bank or f"{self.product_scorer}-{self.product_variant}"
 
     @property
     def has_tmdb(self) -> bool:

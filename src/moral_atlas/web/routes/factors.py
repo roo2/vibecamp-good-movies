@@ -212,7 +212,8 @@ def product_film_axes(film_id: str) -> dict[str, Any]:
     a model and 404s.
     """
     return film_on_factors(settings().product_scorer, film_id,
-                           variant=settings().product_variant)
+                           variant=settings().product_variant,
+                           bank=settings().factor_bank)
 
 
 @router.get("/{scorer}/films/{film_id}")

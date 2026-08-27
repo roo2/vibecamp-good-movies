@@ -38,7 +38,7 @@ def moral_profile(user_id: str) -> MoralProfile:
     # handed, so swapping the source is a server-side change.
     scorer = settings().product_scorer
     variant = settings().product_variant
-    factor_bank = f"{scorer}-{variant}"
+    factor_bank = settings().factor_bank
     dimensions = user_scores.factor_axes(scorer, variant, factor_bank)
     if not dimensions:
         return MoralProfile(

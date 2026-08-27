@@ -248,13 +248,25 @@ def test_each_group_is_signed_by_the_factor_it_actually_loads_on():
     order = np.argsort(values)[::-1][:3]
     loadings = vectors[:, order] * np.sqrt(np.clip(values[order], 0, None))
 
+    # One group, one factor. Two groups taking the same argmax forces whatever
+    # reads them as axes to treat one as a facet of the other and drop it, which
+    # cost a real axis the first time it happened.
+    assert len(set(dominant.values())) == len(dominant), (
+        f"two groups were assigned the same factor: {dominant}")
+
+    # Claims are settled strongest-first, so the group with the most to lose
+    # gets its actual preference; the others take the best factor still free.
+    strengths = {}
+    for label in dominant:
+        members = [i for i, item in enumerate(items) if groups[item] == label]
+        strengths[label] = np.abs(loadings[members].mean(axis=0))
+    first = max(dominant, key=lambda g: strengths[g].max())
+    assert dominant[first] == int(np.argmax(strengths[first])), (
+        "the strongest claim should get the factor it actually loads on")
+
     for label, factor in dominant.items():
         members = [i for i, item in enumerate(items) if groups[item] == label]
-        profile = np.abs(loadings[members].mean(axis=0))
-        assert factor == int(np.argmax(profile)), (
-            f"group {label} was signed by factor {factor}, but loads on "
-            f"{int(np.argmax(profile))}")
-        # and the signed value must be that column's magnitude, up to orientation
+        # whichever factor it was given, the signed value is that column
         assert np.allclose(sorted(abs(loading[items[i]]) for i in members),
                            sorted(abs(loadings[members, factor])))
 

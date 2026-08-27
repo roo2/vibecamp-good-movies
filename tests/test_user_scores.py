@@ -165,8 +165,21 @@ def scored_atlas(monkeypatch, tmp_path):
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
         db_path=tmp_path / "web.sqlite",
+        # The fixtures below write deepseek's own bank. Pinned, because which
+        # propositions the product reads is a deployment setting now — it can be
+        # a bank one model wrote and another answered — and a test that follows
+        # that setting is testing the deployment rather than the code.
+        product_bank="deepseek-subs",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
+    # Each service imported `settings` by value, so patching one module's
+    # reference leaves the rest reading the real deployment. An environment
+    # variable does not work either: the dataclass defaults are evaluated when
+    # config is imported, long before any fixture runs.
+    from moral_atlas.web import film_service, profile_service, shortlist_service
+    from moral_atlas.web.routes import factors as factors_route
+    for module in (film_service, profile_service, shortlist_service, factors_route):
+        monkeypatch.setattr(module, "settings", lambda: test_settings)
     db.init_db()
 
     with db.connect() as con:

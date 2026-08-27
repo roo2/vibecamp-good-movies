@@ -455,14 +455,38 @@ def item_groups(matrix, items: list[str], k: int,
     # Each group is matched to the factor its members genuinely load on. Two
     # groups may choose the same one; that is a real answer — they are facets
     # of one factor — and better than a unique-but-arbitrary assignment.
+    # ONE GROUP, ONE FACTOR. Taking each group's argmax independently lets two
+    # groups claim the same factor, and then whatever reads them as axes has to
+    # treat one of them as a facet of the other and drop it. That went wrong the
+    # first time it mattered: three groups, three real factors, and two of them
+    # both pointed at the first — so "utilitarian calculus vs moral absolutes"
+    # was discarded as a restatement of "redemption and hope vs cynical
+    # realism", which it plainly is not.
+    #
+    # There are exactly as many groups as factors, so a one-to-one assignment
+    # always exists. Claims are settled strongest-first: the group with the most
+    # to lose gets its preference, and a group whose first choice is taken falls
+    # to the strongest factor still free.
+    members_of = {factor: [i for i, label in enumerate(labels) if label == factor]
+                  for factor in range(k)}
+    claims = sorted(
+        ((float(np.abs(loadings[m].mean(axis=0))[f]), g, f)
+         for g, m in members_of.items() if m for f in range(k)),
+        reverse=True)
     dominant: dict[int, int] = {}
+    taken: set[int] = set()
+    for _strength, group, factor in claims:
+        if group in dominant or factor in taken:
+            continue
+        dominant[group] = factor
+        taken.add(factor)
+
     signed: dict[str, float] = {}
     for factor in range(k):
-        members = [i for i, label in enumerate(labels) if label == factor]
+        members = members_of.get(factor) or []
         if not members:
             continue
-        best = int(np.argmax(np.abs(loadings[members].mean(axis=0))))
-        dominant[factor] = best
+        best = dominant[factor]
         column = loadings[members, best]
         if float(np.sign(column).sum()) < 0:
             column = -column

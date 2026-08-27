@@ -73,7 +73,7 @@ def _recency(film: dict[str, Any]) -> float:
 def _films_the_scorer_has_read() -> set[str]:
     """Film ids the product's scorer has actually returned verdicts on."""
     config = settings()
-    bank = f"{config.product_scorer}-{config.product_variant}"
+    bank = config.factor_bank
     with db.connect(read_only=True) as con:
         return {row["film_id"] for row in con.execute(
             "SELECT DISTINCT film_id FROM model_verdicts WHERE scorer=? "

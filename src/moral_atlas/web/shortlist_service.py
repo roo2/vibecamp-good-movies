@@ -127,8 +127,8 @@ SEEN_REACTIONS = {"loved_it", "not_for_me", "neutral"}
 
 
 def _factor_bank() -> str:
-    """The bank the product's scorer wrote for itself."""
-    return f"{settings().product_scorer}-{settings().product_variant}"
+    """The bank the product reads — not necessarily one its scorer wrote."""
+    return settings().factor_bank
 
 
 def _alignment(scores: dict[int, float], stances: dict[int, list[float]]) -> tuple[float, dict[int, float]]:

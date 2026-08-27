@@ -31,6 +31,8 @@ factors are only nameable in DeepSeek's terms, that is a result.
 """
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -268,10 +270,16 @@ def persist(
               f["margin"], model, run_id, db.now()) for f in named],
         )
         loadings = report.get("loading") or {}
+        # `loading` is the signed value on the factor an item was FILED under.
+        # `loadings` is every factor's, so a proposition that speaks to two axes
+        # can count on both. Both are stored: direction still comes from the
+        # first, weight now comes from the second.
+        every = report.get("loadings") or {}
         con.executemany(
             "INSERT OR REPLACE INTO latent_factor_items (scorer, variant, bank_version, "
-            "item_id, factor_id, loading) VALUES (?,?,?,?,?,?)",
-            [(alias, variant, bank_version, item, factor, loadings.get(item))
+            "item_id, factor_id, loading, loadings) VALUES (?,?,?,?,?,?,?)",
+            [(alias, variant, bank_version, item, factor, loadings.get(item),
+              json.dumps(every[item]) if item in every else None)
              for item, factor in report["groups"].items()],
         )
     db.finish_run(run_id, usage or {})

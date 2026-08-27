@@ -477,6 +477,14 @@ def init_db() -> None:
         # fire however honest a namer was.
         for column in ("pole_high_label", "pole_low_label"):
             _add_column_if_missing(con, "latent_factors", column, "TEXT")
+        # Every factor's loading for this proposition, as a JSON array, not just
+        # the one it was filed under. A proposition can speak to more than one
+        # axis and 29% of them do — measured on the current reading, 22% of all
+        # loading mass sat outside the factor an item was assigned to, and was
+        # being discarded. The single `loading` column stays: it is the signed
+        # value on the assigned factor and everything that reads direction
+        # rather than weight still wants exactly that.
+        _add_column_if_missing(con, "latent_factor_items", "loadings", "TEXT")
         _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
         _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
         _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")

@@ -373,7 +373,8 @@ def split_half_overlap(matrix, k: int = 5, reps: int = 12, seed: int = 7) -> dic
 
 def item_groups(matrix, items: list[str], k: int,
                 seed: int = 11) -> tuple[dict[str, int], dict[str, float],
-                                         dict[str, float], dict[int, int]]:
+                                         dict[str, float], dict[int, int],
+                                         dict[str, list[float]]]:
     """Sort items into k groups by how films responded to them.
 
     Clustering the loadings rather than the raw columns: two items answered the
@@ -392,10 +393,11 @@ def item_groups(matrix, items: list[str], k: int,
     # group would hand the namer every proposition in the bank and get an axis
     # back — a named, plausible, entirely invented axis with no margin behind it.
     if k < 1:
-        return {}, {}, {}, {}
+        return {}, {}, {}, {}, {}
     if k < 2:
         return ({item: 0 for item in items}, {item: 0.0 for item in items},
-                {item: 1.0 for item in items}, {0: 0})
+                {item: 1.0 for item in items}, {0: 0},
+                {item: [1.0] for item in items})
     # Cluster the LOADINGS of the agreement matrix — eigenvectors scaled by the
     # square root of their eigenvalues — so membership is decided by the same
     # reading of the data that decided the count.
@@ -493,9 +495,25 @@ def item_groups(matrix, items: list[str], k: int,
         for position, value in zip(members, column):
             signed[items[position]] = float(value)
 
+    # Every factor's loading per item, ordered to match `dominant`'s factor
+    # indices. Scoring a film on an axis by averaging only the propositions
+    # filed under it throws away the rest, and the rest is 22% of the loading
+    # mass here — a proposition that speaks to two axes should count on both,
+    # in proportion to how much it speaks to each.
+    # Permuted into GROUP order, so index g is the loading on the axis whose
+    # factor_id is g. The raw columns are eigen-factors and the labels are
+    # k-means groups, and `dominant` is the mapping between them — indexing one
+    # by the other reads a real number off the wrong axis, which is the same
+    # class of mistake as the label-as-factor-index bug this replaced.
+    all_loadings = {
+        items[i]: [float(loadings[i, dominant[g]]) if g in dominant else 0.0
+                   for g in range(k)]
+        for i in range(len(items))
+    }
+
     return ({item: int(label) for item, label in zip(items, labels)},
             {item: float(distance) for item, distance in zip(items, distances)},
-            signed, dominant)
+            signed, dominant, all_loadings)
 
 
 def analyse(
@@ -506,7 +524,7 @@ def analyse(
     """The whole thing for one scorer: how many dimensions, and which items."""
     data = response_matrix(scorer, bank_version, min_films, variant)
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
-    groups, distance, loading, dominant = item_groups(
+    groups, distance, loading, dominant, all_loadings = item_groups(
         data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
@@ -546,6 +564,10 @@ def analyse(
         # Which eigenvector each k-means group actually loads on. Not the
         # group's own label — see the note in `item_groups`.
         "dominant": dominant,
+        # {item: [loading on every factor]}, so a film can be scored on an axis
+        # using every proposition that speaks to it rather than only those filed
+        # under it.
+        "loadings": all_loadings,
     }
 
 

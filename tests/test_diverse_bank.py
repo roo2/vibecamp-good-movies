@@ -240,7 +240,7 @@ def test_each_group_is_signed_by_the_factor_it_actually_loads_on():
     # Three well-separated factors; which label k-means gives each is arbitrary.
     planted = _planted(300, 45, k=3, engagement=0.9, rng=rng, noise=0.25)
     items = [f"I{n:03d}" for n in range(45)]
-    groups, _distance, loading, dominant = latent.item_groups(planted, items, 3)
+    groups, _distance, loading, dominant, _all = latent.item_groups(planted, items, 3)
 
     assert set(dominant) == {0, 1, 2}, "every non-empty group needs a factor"
     corr = latent._pairwise_correlation(latent._film_centred(planted))
@@ -464,3 +464,59 @@ def test_comparing_two_readers_counts_only_what_both_answered():
     # I1: +2 vs +1 is the SAME side despite differing strength.
     assert out["agreed"] == 1
     assert [r["item_id"] for r in out["split"]] == ["I2"]
+
+
+def test_a_proposition_counts_on_every_axis_it_speaks_to():
+    """Filing it under one and scoring from that group alone throws the rest away.
+
+    On the live reading 22% of all loading mass sat outside the factor an item
+    was assigned to, and 29% of propositions carried a second loading at least
+    60% as strong as their first. Splitting the propositions in half and asking
+    whether the halves place films in the same order, weighting by every loading
+    is better or equal on all three axes.
+    """
+    import contextlib
+    import json
+
+    from moral_atlas import db as db_mod
+    from moral_atlas.analysis import user_scores
+
+    # A speaks almost entirely to axis 0. B is filed under axis 1 but still
+    # says a little about axis 0. A film affirms A and denies B.
+    items = [
+        {"item_id": "A", "factor_id": 0, "loading": 0.9, "loadings": json.dumps([0.9, 0.1])},
+        {"item_id": "B", "factor_id": 1, "loading": 0.6, "loadings": json.dumps([0.1, 0.6])},
+    ]
+    verdicts = [{"film_id": "f", "item_id": "A", "value": 2},
+                {"film_id": "f", "item_id": "B", "value": -2}]
+
+    class Cursor:
+        def __init__(self, rows): self.rows = rows
+        def fetchall(self): return self.rows
+        def __iter__(self): return iter(self.rows)
+
+    class Con:
+        def execute(self, sql, args=None):
+            return Cursor(items if "latent_factor_items" in sql else verdicts)
+
+    original = db_mod.connect
+    db_mod.connect = lambda *a, **k: contextlib.nullcontext(Con())
+    try:
+        stances = user_scores.factor_stances("s", "v", "b")
+    finally:
+        db_mod.connect = original
+
+    # B is filed under axis 1, but it loads 0.1 on axis 0 — so it must appear
+    # there too, not only on its own axis.
+    assert set(stances["f"]) == {0, 1}
+    assert len(stances["f"][0]) == 2, "both propositions speak to axis 0"
+    assert len(stances["f"][1]) == 2, "and both to axis 1"
+
+    # Axis 0: A affirmed at loading 0.9 against B denied at 0.1, so the weighted
+    # mean is (0.9 - 0.1) / 1.0 = +0.8. Unweighted it would have been 0.0 — the
+    # two verdicts cancelling as though they spoke to the axis equally.
+    assert sum(stances["f"][0]) / len(stances["f"][0]) == pytest.approx(0.8)
+
+    # Axis 1: B denied at 0.6 against A affirmed at 0.1, so it goes the other
+    # way — (0.1 - 0.6) / 0.7.
+    assert sum(stances["f"][1]) / len(stances["f"][1]) == pytest.approx(-5 / 7)

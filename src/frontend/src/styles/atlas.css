@@ -734,3 +734,13 @@
   .replication li { grid-template-columns: 3.5rem 1fr; }
   .replication i { grid-column: 2; }
 }
+
+
+/* The tail of a long verdict list, one click away. Drawn as a link rather than
+   a button: it reveals evidence already on the page's own terms. */
+.verdicts-more {
+  margin: 8px 0 0; padding: 0; border: 0; background: transparent;
+  color: #7e9fd6; font-size: 12px; cursor: pointer; text-align: left;
+}
+.verdicts-more:hover { text-decoration: underline; }
+.verdicts-more:focus-visible { outline: 2px solid #7e9fd6; outline-offset: 2px; }

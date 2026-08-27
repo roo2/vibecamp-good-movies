@@ -144,6 +144,7 @@ def detail(
 def film_justification(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
     texts: dict[str, str], film_id: str, factor: int, limit: int | None = None,
+    vectors: dict[str, list[float]] | None = None,
     loadings: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
     """Every verdict that placed one film on one axis, with which way each points.
@@ -165,6 +166,12 @@ def film_justification(
     the position rather than whatever was recorded first.
     """
     loadings = loadings or {}
+    # EVERY proposition that speaks to this axis, not only those filed under it.
+    # The position is computed from all of them, weighted; listing only the
+    # filed ones showed a reader a different set from the one that produced the
+    # number — on The Lion King, twelve strongly affirmed propositions above a
+    # score of +0.16, with the propositions pulling it down not on the page.
+    vectors = vectors or {}
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, value, evidence FROM model_verdicts WHERE scorer=? "
@@ -175,9 +182,15 @@ def film_justification(
     out = []
     for row in rows:
         item = row["item_id"]
-        if groups.get(item) != factor:
+        vector = vectors.get(item)
+        if vector is not None and factor < len(vector):
+            loading = vector[factor]
+            if not loading:
+                continue
+        elif groups.get(item) == factor:
+            loading = loadings.get(item)
+        else:
             continue
-        loading = loadings.get(item)
         # No loading recorded means the proposition is counted as written, which
         # is what every row did before the column existed.
         direction = -1 if (loading is not None and loading < 0) else 1
@@ -190,6 +203,11 @@ def film_justification(
             "strength": abs(row["value"]),
             "emphatic": abs(row["value"]) >= MAX_STRENGTH,
             "reverse_keyed": direction < 0,
+            # Whether this proposition is one of the axis's own, or one that
+            # belongs elsewhere and still has something to say here. A reader
+            # scanning for why a score is lower than it looks needs to see the
+            # difference.
+            "home": groups.get(item) == factor,
             "points_to": "high" if (affirmed == (direction > 0)) else "low",
             "weight": round(abs(loading), 4) if loading is not None else None,
             "evidence": row["evidence"],

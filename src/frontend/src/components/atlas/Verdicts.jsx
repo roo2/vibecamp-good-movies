@@ -13,13 +13,24 @@ import React from 'react'
 // So: a signed chip says which way this pushes, coloured to match; the sentence
 // follows; and what the film actually said is demoted to the line underneath,
 // where it explains the chip rather than competing with it.
+// Sixty-five propositions is a lot to meet at once, and the ones that matter
+// are at the top — this is sorted by weight. So the heaviest dozen show, and the
+// rest are one click away rather than absent: a reader working out why a score
+// is lower than the visible propositions suggest needs the tail, and everyone
+// else does not.
+const HEAVIEST = 12
+
 export default function Verdicts({ verdicts, poleHigh, poleLow }) {
+  const [all, setAll] = React.useState(false)
   if (!verdicts?.length) return null
   const heaviest = Math.max(...verdicts.map((v) => v.weight || 0), 0.0001)
+  const shown = all ? verdicts : verdicts.slice(0, HEAVIEST)
+  const hidden = verdicts.length - shown.length
 
   return (
+    <>
     <ul className="verdicts">
-      {verdicts.map((verdict) => {
+      {shown.map((verdict) => {
         const adds = verdict.points_to === 'high'
         const pole = adds ? poleHigh : poleLow
         return (
@@ -51,5 +62,16 @@ export default function Verdicts({ verdicts, poleHigh, poleLow }) {
         )
       })}
     </ul>
+      {hidden > 0 && (
+        <button type="button" className="verdicts-more" onClick={() => setAll(true)}>
+          Show the other {hidden} propositions that count toward this axis
+        </button>
+      )}
+      {all && verdicts.length > HEAVIEST && (
+        <button type="button" className="verdicts-more" onClick={() => setAll(false)}>
+          Show only the heaviest {HEAVIEST}
+        </button>
+      )}
+    </>
   )
 }

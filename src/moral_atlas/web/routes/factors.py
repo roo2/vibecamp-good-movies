@@ -304,7 +304,7 @@ def film_on_factors(
             "items": len(values),
             "verdicts": factor_detail.film_justification(
                 scorer, bank, variant, groups, texts, film_id, factor["factor_id"],
-                loadings=loadings),
+                loadings=loadings, vectors=every),
         })
     return {"film_id": film_id, "title": title["title"] if title else film_id,
             "scorer": scorer, "factors": scored}

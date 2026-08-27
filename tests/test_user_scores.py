@@ -601,3 +601,33 @@ def test_a_shrug_pushes_away_from_a_film_and_not_having_seen_it_does_nothing():
     assert prefs["loved"] + prefs["shrugged"] > 0, (
         "one film you loved should outweigh one you shrugged at")
     assert "unseen" not in prefs, "not having seen it is not an opinion"
+
+
+def test_not_having_seen_a_film_cannot_erase_an_answer_about_it():
+    """`havent_seen` is the absence of an answer, not a change of mind.
+
+    Newest-first dedupe claimed a film before checking whether the reaction
+    carried any weight, so a later `havent_seen` masked the real answer behind
+    it. A live user answered `not_for_me` on nineteen films and `loved_it` on
+    one, then the deck wrote `havent_seen` over all twenty — three times each,
+    within minutes, with no action from them. All twenty answers were dropped,
+    their profile came back 0.0000 on every axis, and their recommendations
+    were the corpus in alphabetical order at zero agreement.
+    """
+    from moral_atlas.analysis.user_scores import rating_preferences
+
+    # Newest first, exactly as `user_rating_inputs` returns them.
+    prefs = rating_preferences([
+        ("apes", "havent_seen"),
+        ("apes", "havent_seen"),
+        ("apes", "not_for_me"),      # what the person actually said
+        ("parasite", "loved_it"),
+    ])
+    assert {p.film_id: p.weight for p in prefs} == {"apes": -1.0, "parasite": 1.0}
+
+    # A real change of mind still wins, which is what newest-first is for.
+    changed = rating_preferences([("apes", "loved_it"), ("apes", "not_for_me")])
+    assert [p.weight for p in changed] == [1.0]
+
+    # And a film only ever marked unseen stays absent rather than neutral.
+    assert rating_preferences([("apes", "havent_seen")]) == []

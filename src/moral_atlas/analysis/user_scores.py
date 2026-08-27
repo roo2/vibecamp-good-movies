@@ -197,16 +197,34 @@ def film_stances(
 
 
 def rating_preferences(ratings: Iterable[tuple[str, str]]) -> list[Preference]:
-    """(film_id, reaction) pairs, newest first, one preference per film."""
+    """(film_id, reaction) pairs, newest first, one preference per film.
+
+    Newest wins, because changing your mind should count. But `havent_seen`
+    cannot win, because it is not a change of mind — it is the absence of an
+    answer, and the absence of an answer must not erase one. Anything at zero
+    weight is skipped WITHOUT claiming the film, so an older real reaction
+    behind it still counts.
+
+    This is not hypothetical. A live user answered `not_for_me` on nineteen
+    films and `loved_it` on one, and the deck then wrote `havent_seen` over
+    all twenty — three times each, within minutes, without them acting. Every
+    one of their answers was masked, their moral profile came back empty on
+    all three axes, and their recommendations were the corpus in alphabetical
+    order at zero agreement. The deck writing those rows is a separate defect
+    and is the frontend's to fix; this makes the scoring robust to it either
+    way, because a reaction the module already documents as saying "nothing
+    about morals" should never be able to overwrite one that does.
+    """
     seen: set[str] = set()
     out = []
     for film_id, reaction in ratings:
         if film_id in seen:
             continue
-        seen.add(film_id)
         weight = REACTION_WEIGHTS.get(reaction, 0.0)
-        if weight:
-            out.append(Preference(film_id, weight, "rating", reaction))
+        if not weight:
+            continue
+        seen.add(film_id)
+        out.append(Preference(film_id, weight, "rating", reaction))
     return out
 
 

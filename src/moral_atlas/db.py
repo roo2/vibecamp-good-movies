@@ -485,6 +485,12 @@ def init_db() -> None:
         # value on the assigned factor and everything that reads direction
         # rather than weight still wants exactly that.
         _add_column_if_missing(con, "latent_factor_items", "loadings", "TEXT")
+        # A verdict whose own justification argues the opposite verdict is a
+        # real and measurable failure — a few percent of them — and correcting
+        # one must never quietly erase what the scorer actually said. The
+        # original is kept beside the correction and the row is stamped.
+        _add_column_if_missing(con, "model_verdicts", "original_value", "INTEGER")
+        _add_column_if_missing(con, "model_verdicts", "audited_at", "TEXT")
         _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
         _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
         _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")

@@ -131,6 +131,45 @@ def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that a
     console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
 
 
+@app.command("audit-verdicts")
+def audit_verdicts(
+    scorer: str = typer.Option("deepseek"),
+    bank: str = typer.Option("dolphin-subs"),
+    variant: str = typer.Option("subs"),
+    limit: Optional[int] = typer.Option(None, help="Only this many, for a costed trial."),
+    batch_size: int = typer.Option(40, help="Verdicts per call."),
+    apply: bool = typer.Option(False, help="Write the corrections. Off by default."),
+    redo: bool = typer.Option(False, help="Re-check rows already audited."),
+) -> None:
+    """Check each verdict against the reason the model gave for it.
+
+    Every verdict carries a one-line justification written in the same reply.
+    Occasionally the model writes the reasoning for one answer and records the
+    other — Life of Brian "strongly denies" that belief in one's own superiority
+    leads to oppression, justified by the film "showing it leads to oppression".
+
+    A few percent, which is not ignorable: a flipped verdict enters the
+    correlation matrix with the wrong sign, so it pulls apart two propositions
+    that belong together rather than merely adding noise to one film.
+    """
+    from .analysis import verdict_audit
+    from .llm.providers import client_for
+
+    client = client_for(scorer)
+    result = verdict_audit.audit(scorer, bank, variant, client, batch_size=batch_size,
+                                 limit=limit, apply=apply, redo=redo,
+                                 progress=lambda m: console.print(f"[dim]{m}[/]"))
+    console.print(
+        f"\n  checked [bold]{result['checked']}[/], "
+        f"contradicted [yellow]{result['contradicted']}[/]"
+        + (f" ({result['contradicted'] / result['checked']:.1%})" if result["checked"] else "")
+        + f", corrected [green]{result['corrected']}[/]"
+        + (f", flagged but unreadable {result['unreadable']}" if result["unreadable"] else ""))
+    console.print(f"  {json.dumps(client.usage.as_dict())}")
+    if not apply and result["contradicted"]:
+        console.print("[yellow]nothing written[/] — pass --apply to correct them")
+
+
 @app.command("compare-film")
 def compare_film(
     film: str = typer.Argument(..., help="Film id, or a fragment of its title."),

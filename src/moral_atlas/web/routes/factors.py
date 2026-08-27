@@ -10,6 +10,8 @@ else hangs off which one you picked.
 """
 from __future__ import annotations
 
+import json
+
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
@@ -240,6 +242,15 @@ def film_on_factors(
         loadings = {r["item_id"]: r["loading"] for r in con.execute(
             "SELECT item_id, loading FROM latent_factor_items WHERE scorer=? "
             "AND variant=? AND bank_version=?", [scorer, variant, bank])}
+        # Every factor's loading, so a film's position here is computed the same
+        # way the product computes it — by every proposition that speaks to an
+        # axis, weighted by how much it does. Reading only the propositions
+        # filed under an axis gave this page a different number from the compass
+        # for the same film.
+        every = {r["item_id"]: json.loads(r["loadings"]) for r in con.execute(
+            "SELECT item_id, loadings FROM latent_factor_items WHERE scorer=? "
+            "AND variant=? AND bank_version=? AND loadings IS NOT NULL",
+            [scorer, variant, bank])}
         rows = con.execute(
             "SELECT item_id, value FROM model_verdicts WHERE scorer=? AND variant=? "
             "AND bank_version=? AND film_id=?", [scorer, variant, bank, film_id],
@@ -252,14 +263,28 @@ def film_on_factors(
     # denial of one is an affirmation of the other, and averaging the raw values
     # would put a film that took a clear side at zero and call it undecided.
     by_factor: dict[int, list[float]] = {}
-    for row in rows:
-        factor = groups.get(row["item_id"])
-        if factor is None:
+    known = sorted({f["factor_id"] for f in factors})
+    for factor in known:
+        weighted: list[tuple[float, float]] = []
+        for row in rows:
+            item = row["item_id"]
+            vector = every.get(item)
+            if vector is not None and factor < len(vector):
+                strength = vector[factor]
+            elif groups.get(item) == factor:
+                strength = loadings.get(item) or 1.0
+            else:
+                continue                    # older rows carry only their own axis
+            if not strength:
+                continue
+            direction = -1.0 if strength < 0 else 1.0
+            weighted.append((row["value"] * direction / MAX_STRENGTH, abs(strength)))
+        if not weighted:
             continue
-        loading = loadings.get(row["item_id"])
-        direction = -1.0 if (loading is not None and loading < 0) else 1.0
-        by_factor.setdefault(factor, []).append(
-            row["value"] * direction / MAX_STRENGTH)
+        mean_weight = sum(w for _v, w in weighted) / len(weighted)
+        if not mean_weight:
+            continue
+        by_factor[factor] = [v * (w / mean_weight) for v, w in weighted]
 
     scored = []
     for factor in factors:

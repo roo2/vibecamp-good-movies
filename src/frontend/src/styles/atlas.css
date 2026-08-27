@@ -429,6 +429,17 @@
 .model-option:hover { border-color: #574f47; }
 .model-option.active { border-color: #eda36b; background: rgba(237, 163, 107, .1); }
 .model-option.active b { color: #eda36b; }
+/* Focus must not impersonate selection. With no focus rule the button kept the
+   browser default outline after a click, so the one just pressed and the one
+   actually selected both read as chosen — and only one of them was. */
+.model-option:focus { outline: none; }
+.model-option:focus-visible { outline: 2px solid #7e9fd6; outline-offset: 2px; border-color: #574f47; }
+.model-option.active:focus-visible { outline-color: #eda36b; }
+/* The two halves of a reading, told apart by the arrow between them. */
+.model-option b { display: flex; align-items: baseline; gap: 5px; }
+.model-option b i { font-style: normal; color: #7e766c; font-size: 11px; }
+.model-option b em { font-style: normal; color: #7e766c; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.model-picker-label i { font-style: normal; opacity: .6; }
 
 /* --- Discovered axes ----------------------------------------------------- */
 .factors { margin: 16px 0 0; padding: 0; list-style: none; }

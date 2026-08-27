@@ -16,7 +16,12 @@ export function ModelPicker({ models, selected, onSelect, withdrawn = [] }) {
 
   return (
     <div className="model-picker">
-      <span className="model-picker-label">Read by</span>
+      {/* "Read by" named one half of a two-part fact. Every button is now
+          "who wrote the questions → who answered them", including the ones
+          where those are the same model: naming the reader alone put deepseek
+          first on both "deepseek" and "deepseek → dolphin", where it meant the
+          answerer on one and the asker on the other. */}
+      <span className="model-picker-label">Questions <i aria-hidden="true">→</i> answers</span>
       <div className="model-picker-options" role="tablist">
         {models.map((model) => {
           // Compared on the whole reading, not on the scorer: the same model
@@ -40,10 +45,16 @@ export function ModelPicker({ models, selected, onSelect, withdrawn = [] }) {
                      + ` · ${model.films} films · ${model.items} items`
                      + ` · ${model.verdicts.toLocaleString()} verdicts`}
             >
-              {/* A model reading its OWN questions is named once; a crossed
-                  reading names both halves, because which half is which is the
-                  whole point of showing it. */}
-              <b>{ownWork ? model.scorer : `${model.wrote} → ${model.scorer}`}</b>
+              {/* Both halves, always. A model reading its own questions repeats
+                  its name, which looks redundant and is the point: it says the
+                  asker and the answerer are the same, which is a fact about the
+                  reading rather than a formatting accident. */}
+              <b>
+                {model.wrote}
+                <i aria-hidden="true">→</i>
+                {model.scorer}
+                {ownWork && <em> its own</em>}
+              </b>
               <span>
                 {model.factors ? `${model.factors} axes` : 'no axes'}
                 {' · '}

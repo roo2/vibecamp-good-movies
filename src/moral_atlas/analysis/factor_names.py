@@ -89,9 +89,13 @@ not a suggestion — it is what the statistics found, and it is the axis. Read t
 two lists against each other and name what they disagree ABOUT.
 
 A group may arrive with one end empty. That means every proposition in it points
-the same way, so the axis has only been observed from one side: name the far end
-as the position a film would hold that denied them all, and say so plainly in
-`pole_low` or `pole_high`.
+the same way, so the axis has only been observed from one side. It is still an
+axis and BOTH LABELS MUST STILL BE REAL POSITIONS: name the unobserved end as
+the stance a film would hold that denied all of those propositions. Never write
+"none", "empty", "not observed" or anything of that shape into a label — a
+reader is shown these two words at the ends of a line, and a placeholder there
+is worse than a guess. Say that the end was inferred rather than observed in its
+`pole_low` or `pole_high` sentence instead, where there is room to explain it.
 
 Within each end the propositions are listed NEAREST THE CENTRE of the group
 first. Weight them accordingly: the opening lines are what that end is most

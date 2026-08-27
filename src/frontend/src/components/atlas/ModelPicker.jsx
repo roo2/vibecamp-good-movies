@@ -1,9 +1,16 @@
 import React from 'react'
 
 // There is no longer one answer to show, so the first thing this page asks is
-// whose answer. Each model writes its own bank of propositions, scores films
-// against it, and gets its own factors out — so the axes below are that model's
-// reading of the corpus, not the corpus's own.
+// whose answer. But "whose" turned out to have two halves, and collapsing them
+// hid the more interesting one: a reading is a set of QUESTIONS written by one
+// model and ANSWERED by another, and the two roles fail differently.
+//
+// Measured across all four combinations of deepseek and dolphin: as a writer,
+// dolphin produces 98 contested propositions out of 218 where deepseek produces
+// 72 out of 297 — it asks the sharper questions. As a reader, deepseek recovers
+// six axes from either bank while dolphin recovers one from its own and
+// fourteen from deepseek's, most of them built on a handful of propositions.
+// Same model, opposite failures, depending on whose questions it was handed.
 export function ModelPicker({ models, selected, onSelect, withdrawn = [] }) {
   if (!models.length) return null
 
@@ -12,13 +19,14 @@ export function ModelPicker({ models, selected, onSelect, withdrawn = [] }) {
       <span className="model-picker-label">Read by</span>
       <div className="model-picker-options" role="tablist">
         {models.map((model) => {
-          // Compared on scorer alone, two runs by the same model both read as
-          // selected. The endpoint now returns one row per model, and this
-          // matches the same way, so the two cannot drift apart again.
-          const active = model.scorer === selected
+          // Compared on the whole reading, not on the scorer: the same model
+          // appears more than once now — once per bank it has read — and
+          // matching on scorer alone lit all of its buttons at once.
+          const active = model.reading_id === selected
+          const ownWork = model.wrote === model.scorer
           return (
             <button
-              key={model.scorer}
+              key={model.reading_id}
               type="button"
               role="tab"
               aria-selected={active}
@@ -28,9 +36,14 @@ export function ModelPicker({ models, selected, onSelect, withdrawn = [] }) {
               // the model actually engaged: a scorer that took a position on
               // six items a film and one that took 272 have not measured the
               // same corpus, whatever their factor counts say.
-              title={`${model.films} films · ${model.items} items · ${model.verdicts.toLocaleString()} verdicts`}
+              title={`${model.wrote} wrote the propositions, ${model.scorer} answered them`
+                     + ` · ${model.films} films · ${model.items} items`
+                     + ` · ${model.verdicts.toLocaleString()} verdicts`}
             >
-              <b>{model.scorer}</b>
+              {/* A model reading its OWN questions is named once; a crossed
+                  reading names both halves, because which half is which is the
+                  whole point of showing it. */}
+              <b>{ownWork ? model.scorer : `${model.wrote} → ${model.scorer}`}</b>
               <span>
                 {model.factors ? `${model.factors} axes` : 'no axes'}
                 {' · '}

@@ -87,10 +87,24 @@ function AtlasPage({ onBack }) {
         <div>
           <h1>What do these films argue?</h1>
           <p className="atlas-note">
-            Films are treated as respondents and moral propositions as items. Each model writes
-            its own propositions from the films&apos; dialogue, scores every film against them,
-            and the axes are whatever groups of propositions the films answer together. Nothing
-            is imposed — including how many axes there are.
+            Films are treated as respondents and moral propositions as items. A model writes
+            propositions from the films&apos; dialogue, every film is scored against them, and the
+            axes are whatever groups of propositions the films answer together. Nothing is
+            imposed — including how many axes there are.
+          </p>
+          <p className="atlas-note">
+            The model that writes the questions need not be the one that answers them, and the
+            two roles fail differently — so the toggle offers each pairing rather than one button
+            per model. Dolphin writes the sharper questions: 98 of its 218 propositions divide
+            films, against 72 of deepseek&apos;s 297. Deepseek gives the steadier answers,
+            recovering the same six axes from either bank, where dolphin finds one axis in its own
+            questions and fourteen in deepseek&apos;s — most of those resting on a handful of
+            propositions each.
+          </p>
+          <p className="atlas-note">
+            Propositions every film agrees with are set aside before any of this. Most of a bank
+            turns out to be consensus rather than measurement, and a claim nobody argues with
+            cannot tell two films apart.
           </p>
         </div>
       </header>
@@ -105,7 +119,8 @@ function AtlasPage({ onBack }) {
         </section>
       ) : (
         <>
-          <ModelPicker models={models} withdrawn={withdrawn} selected={selected?.scorer} onSelect={setSelected} />
+          <ModelPicker models={models} withdrawn={withdrawn}
+                       selected={selected?.reading_id} onSelect={setSelected} />
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
           <Factors data={factors} />

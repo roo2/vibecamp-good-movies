@@ -86,18 +86,42 @@ def list_models() -> dict[str, Any]:
             "ORDER BY verdicts DESC"
         ).fetchall()
 
-    # One row per model. A scorer can have verdicts against more than one bank —
-    # an abandoned run, or an earlier experiment against a shared bank — and
-    # every one of those became its own button, so the same model appeared
-    # several times and more than one could read as selected at once. The run
-    # with the most verdicts is the one that model is actually being judged on.
-    best: dict[str, dict[str, Any]] = {}
+    # One row per READING, not per model — because who wrote the propositions
+    # turns out to matter as much as who answered them, and collapsing to one
+    # row per scorer hid that entirely.
+    #
+    # The two roles fail in different ways and the picker should let a reader
+    # see it. Measured across all four combinations of these two models: as a
+    # WRITER, dolphin produces 98 contested propositions out of 218 where
+    # deepseek produces 72 out of 297. As a READER, deepseek recovers six axes
+    # replicating at 0.49-0.65 from either bank, while dolphin recovers one
+    # from its own bank and fourteen from deepseek's — eleven of those built on
+    # four propositions or fewer — replicating at 0.20-0.32. Same reader,
+    # opposite failures, depending on whose questions it was given.
+    #
+    # A run is only offered once its axes have been named, since an unnamed one
+    # has nothing to show; a scorer with no named run keeps its largest, so a
+    # model that has been scored but not analysed does not vanish silently.
+    readings: list[dict[str, Any]] = []
+    unnamed: dict[str, dict[str, Any]] = {}
     for row in rows:
         if row["scorer"] in WITHDRAWN:
             continue
-        current = best.get(row["scorer"])
-        if current is None or row["verdicts"] > current["verdicts"]:
-            best[row["scorer"]] = dict(row)
+        entry = dict(row)
+        # The bank is named after whoever wrote it, which is the one place that
+        # authorship is recorded at all.
+        entry["wrote"] = (row["bank_version"] or "").split("-")[0] or "unknown"
+        entry["reading_id"] = f"{row['scorer']}|{row['bank_version']}|{row['variant']}"
+        if row["factors"]:
+            readings.append(entry)
+        else:
+            current = unnamed.get(row["scorer"])
+            if current is None or row["verdicts"] > current["verdicts"]:
+                unnamed[row["scorer"]] = entry
+    for scorer, entry in unnamed.items():
+        if not any(r["scorer"] == scorer for r in readings):
+            readings.append(entry)
+    best = {r["reading_id"]: r for r in readings}
     return {"models": sorted(best.values(), key=lambda row: -row["verdicts"]),
             # Named rather than silently absent, so the page can say a model was
             # tried and withdrawn instead of implying it was never run.

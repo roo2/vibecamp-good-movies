@@ -46,6 +46,14 @@ from ..llm.providers import SCORERS, client_for
 # where there is not, more items would not rescue it.
 SAMPLE = 40
 
+# Below this, a proposition's loading says almost nothing about what an axis
+# means. Measured on the leading axis, 7 of its 23 propositions fall here — and
+# they include the ones a reader would pick out as most obviously on-theme,
+# which is exactly the trap: "there is a right order that precedes individual
+# choice" loads +0.17 where "the state has the right to take a person's life"
+# loads +0.56. Showing both as equals invites a name drawn from the wrong one.
+MIN_WEIGHT_TO_NAME = 0.20
+
 # There is no display threshold any more, and there should not have been one. A
 # factor either beats the permutation null or it does not, and `latent` already
 # applies that test at 5%; anything stored here has passed it. The 25% bar on top
@@ -108,12 +116,14 @@ the stance a film would hold that denied all of those propositions. Never write
 "none", "empty", "not observed" or anything of that shape into a label — a
 reader is shown these two words at the ends of a line, and a placeholder there
 is worse than a guess. Say that the end was inferred rather than observed in its
-`pole_low` or `pole_high` sentence instead, where there is room to explain it.
+`first` or `second` sentence instead, where there is room to explain it.
 
-Within each end the propositions are listed NEAREST THE CENTRE of the group
-first. Weight them accordingly: the opening lines are what that end is most
-about, and a striking phrase further down is not the theme just because it is
-striking. If the central propositions and the tail describe different things,
+Within each end the propositions are listed STRONGEST FIRST, and the number in
+brackets is how strongly that proposition belongs to this axis. Weight them by
+it: one at [0.55] tells you three times as much about what the axis means as one
+at [0.18], and a striking phrase near the bottom is not the theme just because
+it is striking. Propositions too faint to characterise the axis are not shown at
+all, though they still count toward where a film sits. If the central propositions and the tail describe different things,
 that is a group with no single theme, and coherent=false is the honest answer.
 
 An axis has two ends and both of them are positions somebody holds. Name it so a
@@ -147,8 +157,9 @@ def _items_by_factor(
     groups: dict[str, int], texts: dict[str, str],
     distance: dict[str, float] | None = None,
     loading: dict[str, float] | None = None,
-) -> dict[int, tuple[list[str], list[str]]]:
-    """Each factor's propositions, nearest the centre of the group first.
+    weights: dict[str, float] | None = None,
+) -> dict[int, tuple[list[tuple[float, str]], list[tuple[float, str]]]]:
+    """Each factor's propositions, the ones that define it most first.
 
     The order is the whole point, and getting it wrong produced a real bad name.
     These used to be sorted by item_id — which is bank insertion order, so the
@@ -159,27 +170,43 @@ def _items_by_factor(
     actual centre are about deception as survival, childhood damage and secrets
     kept. The namer named the corner it was shown.
 
-    Sorted by distance to the group's centre, the sample is what the factor is
-    most about, and a name that does not fit it is a name that does not fit.
-
-        SPLIT BY POLE. An axis has two ends, and which end a proposition belongs to
+    SPLIT BY POLE. An axis has two ends, and which end a proposition belongs to
     is its loading's SIGN — that is what reverse-keying means. The namer used to
     get one flat list and was asked to name both ends from it, which on the
     largest factor here meant 17 of 37 propositions asserting the opposite pole
     with nothing marking them. It was not reading a mislabelled axis; it was
     guessing the split and then naming its guess, which is why the same groups
     could come back coherent one hour and incoherent the next.
+
+    ORDERED BY WEIGHT, NOT BY DISTANCE FROM THE CENTRE. Those are different
+    measures and only one answers "what is this axis about". Distance is how far
+    an item sits from its cluster's centroid across every factor; the LOADING is
+    how strongly it defines THIS one. Ordered by distance, the proposition that
+    most defines the leading axis — "the state has the right to take a person's
+    life as punishment", loading +0.56 — appeared seventh, while "there is a
+    right order that precedes individual choice", loading +0.17, was read as
+    central because it happened to sit near a centroid.
+
+    That matters because the namer is told to weight the opening lines most.
+    Being shown a thematically obvious but statistically weak proposition first
+    is how an axis gets named for something it is not chiefly measuring.
+
+    The weight is shown as well as sorted on, so both the model and anyone
+    reading the transcript can see that the top item counts three times what the
+    bottom one does rather than inferring it from position.
     """
-    out: dict[int, dict[bool, list[tuple[float, str]]]] = {}
+    weights = weights or {}
+    out: dict[int, dict[bool, list[tuple[float, float, str]]]] = {}
     for item_id, factor in groups.items():
         text = texts.get(item_id)
         if not text:
             continue
-        high = (loading or {}).get(item_id, 1.0) >= 0
+        signed = (loading or {}).get(item_id, 1.0)
+        weight = abs(weights.get(item_id, signed))
         bucket = out.setdefault(factor, {True: [], False: []})
-        bucket[high].append(((distance or {}).get(item_id, 0.0), text))
-    return {factor: ([t for _d, t in sorted(rows[True])],
-                     [t for _d, t in sorted(rows[False])])
+        bucket[signed >= 0].append((-weight, weight, text))
+    return {factor: ([(w, t) for _s, w, t in sorted(rows[True])],
+                     [(w, t) for _s, w, t in sorted(rows[False])])
             for factor, rows in out.items()}
 
 
@@ -196,20 +223,32 @@ def name_factors(
     """
     alias = alias or report["scorer"]
     grouped = _items_by_factor(report["groups"], texts, report.get("distance"),
-                               report.get("loading"))
+                               report.get("loading"), report.get("loading"))
     if not grouped:
         return []
 
     client = client or client_for(alias)
     blocks = []
     for factor, (high, low) in sorted(grouped.items()):
-        def side(rows: list[str], label: str) -> str:
-            if not rows:
-                return f"  {label}: none — every proposition in this group points one way."
-            shown = "\n".join(f"    - {text}" for text in rows[:sample])
-            extra = (f"\n    ...and {len(rows) - sample} more, further from the centre"
-                     if len(rows) > sample else "")
-            return f"  {label} ({len(rows)}):\n{shown}{extra}"
+        def side(rows: list[tuple[float, str]], label: str) -> str:
+            # Too faint to be evidence about what the axis is. They still COUNT
+            # toward a film's position, where a hundred small weights add up;
+            # they just should not be shown to something asked what the axis
+            # means, where they read as equal in authority to a proposition
+            # carrying three times their weight.
+            strong = [r for r in rows if r[0] >= MIN_WEIGHT_TO_NAME]
+            dropped = len(rows) - len(strong)
+            if not strong:
+                return (f"  {label}: none — every proposition in this group points "
+                        f"one way." if not rows else
+                        f"  {label}: {len(rows)} propositions, all too weakly "
+                        f"related to this axis to characterise it.")
+            shown = "\n".join(f"    [{w:.2f}] {text}" for w, text in strong[:sample])
+            extra = (f"\n    ...and {len(strong) - sample} more, carrying less weight"
+                     if len(strong) > sample else "")
+            tail = (f"\n    ({dropped} further propositions omitted: weight below "
+                    f"{MIN_WEIGHT_TO_NAME})" if dropped else "")
+            return f"  {label} ({len(strong)} of {len(rows)}):\n{shown}{extra}{tail}"
         blocks.append(
             f"GROUP {factor} — {len(high) + len(low)} propositions, "
             f"most central first within each end\n"
@@ -256,7 +295,15 @@ def name_factors(
             "eigenvalue": (eigenvalues[dominant[index]]
                            if index in dominant and dominant[index] < len(eigenvalues)
                            else (eigenvalues[index] if index < len(eigenvalues) else None)),
-            "margin": margins[index] if index < len(margins) else None,
+            # And the margin of that same factor. This read `margins[index]`
+            # while the line above read `eigenvalues[dominant[index]]`, so a
+            # group carried one factor's eigenvalue beside another's margin —
+            # and the product orders its axes by MARGIN. The 23-proposition
+            # group was published as the corpus's most certain axis at +267%
+            # while holding the third factor's eigenvalue of 4.69.
+            "margin": (margins[dominant[index]]
+                       if index in dominant and dominant[index] < len(margins)
+                       else (margins[index] if index < len(margins) else None)),
         })
         if progress:
             mark = "" if factor.coherent else "  [yellow](would not cohere)[/]"

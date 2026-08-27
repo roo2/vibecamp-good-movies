@@ -228,25 +228,35 @@ def test_agreeing_on_the_count_is_not_agreeing_on_the_grouping():
     assert abs(out["grouping_agreement"]["a vs b"]["ari"]) < 0.1
 
 
-def test_the_namer_is_shown_each_factor_from_its_centre_outward():
+def test_the_namer_is_shown_each_factor_strongest_first():
     """What the namer reads decides what the axis is called.
 
-    The sample used to be ordered by item_id — bank insertion order — so a namer
-    saw an arbitrary corner of a cluster and named that. DeepSeek's largest
-    factor opened with "Sacrificing oneself for another is the highest act of
-    love" and came back called Self-preservation vs Heroic self-sacrifice, while
-    the propositions nearest its centre were about deception as survival and
-    childhood damage. Centre-first is the fix, and this pins it.
+    Ordered by item_id — bank insertion order — a namer saw an arbitrary corner
+    of a cluster and named that. Ordered by DISTANCE from the cluster centroid
+    it saw something better but still wrong: distance measures position across
+    every factor, not how much a proposition defines THIS one. On the real
+    corpus that put "the state has the right to take a person's life"
+    (loading 0.56, the axis's strongest) seventh, behind "there is a right order
+    that precedes individual choice" at 0.17 — which is how an axis gets named
+    for something it is not chiefly measuring.
+
+    Strongest loading first, with the weight shown.
     """
     from moral_atlas.analysis.factor_names import _items_by_factor
 
     groups = {"I900": 0, "I001": 0, "I500": 0}
-    texts = {"I900": "nearest the centre", "I001": "furthest out", "I500": "in between"}
+    texts = {"I900": "weak but near the centre", "I001": "the strongest",
+             "I500": "middling"}
     distance = {"I900": 0.1, "I001": 0.9, "I500": 0.5}
+    loading = {"I900": 0.17, "I001": 0.56, "I500": 0.30}
 
-    high, low = _items_by_factor(groups, texts, distance)[0]
-    assert high == ["nearest the centre", "in between", "furthest out"]
-    assert low == [], "no loadings given, so nothing is reverse-keyed"
+    high, low = _items_by_factor(groups, texts, distance, loading, loading)[0]
+    assert [text for _w, text in high] == ["the strongest", "middling",
+                                           "weak but near the centre"], (
+        "the proposition that defines the axis most must be read first")
+    assert [round(w, 2) for w, _t in high] == [0.56, 0.30, 0.17], (
+        "and its weight is shown, not just implied by position")
+    assert low == [], "nothing loads negative here"
 
     # And the two ends are separated, because an axis has two of them and which
     # one a proposition belongs to is the SIGN of its loading. Handed a flat
@@ -254,11 +264,11 @@ def test_the_namer_is_shown_each_factor_from_its_centre_outward():
     # real corpus that meant 17 of 37 propositions asserting the opposite pole
     # with nothing marking them.
     loading = {"I900": 0.8, "I001": -0.4, "I500": 0.2}
-    high, low = _items_by_factor(groups, texts, distance, loading)[0]
-    assert high == ["nearest the centre", "in between"]
-    assert low == ["furthest out"]
+    high, low = _items_by_factor(groups, texts, distance, loading, loading)[0]
+    assert [text for _w, text in high] == ["weak but near the centre", "middling"]
+    assert [text for _w, text in low] == ["the strongest"]
 
-    # With no distances it must still be deterministic rather than dict order.
+    # With nothing given it must still be deterministic rather than dict order.
     assert len(_items_by_factor(groups, texts)[0][0]) == 3
 
 
@@ -375,3 +385,90 @@ def test_every_factor_is_oriented_by_its_majority():
             f"factor {factor} is oriented against its own majority")
 
 
+
+
+def test_a_bipolar_group_claims_the_factor_it_is_actually_made_of():
+    """Which factor a group is named, ranked and oriented by.
+
+    Claim strength measured `abs(mean(signed_loading))` — how big the group's
+    average loading is. A bipolar group's average loading is ~0 by
+    construction: half its members load +0.6 and half -0.6 on exactly the
+    factor that defines them. So the group that most owns a factor made the
+    weakest claim to it, lost it, and took another by default.
+
+    That is the same defect the one-to-one assignment was written to fix,
+    surviving it — because clustering on magnitudes, which keeps an axis's two
+    poles together, is what makes the groups bipolar in the first place. On the
+    real corpus it left 26 of 90 propositions filed under a factor that was not
+    their strongest, named the weakest factor as the strongest, and buried the
+    single largest loading in the solution (0.83) under a factor where it
+    loads 0.17.
+
+    The measure is the average SIZE of the loadings, not the size of the
+    average.
+    """
+    import numpy as np
+
+    from moral_atlas.analysis.latent import item_groups
+
+    # Two factors. Items 0-3 are the poles of factor 0 and load nothing on
+    # factor 1; items 4-7 are one-sided on factor 1. Only the first group is
+    # bipolar, and only it is at risk.
+    rng = np.random.default_rng(3)
+    films = 60
+    matrix = np.zeros((films, 8))
+    a = rng.normal(size=films)
+    b = rng.normal(size=films)
+    for i in range(4):
+        matrix[:, i] = np.sign(a * (1 if i < 2 else -1) + rng.normal(0, .3, films))
+    for i in range(4, 8):
+        matrix[:, i] = np.sign(b + rng.normal(0, .3, films))
+    items = [f"I{i}" for i in range(8)]
+
+    groups, _distance, _signed, _dominant, all_loadings = item_groups(matrix, items, 2)
+
+    for item, factor in groups.items():
+        strongest = int(np.argmax(np.abs(all_loadings[item])))
+        assert factor == strongest, (
+            f"{item} is filed under factor {factor} but loads most on "
+            f"{strongest}: {[round(v, 2) for v in all_loadings[item]]}")
+
+
+def test_an_axis_carries_one_factors_eigenvalue_and_that_same_factors_margin():
+    """The two numbers an axis is judged by must describe the same factor.
+
+    A k-means label is arbitrary, so a group's numbers have to be looked up
+    through the group->factor mapping. The eigenvalue was; the margin on the
+    very next line was not. So an axis went out carrying one factor's size
+    beside a different factor's certainty — and the product orders its axes by
+    margin, which meant the corpus's third-largest factor was published as its
+    most certain at +267% while showing an eigenvalue of 4.69.
+    """
+    from moral_atlas.analysis.factor_names import FactorName, FactorNames, name_factors
+
+    class Stub:
+        def parse(self, system, user, output_model, max_tokens=None):
+            return FactorNames(factors=[
+                FactorName(factor_id=i, first_label="A", second_label="B",
+                           first="a", second="b", question="q?", coherent=True)
+                for i in (0, 1)])
+
+    report = {
+        "scorer": "stub",
+        "groups": {"I1": 0, "I2": 0, "I3": 1, "I4": 1},
+        "loading": {"I1": 0.8, "I2": -0.7, "I3": 0.6, "I4": -0.5},
+        "distance": {k: 0.1 for k in ("I1", "I2", "I3", "I4")},
+        # Group 0 loads on factor 1, group 1 on factor 0 — the crossed mapping
+        # that makes the bug visible.
+        "dominant": {0: 1, 1: 0},
+        "eigenvalues": [15.95, 4.69],
+        "margins": [2.671, 0.243],
+    }
+    texts = {k: f"proposition {k}" for k in report["groups"]}
+
+    named = {f["factor_id"]: f for f in
+             name_factors(report, texts, client=Stub(), alias="stub")}
+
+    assert named[0]["eigenvalue"] == 4.69 and named[0]["margin"] == 0.243, (
+        "group 0 loads on factor 1 and must carry BOTH of factor 1's numbers")
+    assert named[1]["eigenvalue"] == 15.95 and named[1]["margin"] == 2.671

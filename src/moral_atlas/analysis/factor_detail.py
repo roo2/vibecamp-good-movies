@@ -142,13 +142,24 @@ def detail(
             "distribution": positions,
             "high": positions[:per_pole],
             "low": list(reversed(positions[-per_pole:])) if positions else [],
-            # Ordered by how central each item is to the factor, NOT by how
-            # often films engaged it. Engagement order put the most-answered
-            # proposition first, and the most-answered proposition is usually
-            # the one nearly every film affirms — which is the item that
-            # separates films least. It made a factor about self-sacrifice open
-            # with a line about technology, and read as a mislabelled cluster
-            # when the label was right and the evidence was sorted wrong.
+            # Ordered by LOADING — how much each proposition defines this axis
+            # — strongest first, which is also how `film_justification` and the
+            # naming prompt order their evidence.
+            #
+            # Engagement order was wrong first: the most-answered proposition
+            # is usually the one nearly every film affirms, which is the item
+            # that separates films least, and a factor about self-sacrifice
+            # opened with a line about technology.
+            #
+            # Distance from the group centroid was wrong next, and less
+            # obviously so. Distance measures an item's position across EVERY
+            # factor, so a proposition can sit near the centre while barely
+            # loading on this axis at all. Measured on this reading it put the
+            # defining proposition of all three axes LAST: "There is a right
+            # order that precedes individual choice", loading 0.83 and the
+            # largest in the solution, was 23rd of 23. It also decided the
+            # truncation, so the eight propositions cut from the 48-item axis
+            # were cut by a criterion unrelated to how much they matter.
             "propositions": sorted(
                 ({
                     "item_id": item,
@@ -160,7 +171,8 @@ def detail(
                                if (loadings or {}).get(item) is not None else None),
                     "reverse_keyed": ((loadings or {}).get(item) or 0) < 0,
                 } for item in item_ids),
-                key=lambda row: ((distance or {}).get(row["item_id"], 0.0),
+                key=lambda row: (-(row["weight"] or 0.0),
+                                 (distance or {}).get(row["item_id"], 0.0),
                                  -(row["affirms"] + row["denies"])),
             )[:per_factor_items],
         }

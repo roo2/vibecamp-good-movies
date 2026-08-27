@@ -154,8 +154,16 @@ def get_factors(
         ) from error
 
     texts = factor_names.bank_texts(bank)
+    # STRONGEST FIRST. Only six of these are shown, so which six is the whole
+    # question, and this appended them in `groups` iteration order — which is
+    # bank insertion order, an arbitrary corner of the factor. The same defect
+    # was found and fixed in the naming prompt and in the proposition list
+    # below; this was the third copy of it, and the one on the page whose job
+    # is to let a reader judge a name against its evidence.
+    loading = report.get("loading") or {}
     members: dict[int, list[str]] = {}
-    for item_id, factor in report["groups"].items():
+    for item_id, factor in sorted(report["groups"].items(),
+                                  key=lambda kv: -abs(loading.get(kv[0], 0.0))):
         members.setdefault(factor, []).append(texts.get(item_id, item_id))
 
     # Where every film sits on every factor, and what put it there. Sent with

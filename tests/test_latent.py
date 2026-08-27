@@ -472,3 +472,30 @@ def test_an_axis_carries_one_factors_eigenvalue_and_that_same_factors_margin():
     assert named[0]["eigenvalue"] == 4.69 and named[0]["margin"] == 0.243, (
         "group 0 loads on factor 1 and must carry BOTH of factor 1's numbers")
     assert named[1]["eigenvalue"] == 15.95 and named[1]["margin"] == 2.671
+
+
+def test_an_axis_lists_its_propositions_strongest_first():
+    """The evidence under an axis, in the order a reader meets it.
+
+    Ordered by distance from the group centroid, which sounds like centrality
+    and is not: distance measures an item's position across every factor at
+    once, so an item can sit near the centre while barely loading on this axis.
+    On the real reading it put the defining proposition of all three axes last
+    — "There is a right order that precedes individual choice", loading 0.83
+    and the largest in the solution, was 23rd of 23. The cap then cut the
+    remainder by the same unrelated criterion.
+    """
+    from moral_atlas.analysis import factor_detail
+
+    detail = factor_detail.detail(
+        scorer="x", bank_version="b", variant="v",
+        groups={"I1": 0, "I2": 0, "I3": 0},
+        texts={"I1": "weak", "I2": "strongest", "I3": "middling"},
+        # Deliberately opposed to the loadings, the way the real data was.
+        distance={"I1": 0.1, "I2": 0.9, "I3": 0.5},
+        loadings={"I1": 0.17, "I2": -0.83, "I3": 0.40},
+        vectors={"I1": [0.17], "I2": [-0.83], "I3": [0.40]},
+    )
+    shown = [row["text"] for row in detail[0]["propositions"]]
+    assert shown == ["strongest", "middling", "weak"], (
+        "an axis must open with what defines it, whichever pole that is on")

@@ -60,15 +60,26 @@ SAMPLE = 40
 
 class FactorName(BaseModel):
     factor_id: int
-    name: str = Field(description="The axis as 'A vs B', naming both ends.")
+    # NO high/low here, deliberately. Which end of a factor is "high" is a
+    # convention this code owns — the first list shown is the positive-loading
+    # end, always — and asking a model to track it as well produced an axis
+    # whose labels were swapped onto the wrong descriptions: "Cynical realism"
+    # captioned "humans are capable of selfless virtue". It failed only on the
+    # factor where one end was unobserved and the model had to reason about a
+    # side it could not see. The names below are anchored to the two LISTS,
+    # which the model can see, and the code maps lists to poles.
+    first_label: str = Field(
+        description="Two or three words naming the position the FIRST list of "
+                    "propositions asserts. A stance somebody would own, never "
+                    "the negation of the other end.")
+    second_label: str = Field(
+        description="The same for the SECOND list — or, if that list is empty, "
+                    "for the position a work would hold that denied every "
+                    "proposition in the first.")
+    first: str = Field(description="One sentence: what a work at the first end claims.")
+    second: str = Field(description="One sentence: what a work at the second end claims. "
+                                    "Say here if that end was inferred rather than observed.")
     question: str = Field(description="The moral question these share, as one sentence.")
-    pole_high_label: str = Field(
-        description="The affirming end as 1-3 words, e.g. 'Heroic self-sacrifice'.")
-    pole_low_label: str = Field(
-        description="The denying end as 1-3 words, and a real position rather "
-                    "than a negation, e.g. 'Self-preservation' not 'Not heroic'.")
-    pole_high: str = Field(description="What affirming these propositions asserts.")
-    pole_low: str = Field(description="What denying them asserts.")
     coherent: bool = Field(
         description="False if these propositions do not actually share a moral "
                     "question and any name would be a stretch.")
@@ -109,18 +120,20 @@ An axis has two ends and both of them are positions somebody holds. Name it so a
 reader can see what it runs BETWEEN, because they will be shown their own place
 on it as a point on a line, and a line has to be labelled at both ends.
 
-  - `pole_high_label` and `pole_low_label` are those two ends, 1-3 words each.
-    The low end must be a position in its own right, never the absence or the
-    negation of the high one: "Self-preservation", not "Not self-sacrificing";
-    "Absolute values", not "Non-relativist". If you cannot name the low end as
-    something a person would own, you have probably named the high end as a
-    topic rather than a stance — reword both.
-  - `name` is the axis itself, written "<low> vs <high>" from those two labels,
-    e.g. "Self-preservation vs heroic self-sacrifice".
+  - `first_label` names the position the FIRST list asserts; `second_label` the
+    SECOND. Two or three words each. Each must be a position in its own right,
+    never the absence or negation of the other: "Self-preservation", not "Not
+    self-sacrificing"; "Absolute values", not "Non-relativist". If you cannot
+    name one of them as something a person would own, you have probably named
+    the other as a topic rather than a stance — reword both.
+  - `first` and `second` say, in a sentence each, what a work at that end
+    claims. Phrase both so someone holding that view would accept the wording
+    as fair. Keep each sentence with its own label: the commonest failure here
+    is describing one end and captioning it with the other's name.
   - `question` is the axis as a question with two defensible sides, not a topic.
-  - `pole_high` and `pole_low` say, in a sentence each, what a work at that end
-    claims. Phrase both so that someone holding that view would accept the
-    wording as fair.
+
+You are NOT asked which end is high or low, or to write the axis's name. Those
+are decided from the statistics and assembled around your labels.
 
 You did not choose these groupings and you are not being asked to improve them.
 If a group's propositions genuinely do not share a moral question, set
@@ -216,12 +229,20 @@ def name_factors(
             continue  # a group the namer invented rather than read
         named.append({
             "factor_id": index,
-            "name": factor.name.strip(),
+            # Built, not taken. Written low-then-high so it reads in the same
+            # order as the line a reader is shown, with the labels the code
+            # assigned rather than whichever order the model chose.
+            "name": f"{factor.second_label.strip()} vs {factor.first_label.strip()}",
             "question": factor.question.strip(),
-            "pole_high": factor.pole_high.strip(),
-            "pole_low": factor.pole_low.strip(),
-            "pole_high_label": factor.pole_high_label.strip(),
-            "pole_low_label": factor.pole_low_label.strip(),
+            # The first list is the positive-loading end, so it is the HIGH
+            # pole. Assigned here rather than asked for, and the name is built
+            # from the labels rather than taken from the model — every previous
+            # naming run wrote it in the opposite order from the one requested,
+            # 24 times out of 25.
+            "pole_high": factor.first.strip(),
+            "pole_low": factor.second.strip(),
+            "pole_high_label": factor.first_label.strip(),
+            "pole_low_label": factor.second_label.strip(),
             "coherent": bool(factor.coherent),
             # Both ends. `grouped[index]` is a (one end, the other) pair now,
             # so len() of it is 2 — which is the count that briefly reached the
@@ -239,7 +260,8 @@ def name_factors(
         })
         if progress:
             mark = "" if factor.coherent else "  [yellow](would not cohere)[/]"
-            progress(f"  {factor.name}{mark}")
+            progress(f"  {factor.second_label.strip()} vs "
+                     f"{factor.first_label.strip()}{mark}")
     return named
 
 

@@ -551,3 +551,47 @@ def test_a_factor_orientation_reaches_every_place_that_reads_direction():
         assert (loading[item] >= 0) == (vector[factor] >= 0), (
             f"{item}: signed loading {loading[item]:+.3f} disagrees with "
             f"vector[{factor}] = {vector[factor]:+.3f}")
+
+
+def test_the_namer_is_not_asked_which_end_is_high():
+    """Which end is "high" is this code's convention, not something to delegate.
+
+    Asked to place its labels on high and low itself, the model swapped them
+    onto the wrong descriptions: an axis whose LOW end was labelled "Cynical
+    realism" and captioned "humans are capable of selfless virtue, redemption".
+    It failed only on the factor where one end was unobserved and it had to
+    reason about a side it could not see — the other two were fine, which is
+    what makes the failure easy to miss.
+
+    And the name it wrote disagreed with its own labels in 24 of 25 factors: it
+    consistently wrote "<high> vs <low>" where the prompt asked for the reverse.
+
+    So it names the two LISTS, which it can see, and the code maps lists to
+    poles and builds the name.
+    """
+    from moral_atlas.analysis.factor_names import SYSTEM, FactorName
+
+    fields = set(FactorName.model_fields)
+    assert {"first_label", "second_label", "first", "second"} <= fields
+    for gone in ("pole_high_label", "pole_low_label", "pole_high", "pole_low", "name"):
+        assert gone not in fields, (
+            f"{gone} is decided from the statistics; asking for it invites the swap back")
+    assert "not asked which end is high or low" in SYSTEM.lower()
+
+
+def test_a_factor_name_always_agrees_with_its_own_poles():
+    """Built from the labels rather than taken from the model."""
+    from moral_atlas.analysis import factor_names
+
+    class Named:
+        first_label, second_label = "Cynical fatalism", "Hopeful agency"
+        first, second = "one end", "the other"
+        question, coherent = "?", True
+
+    report = {"scorer": "s", "groups": {}, "eigenvalues": [], "margins": []}
+    built = f"{Named.second_label.strip()} vs {Named.first_label.strip()}"
+    assert built == "Hopeful agency vs Cynical fatalism"
+    # the low pole is the SECOND list, so the name reads low-then-high, in the
+    # same order as the line a reader is shown
+    assert built.split(" vs ")[0] == Named.second_label
+    assert factor_names.by_support({"margin": 1.0}) < factor_names.by_support({"margin": 0.5})

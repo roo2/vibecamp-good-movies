@@ -12,7 +12,7 @@ import { loadFilmEvidence } from '../../services/atlasService.js'
 //
 // What is left is what a reader actually needs to argue with a verdict: the film,
 // and the words it was scored from.
-function FilmDetail({ film, scorer, onClose }) {
+function FilmDetail({ film, scorer, variant, bank, onClose }) {
   const [state, setState] = React.useState({ status: 'loading' })
 
   React.useEffect(() => {
@@ -44,7 +44,8 @@ function FilmDetail({ film, scorer, onClose }) {
       {/* Positions first: the reader opened a film to see what the
           instrument made of it, and the source text below is the evidence
           for disagreeing with that. */}
-      {scorer && <FilmFactors scorer={scorer} filmId={film.id} />}
+      {scorer && <FilmFactors scorer={scorer} filmId={film.id}
+                              variant={variant} bank={bank} />}
 
       {state.status === 'loading' && <p className="detail-muted">Fetching the source text…</p>}
       {state.status === 'failed' && <p className="detail-muted">{state.message}</p>}

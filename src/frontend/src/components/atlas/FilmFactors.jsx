@@ -96,19 +96,26 @@ function Row({ factor }) {
   )
 }
 
-export function FilmFactors({ scorer, filmId }) {
+// `bank` matters as much as `scorer` and was not being sent. The endpoint falls
+// back to the bank a scorer wrote for ITSELF, so picking "dolphin → deepseek"
+// changed the axes listed at the top of the atlas and left every individual
+// film still reported on deepseek's own six — two different readings on one
+// screen, with nothing to say they were different.
+export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
   const [state, setState] = React.useState({ status: 'loading' })
 
   React.useEffect(() => {
     if (!scorer || !filmId) return undefined
     let live = true
     setState({ status: 'loading' })
-    fetch(`/api/factors/${encodeURIComponent(scorer)}/films/${encodeURIComponent(filmId)}`)
+    const query = new URLSearchParams({ variant, ...(bank ? { bank } : {}) })
+    fetch(`/api/factors/${encodeURIComponent(scorer)}/films/`
+          + `${encodeURIComponent(filmId)}?${query}`)
       .then((response) => (response.ok ? response.json() : Promise.reject(response.status)))
       .then((data) => live && setState({ status: 'ready', data }))
       .catch(() => live && setState({ status: 'failed' }))
     return () => { live = false }
-  }, [scorer, filmId])
+  }, [scorer, filmId, variant, bank])
 
   if (state.status === 'loading') return <p className="detail-muted">Reading its positions…</p>
   if (state.status === 'failed') {

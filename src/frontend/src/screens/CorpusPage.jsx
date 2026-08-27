@@ -12,7 +12,9 @@ import '../styles/atlas.css'
 // film's position should read identically wherever it is shown.
 export default function CorpusPage({ onBack }) {
   const [corpus, setCorpus] = React.useState(null)
-  const [scorer, setScorer] = React.useState(null)
+  // The whole reading, not just the scorer: which propositions a film was judged
+  // against is half of what its position means.
+  const [reading, setReading] = React.useState(null)
   const [query, setQuery] = React.useState('')
   const [selected, setSelected] = React.useState(null)
   const [error, setError] = React.useState(null)
@@ -20,7 +22,7 @@ export default function CorpusPage({ onBack }) {
   React.useEffect(() => {
     let live = true
     loadAtlas().then((payload) => live && setCorpus(payload)).catch((e) => live && setError(e.message))
-    loadModels().then(({ models }) => live && models.length && setScorer(models[0].scorer)).catch(() => {})
+    loadModels().then(({ models }) => live && models.length && setReading(models[0])).catch(() => {})
     return () => { live = false }
   }, [])
 
@@ -89,8 +91,9 @@ export default function CorpusPage({ onBack }) {
                 Choose another
               </button>
             </div>
-            {scorer
-              ? <FilmFactors scorer={scorer} filmId={selected.id} />
+            {reading
+              ? <FilmFactors scorer={reading.scorer} filmId={selected.id}
+                             variant={reading.variant} bank={reading.bank_version} />
               : <p className="atlas-note">No model has read the corpus yet.</p>}
           </section>
         )}

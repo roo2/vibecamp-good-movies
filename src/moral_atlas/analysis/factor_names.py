@@ -83,11 +83,21 @@ same way — affirming together, denying together, or passing over together.
 
 For each group, say what its propositions have in common as a moral question.
 
-The propositions are listed with the ones NEAREST THE CENTRE of the group first.
-Weight them accordingly: the opening lines are what the group is most about, and
-a striking phrase further down is not the theme just because it is striking. If
-the central propositions and the tail describe different things, that is a group
-with no single theme, and coherent=false is the honest answer.
+Each group is given to you SPLIT INTO ITS TWO ENDS. Films at one end of the axis
+affirm the first list; films at the other end affirm the second. That split is
+not a suggestion — it is what the statistics found, and it is the axis. Read the
+two lists against each other and name what they disagree ABOUT.
+
+A group may arrive with one end empty. That means every proposition in it points
+the same way, so the axis has only been observed from one side: name the far end
+as the position a film would hold that denied them all, and say so plainly in
+`pole_low` or `pole_high`.
+
+Within each end the propositions are listed NEAREST THE CENTRE of the group
+first. Weight them accordingly: the opening lines are what that end is most
+about, and a striking phrase further down is not the theme just because it is
+striking. If the central propositions and the tail describe different things,
+that is a group with no single theme, and coherent=false is the honest answer.
 
 An axis has two ends and both of them are positions somebody holds. Name it so a
 reader can see what it runs BETWEEN, because they will be shown their own place
@@ -117,7 +127,8 @@ cover one.
 def _items_by_factor(
     groups: dict[str, int], texts: dict[str, str],
     distance: dict[str, float] | None = None,
-) -> dict[int, list[str]]:
+    loading: dict[str, float] | None = None,
+) -> dict[int, tuple[list[str], list[str]]]:
     """Each factor's propositions, nearest the centre of the group first.
 
     The order is the whole point, and getting it wrong produced a real bad name.
@@ -131,13 +142,26 @@ def _items_by_factor(
 
     Sorted by distance to the group's centre, the sample is what the factor is
     most about, and a name that does not fit it is a name that does not fit.
+
+        SPLIT BY POLE. An axis has two ends, and which end a proposition belongs to
+    is its loading's SIGN — that is what reverse-keying means. The namer used to
+    get one flat list and was asked to name both ends from it, which on the
+    largest factor here meant 17 of 37 propositions asserting the opposite pole
+    with nothing marking them. It was not reading a mislabelled axis; it was
+    guessing the split and then naming its guess, which is why the same groups
+    could come back coherent one hour and incoherent the next.
     """
-    out: dict[int, list[tuple[float, str]]] = {}
+    out: dict[int, dict[bool, list[tuple[float, str]]]] = {}
     for item_id, factor in groups.items():
         text = texts.get(item_id)
-        if text:
-            out.setdefault(factor, []).append(((distance or {}).get(item_id, 0.0), text))
-    return {factor: [text for _d, text in sorted(rows)] for factor, rows in out.items()}
+        if not text:
+            continue
+        high = (loading or {}).get(item_id, 1.0) >= 0
+        bucket = out.setdefault(factor, {True: [], False: []})
+        bucket[high].append(((distance or {}).get(item_id, 0.0), text))
+    return {factor: ([t for _d, t in sorted(rows[True])],
+                     [t for _d, t in sorted(rows[False])])
+            for factor, rows in out.items()}
 
 
 def name_factors(
@@ -152,18 +176,26 @@ def name_factors(
     apart, which is the property the axes actually need.
     """
     alias = alias or report["scorer"]
-    grouped = _items_by_factor(report["groups"], texts, report.get("distance"))
+    grouped = _items_by_factor(report["groups"], texts, report.get("distance"),
+                               report.get("loading"))
     if not grouped:
         return []
 
     client = client or client_for(alias)
     blocks = []
-    for factor, items in sorted(grouped.items()):
-        listing = "\n".join(f"  - {text}" for text in items[:sample])
-        more = (f"\n  ...and {len(items) - sample} more, further from the centre"
-                if len(items) > sample else "")
-        blocks.append(f"GROUP {factor} ({len(items)} propositions, most central first)"
-                      f"\n{listing}{more}")
+    for factor, (high, low) in sorted(grouped.items()):
+        def side(rows: list[str], label: str) -> str:
+            if not rows:
+                return f"  {label}: none — every proposition in this group points one way."
+            shown = "\n".join(f"    - {text}" for text in rows[:sample])
+            extra = (f"\n    ...and {len(rows) - sample} more, further from the centre"
+                     if len(rows) > sample else "")
+            return f"  {label} ({len(rows)}):\n{shown}{extra}"
+        blocks.append(
+            f"GROUP {factor} — {len(high) + len(low)} propositions, "
+            f"most central first within each end\n"
+            + side(high, "ONE END affirms these") + "\n"
+            + side(low, "THE OTHER END affirms these"))
 
     result = client.parse(system=SYSTEM, user="\n\n".join(blocks),
                           output_model=FactorNames, max_tokens=16000)
@@ -185,7 +217,11 @@ def name_factors(
             "pole_high_label": factor.pole_high_label.strip(),
             "pole_low_label": factor.pole_low_label.strip(),
             "coherent": bool(factor.coherent),
-            "n_items": len(grouped[index]),
+            # Both ends. `grouped[index]` is a (one end, the other) pair now,
+            # so len() of it is 2 — which is the count that briefly reached the
+            # database and made every axis look like it rested on two
+            # propositions.
+            "n_items": sum(len(side) for side in grouped[index]),
             # The eigenvalue of the factor this GROUP loads on, not of the
             # group's arbitrary k-means label. Ordering the axes by the latter
             # put a cluster of eleven propositions at the top of the product

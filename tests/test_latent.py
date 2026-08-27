@@ -210,10 +210,22 @@ def test_the_namer_is_shown_each_factor_from_its_centre_outward():
     texts = {"I900": "nearest the centre", "I001": "furthest out", "I500": "in between"}
     distance = {"I900": 0.1, "I001": 0.9, "I500": 0.5}
 
-    assert _items_by_factor(groups, texts, distance)[0] == [
-        "nearest the centre", "in between", "furthest out"]
+    high, low = _items_by_factor(groups, texts, distance)[0]
+    assert high == ["nearest the centre", "in between", "furthest out"]
+    assert low == [], "no loadings given, so nothing is reverse-keyed"
+
+    # And the two ends are separated, because an axis has two of them and which
+    # one a proposition belongs to is the SIGN of its loading. Handed a flat
+    # list, the namer was guessing the split and then naming its guess — on the
+    # real corpus that meant 17 of 37 propositions asserting the opposite pole
+    # with nothing marking them.
+    loading = {"I900": 0.8, "I001": -0.4, "I500": 0.2}
+    high, low = _items_by_factor(groups, texts, distance, loading)[0]
+    assert high == ["nearest the centre", "in between"]
+    assert low == ["furthest out"]
+
     # With no distances it must still be deterministic rather than dict order.
-    assert len(_items_by_factor(groups, texts)[0]) == 3
+    assert len(_items_by_factor(groups, texts)[0][0]) == 3
 
 
 def test_item_groups_reports_how_far_each_item_sits_from_its_centre():

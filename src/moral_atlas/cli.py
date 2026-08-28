@@ -931,8 +931,12 @@ def name_factors_cmd(
                                           progress=console.print)
         factor_names.persist(alias, report, named, bank, usage=client.usage.as_dict())
 
+        # Best-supported first, the same order the atlas, the film pages and a
+        # person's own compass use. This printed in factor_id order — which is
+        # a k-means label, means nothing, and put an axis clearing chance by
+        # 127% below one clearing it by 11%.
         table = Table("axis", "items", "margin", "question", box=None)
-        for row in named:
+        for row in sorted(named, key=factor_names.by_support):
             colour = "green" if row["margin"] and row["margin"] >= 0.05 else "yellow"
             name = row["name"] if row["coherent"] else f"[dim]{row['name']}?[/]"
             table.add_row(name, str(row["n_items"]),

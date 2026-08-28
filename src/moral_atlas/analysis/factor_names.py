@@ -242,6 +242,30 @@ def _items_by_factor(
 NAMING_RUNS = 3
 
 
+# Labels that are not labels. The prompt forbids these explicitly — a reader is
+# shown two words at the ends of a line and a placeholder there is worse than a
+# guess — and models write them anyway. Asked to name factors with only one
+# observed end, the uncensored model returned "None" for eleven of fifteen, in
+# every one of three runs; deepseek returned "Uncharacterized vs
+# Uncharacterized" on another bank. An instruction the model can decline is not
+# a constraint, so this is checked rather than requested.
+PLACEHOLDER_LABELS = {
+    "", "-", "?", "n/a", "na", "none", "null", "nil", "empty", "unknown",
+    "unnamed", "unspecified", "undefined", "uncharacterized", "uncharacterised",
+    "not observed", "unobserved", "not applicable", "no label", "other",
+}
+
+
+def _is_placeholder(label: Any) -> bool:
+    return str(label or "").strip().strip(".").lower() in PLACEHOLDER_LABELS
+
+
+def _placeholders(run: list[dict[str, Any]]) -> int:
+    """How many ends of how many axes this naming failed to name."""
+    return sum(_is_placeholder(f.get(key))
+               for f in run for key in ("pole_high_label", "pole_low_label"))
+
+
 def _agreement(a: dict[int, dict[str, Any]], b: dict[int, dict[str, Any]]) -> float:
     """How much two namings of the same factors say the same thing.
 
@@ -289,7 +313,12 @@ def _consensus(runs: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
     keyed = [{f["factor_id"]: f for f in run} for run in live]
     scores = [sum(_agreement(a, b) for j, b in enumerate(keyed) if i != j)
               for i, a in enumerate(keyed)]
-    return live[max(range(len(live)), key=lambda i: scores[i])]
+    # FEWEST UNNAMED ENDS FIRST, then agreement. A run that actually named both
+    # ends of an axis is better than a more typical run that wrote "None"
+    # there, and typicality alone would keep the placeholder whenever the model
+    # produces one reliably — which is exactly when it does.
+    return live[max(range(len(live)),
+                    key=lambda i: (-_placeholders(live[i]), scores[i]))]
 
 
 def name_factors(
@@ -395,7 +424,14 @@ def _shape(result: "FactorNames", grouped, report: dict[str, Any]) -> list[dict[
             "pole_low": factor.second.strip(),
             "pole_high_label": factor.first_label.strip(),
             "pole_low_label": factor.second_label.strip(),
-            "coherent": bool(factor.coherent),
+            # An axis with an unnamed end is not one a reader can be shown, so
+            # it is recorded as not cohering whatever the model said about it.
+            # That keeps it out of the product, which filters on this, and
+            # leaves it on the atlas with the warning beside it — where an
+            # unnameable factor is a finding rather than a defect.
+            "coherent": bool(factor.coherent) and not (
+                _is_placeholder(factor.first_label)
+                or _is_placeholder(factor.second_label)),
             # Both ends. `grouped[index]` is a (one end, the other) pair now,
             # so len() of it is 2 — which is the count that briefly reached the
             # database and made every axis look like it rested on two

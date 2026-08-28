@@ -793,3 +793,52 @@ def test_a_failed_naming_run_does_not_lose_the_ones_that_worked():
     with pytest.raises(RuntimeError, match="every naming run failed"):
         factor_names.name_factors(report, {"I1": "one", "I2": "two"},
                                   client=Broken(), alias="stub", runs=2)
+
+
+def test_an_axis_with_an_unnamed_end_is_not_offered_as_a_reading():
+    """The prompt forbids placeholder labels. Models write them anyway.
+
+    Asked to name factors where only one end was observed, the uncensored model
+    returned "None" as a label for eleven of fifteen axes — in every one of
+    three runs, so not a bad sample — and deepseek returned "Uncharacterized vs
+    Uncharacterized" on a different bank. A reader is shown two words at the
+    ends of a line; "None" there is worse than a guess, and it would have been
+    published as a real axis because the model did not also flag it.
+
+    An instruction a model can decline is not a constraint.
+    """
+    from moral_atlas.analysis.factor_names import (
+        FactorName, FactorNames, _consensus, _is_placeholder, name_factors)
+
+    assert _is_placeholder("None") and _is_placeholder("  n/a ")
+    assert _is_placeholder("Uncharacterized") and _is_placeholder("")
+    assert not _is_placeholder("Divine order")
+    assert not _is_placeholder("Nonviolence"), "a real word that starts with one"
+
+    # A run that named both ends beats a more typical run that did not. Two of
+    # the three agree with each other, so typicality alone would keep "None".
+    def run(label, coherent=True):
+        return [{"factor_id": 0, "pole_high_label": label,
+                 "pole_low_label": "Revenge as justice", "name": "x",
+                 "coherent": coherent}]
+    named_properly = run("Restraint under provocation")
+    kept = _consensus([run("None"), run("None"), named_properly])
+    assert kept is named_properly
+
+    # And when every run leaves an end unnamed, the axis is marked as one that
+    # would not cohere — which keeps it out of the product and leaves it on the
+    # atlas with the warning, rather than publishing "None" at one end.
+    class Stub:
+        def parse(self, system, user, output_model, max_tokens=None):
+            return FactorNames(factors=[FactorName(
+                factor_id=0, first_label="None", second_label="Revenge as justice",
+                first="a", second="b", question="q?", coherent=True)])
+
+    report = {"scorer": "s", "groups": {"I1": 0, "I2": 0},
+              "loading": {"I1": 0.8, "I2": -0.6},
+              "distance": {"I1": 0.1, "I2": 0.2},
+              "dominant": {0: 0}, "eigenvalues": [9.0], "margins": [1.0]}
+    out = name_factors(report, {"I1": "one", "I2": "two"},
+                       client=Stub(), alias="s", runs=2)
+    assert out[0]["coherent"] is False, (
+        "the model called it coherent; an unnamed end says otherwise")

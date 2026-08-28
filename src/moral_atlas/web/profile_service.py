@@ -75,7 +75,7 @@ def moral_profile(user_id: str) -> MoralProfile:
             films_without_scores=[_label(film_id) for film_id in unscored],
         ),
         is_provisional=len({p.film_id for p in preferences} - set(unscored)) < MIN_FILMS_FOR_A_READ,
-        summary=_summary(scored),
+        summary=_summary(scored, len({p.film_id for p in preferences} - set(unscored))),
     )
 
 
@@ -84,7 +84,7 @@ def _label(film_id: str) -> str:
     return card["title"] if card and card.get("title") else film_id
 
 
-def _summary(scores: list[user_scores.DimensionScore]) -> str:
+def _summary(scores: list[user_scores.DimensionScore], films_used: int) -> str:
     """The axis the person committed to hardest, in that axis's own words.
 
     One axis rather than a ranked list: the pole texts are full sentences, and
@@ -96,12 +96,34 @@ def _summary(scores: list[user_scores.DimensionScore]) -> str:
     character..." — which made the reader parse a label before reaching the
     sentence that actually says something about them. The sentence stands on its
     own, and the name is on the axis a few lines below.
+
+    SITTING IN THE MIDDLE IS AN ANSWER. Every axis coming back balanced used to
+    produce one message — "rate a few more films and the shape will sharpen" —
+    which is the right thing to say to somebody who has rated one film and the
+    wrong thing to say to somebody who has rated twenty. It reads as the
+    instrument having failed, when what it is reporting is that the person's
+    choices pull both ways on every question. That is a result, it is a
+    perfectly ordinary one, and a compass that can only report commitment is not
+    measuring: a reader told to go and try harder will reasonably conclude the
+    thing is broken, and the honest reading was right there.
     """
     committed = sorted(
         (s for s in scores if s.leaning != "balanced"),
         key=lambda s: -abs(s.score),
     )
-    if not committed:
+    if committed:
+        return committed[0].stance
+    if films_used < MIN_FILMS_FOR_A_READ:
         return ("Nothing you have told us yet pushes hard on any one axis — "
                 "rate a few more films and the shape will sharpen.")
-    return committed[0].stance
+    # Balanced on everything, with enough behind it to mean something. Name the
+    # direction they lean furthest anyway: it is the difference between "we
+    # found nothing" and "we found this, faintly", and the second is true.
+    leaning = max(scores, key=lambda s: abs(s.score), default=None)
+    tilt = ""
+    if leaning is not None and leaning.score:
+        side = leaning.pole_high_label if leaning.score > 0 else leaning.pole_low_label
+        tilt = f" If anything you tilt very slightly toward {side.lower()}."
+    return ("You sit near the middle of every axis. That is a reading rather "
+            "than a gap in one — across the films you told us about, your "
+            "choices pull both ways on each of these questions." + tilt)

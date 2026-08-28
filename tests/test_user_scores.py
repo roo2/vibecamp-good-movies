@@ -631,3 +631,42 @@ def test_not_having_seen_a_film_cannot_erase_an_answer_about_it():
 
     # And a film only ever marked unseen stays absent rather than neutral.
     assert rating_preferences([("apes", "havent_seen")]) == []
+
+
+def test_sitting_in_the_middle_of_every_axis_is_reported_as_a_result():
+    """Balance and ignorance are different states and had one message.
+
+    "Nothing you have told us yet pushes hard on any one axis — rate a few more
+    films and the shape will sharpen" is right for somebody who has rated one
+    film. Said to somebody who has rated eight it reads as the instrument
+    having failed, when what it is reporting is that their choices pull both
+    ways on every question. A reader told to go and try harder will reasonably
+    conclude the thing is broken.
+    """
+    from moral_atlas.analysis.user_scores import DimensionScore
+    from moral_atlas.web.profile_service import MIN_FILMS_FOR_A_READ, _summary
+
+    def axis(score):
+        return DimensionScore(
+            dim_id=0, name="n", question="q?", pole_high="high sentence",
+            pole_low="low sentence", pole_high_label="Redemptive optimism",
+            pole_low_label="Deterministic pessimism", score=score,
+            leaning="balanced" if abs(score) < 0.12 else
+                    ("high" if score > 0 else "low"),
+            stance="high sentence" if score > 0 else "low sentence",
+            evidence_items=500.0, confidence=0.98, films=8)
+
+    thin = _summary([axis(0.01)], films_used=1)
+    assert "rate a few more films" in thin
+
+    settled = _summary([axis(0.04), axis(-0.02)], films_used=MIN_FILMS_FOR_A_READ)
+    assert "rate a few more films" not in settled, (
+        "with enough films behind it, balance is the finding — not a prompt to "
+        "go and produce a different one")
+    assert "middle of every axis" in settled
+    # And it still says which way they lean, faintly, so the reading is
+    # something rather than the absence of something.
+    assert "redemptive optimism" in settled.lower()
+
+    # A real commitment still leads with that axis's own sentence.
+    assert _summary([axis(0.04), axis(0.9)], films_used=8) == "high sentence"

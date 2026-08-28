@@ -26,6 +26,8 @@ function Axis({ factor, open, onToggle }) {
   const side = factor.score >= 0 ? 'high' : 'low'
   const stance = factor.score >= 0 ? factor.pole_high : factor.pole_low
   const magnitude = Math.abs(factor.score) * 50
+  const heaviest = Math.max(
+    ...(factor.verdicts || []).map((v) => v.weight || 0), 0.0001)
 
   return (
     <li className={`axis-strip-row ${side} ${open ? 'open' : ''}`}>
@@ -45,12 +47,26 @@ function Axis({ factor, open, onToggle }) {
       {open && (
         <div className="axis-strip-why">
           <p className="axis-strip-stance">{stance}</p>
-          {/* Three verdicts, not all of them: this is a reason, not an audit. */}
+          {/* Three verdicts, not all of them: this is a reason, not an audit.
+              The bar under each is that proposition's loading on THIS axis, the
+              same measure the film and atlas pages draw, so a reader meeting it
+              in both places is reading one thing. It is scaled against the
+              heaviest proposition on the whole axis rather than the heaviest of
+              the three shown — within three the top bar would always be full
+              and the shape would say nothing. */}
           <ul>
             {(factor.verdicts || []).slice(0, 3).map((verdict) => (
               <li key={verdict.item_id} className={verdict.verdict}>
                 <b>{verdict.verdict}</b>
-                <span>{verdict.text}</span>
+                <span>
+                  {verdict.text}
+                  {verdict.weight != null && (
+                    <span className="axis-strip-weight"
+                          title={`How much this proposition defines this axis (loading ${verdict.weight})`}>
+                      <i style={{ inlineSize: `${Math.round((verdict.weight / heaviest) * 100)}%` }} />
+                    </span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>

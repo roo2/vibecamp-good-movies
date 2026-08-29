@@ -59,7 +59,14 @@ def moral_profile(user_id: str) -> MoralProfile:
         preferences.extend(user_scores.pair_preferences(choice, film_ids))
 
     stances = user_scores.factor_stances(scorer, variant, factor_bank)
-    scored = user_scores.score_preferences(preferences, dimensions, stances)
+    # Measured from the average film, not from zero. See `corpus_baseline`: on
+    # this reading films average +0.202 and +0.117 on two of the three axes, so
+    # a score of 0.00 read as "no opinion" was in fact a strong one, and the
+    # shrinkage prior was pulling people who had told us little toward a point
+    # no film occupies.
+    baseline = user_scores.corpus_baseline(stances)
+    scored = user_scores.score_preferences(preferences, dimensions, stances,
+                                           baseline=baseline)
 
     unscored = sorted({p.film_id for p in preferences if p.film_id not in stances})
     return MoralProfile(

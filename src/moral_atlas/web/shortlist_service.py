@@ -131,8 +131,9 @@ def _factor_bank() -> str:
     return settings().factor_bank
 
 
-def _alignment(scores: dict[int, float],
-               stances: dict[int, user_scores.Stance]) -> tuple[float, dict[int, float]]:
+def _alignment(scores: dict[int, float], stances: dict[int, user_scores.Stance],
+               baseline: dict[int, tuple[float, float]] | None = None,
+               ) -> tuple[float, dict[int, float]]:
     """One person against one film: the signed match, and the per-axis parts.
 
     Each axis counts for how much evidence the film gives ON THAT AXIS, which
@@ -140,14 +141,25 @@ def _alignment(scores: dict[int, float],
     every axis: all three axes then drew on the same propositions, so the
     count was identical across them for every film in the corpus and weighted
     nothing. `Stance.mass` is the loading weight actually behind the position.
+
+    BOTH SIDES ARE MEASURED FROM THE AVERAGE FILM, and divided by how widely
+    that axis actually runs. Comparing a person to a film from an origin the
+    corpus is not centred on made the axes incomparable twice over. An axis
+    where films average +0.117 read a person sitting at 0.00 as having no
+    opinion, so it was weighted at 2% when it should have been 41%; and an axis
+    whose films span half the range of another contributed half as much for no
+    reason but scale. Both are fixed by standardising, and the person's score
+    is already centred by `score_preferences` when it is given the same
+    baseline — which is why the caller must pass one to both.
     """
     numerator = denominator = 0.0
     parts: dict[int, float] = {}
     for dim_id, verdicts in stances.items():
         if not verdicts:
             continue
-        person = scores.get(dim_id, 0.0)
-        film = sum(verdicts) / len(verdicts)
+        middle, spread = (baseline or {}).get(dim_id, (0.0, 1.0))
+        person = scores.get(dim_id, 0.0) / (spread or 1.0)
+        film = (sum(verdicts) / len(verdicts) - middle) / (spread or 1.0)
         weight = user_scores.evidence(verdicts)
         parts[dim_id] = weight * person * film
         numerator += parts[dim_id]
@@ -155,7 +167,8 @@ def _alignment(scores: dict[int, float],
     return (numerator / (denominator + PRIOR) if denominator else 0.0), parts
 
 
-def _member_profiles(user_ids: list[str], dimensions, stances) -> dict[str, dict[int, float]]:
+def _member_profiles(user_ids: list[str], dimensions, stances,
+                     baseline=None) -> dict[str, dict[int, float]]:
     profiles = {}
     for user_id in user_ids:
         preferences = user_scores.rating_preferences(user_rating_inputs(user_id))
@@ -163,7 +176,8 @@ def _member_profiles(user_ids: list[str], dimensions, stances) -> dict[str, dict
             preferences.extend(user_scores.pair_preferences(choice, film_ids))
         profiles[user_id] = {
             score.dim_id: score.score
-            for score in user_scores.score_preferences(preferences, dimensions, stances)
+            for score in user_scores.score_preferences(
+                preferences, dimensions, stances, baseline=baseline)
         }
     return profiles
 
@@ -203,7 +217,8 @@ def ranked_shortlist(
     names = {d["dim_id"]: d["name"] for d in dimensions}
     stances = user_scores.factor_stances(
         settings().product_scorer, settings().product_variant, _factor_bank())
-    profiles = _member_profiles(user_ids, dimensions, stances)
+    baseline = user_scores.corpus_baseline(stances)
+    profiles = _member_profiles(user_ids, dimensions, stances, baseline)
     seen = _already_seen(user_ids)
 
     ranked = []
@@ -220,7 +235,8 @@ def ranked_shortlist(
         # second-best film it can actually show.
         if not (film.get("artwork_url") or "").strip():
             continue
-        per_member = {user_id: _alignment(profiles[user_id], film_stances) for user_id in user_ids}
+        per_member = {user_id: _alignment(profiles[user_id], film_stances, baseline)
+                      for user_id in user_ids}
         alignments = [value for value, _parts in per_member.values()]
         ranked.append({
             "id": film["film_id"],

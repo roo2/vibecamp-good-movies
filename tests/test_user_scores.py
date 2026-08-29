@@ -670,3 +670,48 @@ def test_sitting_in_the_middle_of_every_axis_is_reported_as_a_result():
 
     # A real commitment still leads with that axis's own sentence.
     assert _summary([axis(0.04), axis(0.9)], films_used=8) == "high sentence"
+
+
+def test_an_axis_the_corpus_is_not_centred_on_still_counts():
+    """Zero is not the middle of an axis, and treating it as one loses the axis.
+
+    Films in the real corpus average +0.202 on one axis and +0.117 on another.
+    A person sitting at 0.00 on the second is not undecided about it — they are
+    most of a standard deviation below the typical film, which is a position.
+    Read from zero, that axis carried 2% of a profile's weight; read from the
+    corpus, 41%.
+
+    Measured on a template built from two independent lists of Catholic films,
+    the difference is the whole recommendation: Zootopia at the top before,
+    The Exorcist and Narnia after — and The Exorcist is on both lists.
+    """
+    from moral_atlas.analysis import user_scores as us
+    from moral_atlas.web import shortlist_service as ss
+
+    dims = [{"dim_id": 0, "name": "shifted", "question": "?", "pole_high": "h",
+             "pole_low": "l", "pole_high_label": "H", "pole_low_label": "L"}]
+    # Every film in this corpus sits high on the axis; one sits at zero.
+    corpus = {f"typical{i}": {0: us.Stance([0.6] * 10, mass=10)} for i in range(20)}
+    corpus["unusual"] = {0: us.Stance([0.0] * 10, mass=10)}
+    baseline = us.corpus_baseline(corpus)
+    middle, spread = baseline[0]
+    assert 0.55 < middle < 0.6, "the middle of this axis is nowhere near zero"
+
+    liked = [us.Preference("unusual", 1.0, "rating", "loved_it")]
+    raw = us.score_preferences(liked, dims, corpus)[0]
+    centred = us.score_preferences(liked, dims, corpus, baseline=baseline)[0]
+    assert abs(raw.score) < 0.01, "read from zero, liking the outlier looks like no opinion"
+    assert centred.score < -0.3, "read from the corpus, it is a clear position"
+
+    # And the matcher then actually uses the axis: the outlier film matches this
+    # person, the typical ones do not.
+    scores = {0: centred.score}
+    odd, _ = ss._alignment(scores, corpus["unusual"], baseline)
+    usual, _ = ss._alignment(scores, corpus["typical0"], baseline)
+    assert odd > 0 > usual, (
+        "a person unlike the corpus must be matched to the films unlike it")
+
+    # Somebody who has told us nothing sits at the average film, not at an
+    # arbitrary zero that may itself be an extreme position.
+    nobody = us.score_preferences([], dims, corpus, baseline=baseline)[0]
+    assert nobody.score == 0.0 and nobody.leaning == "balanced"

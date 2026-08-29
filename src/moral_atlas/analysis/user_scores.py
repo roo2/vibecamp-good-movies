@@ -243,16 +243,57 @@ def pair_preferences(choice: str, film_ids: list[str], pair_id: str = "") -> lis
     ]
 
 
+def corpus_baseline(
+    stances: dict[str, dict[int, Any]],
+) -> dict[int, tuple[float, float]]:
+    """Where the middle of each axis actually is, and how wide the axis runs.
+
+    ZERO IS NOT THE MIDDLE. Films average +0.202 on the strongest
+    axis of the current reading and +0.117 on the next, because the corpus is
+    not symmetric about the origin and nothing says it should be. A person at
+    0.00 on an axis whose films average +0.117 is not undecided about it — they
+    sit nearly a full standard deviation below the typical film, which is a
+    position, and a strong one.
+
+    Measured consequence, on a template built from two independent lists of
+    Catholic films: read from zero, the axis those lists are most displaced on
+    carried 2% of the profile's weight and the top recommendation was Zootopia.
+    Read from the corpus, the same axis carries 41% and the recommendations
+    become The Exorcist, Narnia, Noah — one of which is on both lists.
+
+    Returns the mean and standard deviation of every film's position per axis.
+    """
+    per_axis: dict[int, list[float]] = defaultdict(list)
+    for by_axis in stances.values():
+        for dim_id, values in by_axis.items():
+            if values:
+                per_axis[dim_id].append(sum(values) / len(values))
+    out: dict[int, tuple[float, float]] = {}
+    for dim_id, xs in per_axis.items():
+        mean = sum(xs) / len(xs)
+        var = sum((x - mean) ** 2 for x in xs) / max(len(xs) - 1, 1)
+        out[dim_id] = (mean, var ** 0.5 or 1.0)
+    return out
+
+
 def score_preferences(
     preferences: Iterable[Preference],
     dimensions: list[dict[str, Any]],
     stances: dict[str, dict[int, list[float]]],
+    baseline: dict[int, tuple[float, float]] | None = None,
 ) -> list[DimensionScore]:
     """Weighted mean of the film verdicts, one row per axis, always all of them.
 
     Axes nobody's films engaged still come back — at zero, with no evidence and
     no confidence. An axis silently missing from a profile reads as neutrality;
     an axis reported with `evidence_items` of 0 reads as the ignorance it is.
+
+    `baseline` moves the origin of each axis to the average film — see
+    `corpus_baseline`, which explains why that is the honest reference. It also
+    fixes what the shrinkage prior means: with it, somebody who has told us
+    nothing sits at the average film rather than at an arbitrary zero that may
+    itself be an extreme position. Omitted, the scores are raw, which is what
+    the legacy dimension set and the hand-built fixtures in the tests want.
     """
     numerator: dict[int, float] = defaultdict(float)
     mass: dict[int, float] = defaultdict(float)
@@ -270,8 +311,9 @@ def score_preferences(
             # propositions would inflate every score whose propositions load
             # weakly, which is precisely the case the mass exists to discount.
             weight = evidence(verdicts)
+            middle = (baseline or {}).get(dim_id, (0.0, 1.0))[0]
             numerator[dim_id] += (preference.weight * weight
-                                  * sum(verdicts) / len(verdicts))
+                                  * (sum(verdicts) / len(verdicts) - middle))
             mass[dim_id] += abs(preference.weight) * weight
             films_seen[dim_id].add(preference.film_id)
 

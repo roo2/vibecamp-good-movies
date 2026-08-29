@@ -151,15 +151,28 @@ def _alignment(scores: dict[int, float], stances: dict[int, user_scores.Stance],
     reason but scale. Both are fixed by standardising, and the person's score
     is already centred by `score_preferences` when it is given the same
     baseline — which is why the caller must pass one to both.
+
+    The width used here is RELATIVE to the average axis, so this equalises the
+    axes without moving the scale of the number it returns — PRIOR, NOTE_FLOOR,
+    VARIATION and RECENCY_WEIGHT are all calibrated against it.
     """
     numerator = denominator = 0.0
     parts: dict[int, float] = {}
+    widths = [w for _m, w in (baseline or {}).values() if w]
+    typical = (sum(widths) / len(widths)) if widths else 1.0
     for dim_id, verdicts in stances.items():
         if not verdicts:
             continue
-        middle, spread = (baseline or {}).get(dim_id, (0.0, 1.0))
-        person = scores.get(dim_id, 0.0) / (spread or 1.0)
-        film = (sum(verdicts) / len(verdicts) - middle) / (spread or 1.0)
+        middle, spread = (baseline or {}).get(dim_id, (0.0, typical))
+        # Relative to the average axis, so the axes are equalised and the SIZE
+        # of the result is left alone. Dividing by the raw spread would also
+        # multiply every alignment by about four, silently recalibrating every
+        # constant tuned against it: PRIOR would stop discounting thin
+        # evidence, NOTE_FLOOR would never fail, and VARIATION's noise would
+        # shrink to nothing beside a range four times wider.
+        scale = (spread / typical) or 1.0
+        person = scores.get(dim_id, 0.0) / scale
+        film = (sum(verdicts) / len(verdicts) - middle) / scale
         weight = user_scores.evidence(verdicts)
         parts[dim_id] = weight * person * film
         numerator += parts[dim_id]

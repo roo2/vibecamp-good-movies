@@ -115,7 +115,16 @@ PRIOR_ITEMS = 8.0
 
 # Below this the axis is reported as balanced rather than as a pole. A person who
 # has genuinely not committed should be told so, not rounded to the nearer side.
-LEAN_THRESHOLD = 0.12
+#
+# IN UNITS OF HOW WIDE THE AXIS RUNS, not in raw score. A fixed distance means
+# different things on different axes and drifts as the corpus grows: the axes of
+# the current reading spread 0.28, 0.14 and 0.18, so one number sets a bar three
+# tenths of the way out on the first and eight tenths on the second, for no reason
+# but that the first happens to be wider. Expressed against the axis's own
+# spread it means the same thing everywhere and keeps meaning it as films are
+# added. 0.6 is where the old fixed 0.12 sat against the average axis, so this
+# changes the shape of the rule without moving its overall strictness.
+LEAN_THRESHOLD = 0.6
 
 BALANCED_STANCE = "The films you were drawn to pull both ways on this one."
 
@@ -261,19 +270,30 @@ def corpus_baseline(
     Read from the corpus, the same axis carries 41% and the recommendations
     become The Exorcist, Narnia, Noah — one of which is on both lists.
 
-    Returns the mean and standard deviation of every film's position per axis.
+    Returns, per axis, the mean and standard deviation of every film's position
+    — a plain description of where the axis sits and how far it runs. Callers
+    decide what to do with the spread, because they want different things from
+    it: `score_preferences` scales its lean threshold by the ABSOLUTE spread, so
+    "distinctive" means the same fraction of an axis wherever you stand;
+    `_alignment` scales by the spread RELATIVE to the average axis, which
+    equalises them without moving the size of the number it returns.
+
+    Nothing here is a constant. It is measured from the films in the store on
+    every request, so it tracks the corpus as films are added.
     """
     per_axis: dict[int, list[float]] = defaultdict(list)
     for by_axis in stances.values():
         for dim_id, values in by_axis.items():
             if values:
                 per_axis[dim_id].append(sum(values) / len(values))
-    out: dict[int, tuple[float, float]] = {}
+    spread: dict[int, float] = {}
+    mean_of: dict[int, float] = {}
     for dim_id, xs in per_axis.items():
         mean = sum(xs) / len(xs)
         var = sum((x - mean) ** 2 for x in xs) / max(len(xs) - 1, 1)
-        out[dim_id] = (mean, var ** 0.5 or 1.0)
-    return out
+        mean_of[dim_id] = mean
+        spread[dim_id] = var ** 0.5
+    return {dim_id: (mean_of[dim_id], spread[dim_id] or 1.0) for dim_id in per_axis}
 
 
 def score_preferences(
@@ -329,8 +349,13 @@ def score_preferences(
         accumulated = mass[dim_id]
         score = (numerator[dim_id] / (accumulated + PRIOR_ITEMS)
                  if accumulated else 0.0)
-        leaning = ("high" if score >= LEAN_THRESHOLD else
-                   "low" if score <= -LEAN_THRESHOLD else "balanced")
+        # Scaled by this axis's own width when we know it. Without a baseline
+        # the widths are unknown and the threshold stays the raw distance it
+        # has always been, which is what the legacy dimension set expects.
+        width = (baseline or {}).get(dim_id, (0.0, None))[1]
+        bar = LEAN_THRESHOLD * width if width else 0.12
+        leaning = ("high" if score >= bar else
+                   "low" if score <= -bar else "balanced")
         out.append(DimensionScore(
             dim_id=dim_id,
             name=dimension["name"],

@@ -176,11 +176,18 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
     // Registered here rather than as onWheel: React attaches wheel handlers
     // passively, so preventDefault inside one is ignored and the page scrolls
     // away under the cursor while you are trying to zoom.
+    // Gentle, and normalised for how the browser reports the wheel: Firefox
+    // sends lines rather than pixels, and a trackpad sends many small events
+    // where a mouse sends few large ones. Scaling by the actual delta rather
+    // than its sign keeps both feeling the same.
     const wheel = (event) => {
       event.preventDefault()
       const v = view.current
       v.idle = false
-      v.zoom = Math.max(0.6, Math.min(9, v.zoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12)))
+      const px = event.deltaMode === 1 ? event.deltaY * 16
+        : event.deltaMode === 2 ? event.deltaY * 400 : event.deltaY
+      const step = Math.max(-60, Math.min(60, px))
+      v.zoom = Math.max(0.6, Math.min(9, v.zoom * Math.exp(-step * 0.0016)))
       draw()
     }
     canvas.addEventListener('wheel', wheel, { passive: false })

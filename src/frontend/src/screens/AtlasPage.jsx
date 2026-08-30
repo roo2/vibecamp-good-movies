@@ -4,7 +4,7 @@ import FilmCloud from '../components/atlas/FilmCloud.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
 import { loadAtlas } from '../services/atlasService.js'
-import { loadFactors, loadModels } from '../services/factorService.js'
+import { loadFactors, loadFilmSets, loadModels } from '../services/factorService.js'
 import '../styles/atlas.css'
 
 // This page used to be built around one dimension set: eight axes a model was
@@ -30,10 +30,29 @@ function AtlasPage({ onBack }) {
   const [withdrawn, setWithdrawn] = React.useState([])
   const [selected, setSelected] = React.useState(null)
   const [factors, setFactors] = React.useState(null)
+  const [filmSets, setFilmSets] = React.useState([])
+  const [activeSets, setActiveSets] = React.useState(() => new Set())
   const [factorsError, setFactorsError] = React.useState(null)
   const [corpus, setCorpus] = React.useState(null)
   const [query, setQuery] = React.useState('')
   const [selectedId, setSelectedId] = React.useState(filmParam)
+
+  React.useEffect(() => {
+    let live = true
+    loadFilmSets().then((p) => live && setFilmSets(p.sets || [])).catch(() => {})
+    return () => { live = false }
+  }, [])
+
+  // film_id -> colour, for whichever sets are switched on. Later sets win an
+  // overlap, which is what the ordering in the seed file is for.
+  const highlight = React.useMemo(() => {
+    const out = {}
+    for (const s of filmSets) {
+      if (!activeSets.has(s.set_id)) continue
+      for (const id of s.films || []) out[id] = s.colour
+    }
+    return Object.keys(out).length ? out : undefined
+  }, [filmSets, activeSets])
 
   React.useEffect(() => {
     let live = true
@@ -128,7 +147,42 @@ function AtlasPage({ onBack }) {
               corpus is the thing a reader most wants and cannot get from three
               separate distributions read one after another. */}
           {factors?.factors?.length >= 3 && (
-            <FilmCloud factors={factors.factors} onSelect={setSelectedId} />
+            <>
+              {filmSets.length > 0 && (
+                <div className="set-picker">
+                  <span className="set-picker-label">highlight a set</span>
+                  {filmSets.map((s) => (
+                    <button
+                      key={s.set_id} type="button"
+                      className={`set-chip${activeSets.has(s.set_id) ? ' on' : ''}`}
+                      style={activeSets.has(s.set_id)
+                        ? { borderColor: s.colour, color: s.colour }
+                        : undefined}
+                      aria-pressed={activeSets.has(s.set_id)}
+                      title={s.source || undefined}
+                      onClick={() => setActiveSets((prev) => {
+                        const next = new Set(prev)
+                        next.has(s.set_id) ? next.delete(s.set_id) : next.add(s.set_id)
+                        return next
+                      })}>
+                      <i style={{ background: s.colour }} />{s.name}
+                      <small>{s.n}</small>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <FilmCloud factors={factors.factors} onSelect={setSelectedId}
+                         highlight={highlight} />
+              {[...activeSets].map((id) => {
+                const s = filmSets.find((x) => x.set_id === id)
+                return s ? (
+                  <p key={id} className="set-source">
+                    <b style={{ color: s.colour }}>{s.name}</b> — {s.description}{' '}
+                    <em>Source: {s.source}.</em> {s.n} of its films are in the corpus.
+                  </p>
+                ) : null
+              })}
+            </>
           )}
           <Factors data={factors} />
         </>

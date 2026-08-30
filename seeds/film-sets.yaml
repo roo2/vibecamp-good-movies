@@ -1,0 +1,107 @@
+# Named groups of films, so the atlas can ask where a worldview sits.
+#
+# Every set carries its SOURCE. A set is somebody's claim about which films
+# belong together, and an unattributed one is indistinguishable from a list
+# invented to make the axes look good. Sets assembled from corpus metadata
+# say so; sets taken from a published list name it.
+#
+# Titles are resolved against the corpus at load time and anything absent is
+# reported rather than dropped silently, because coverage IS the caveat: the
+# Church of Satan list matched 4 of 86.
+sets:
+  - id: catholic
+    name: "Catholic"
+    colour: "#eda36b"
+    source: "National Catholic Register reader vote (top 100) and Franciscan Magazine picks"
+    description: "Films two Catholic publications recommend as worth watching as a Catholic."
+    titles:
+      - "2001: A Space Odyssey"
+      - "A Man for All Seasons"
+      - "Ben-Hur"
+      - "Bicycle Thieves"
+      - "Braveheart"
+      - "Chariots of Fire"
+      - "Groundhog Day"
+      - "Hacksaw Ridge"
+      - "It's a Wonderful Life"
+      - "Life Is Beautiful"
+      - "On the Waterfront"
+      - "Schindler's List"
+      - "Spider-Man 2"
+      - "The Exorcist"
+      - "The Lord of the Rings: The Fellowship of the Ring"
+      - "The Lord of the Rings: The Return of the King"
+      - "The Lord of the Rings: The Two Towers"
+      - "The Passion of the Christ"
+      - "The Sound of Music"
+  - id: satanic
+    name: "Satanic"
+    colour: "#c05a7a"
+    source: "Church of Satan, published 'Satanic Sources' film list"
+    description: "Films the Church of Satan names as sources for its own outlook."
+    titles:
+      - "Blade Runner"
+      - "Blue Velvet"
+      - "Citizen Kane"
+      - "Metropolis"
+  - id: socialist
+    name: "Socialist"
+    colour: "#c9524a"
+    source: "r/socialism_101 reader thread on socialist and anti-capitalist film"
+    description: "Films a socialist reading community names as explicitly leftist."
+    titles:
+      - "American Psycho"
+      - "Battleship Potemkin"
+      - "Do the Right Thing"
+      - "Parasite"
+      - "Platoon"
+      - "The Great Dictator"
+  - id: mcu
+    name: "Marvel Cinematic Universe"
+    colour: "#5c8fe0"
+    source: "Marvel Studios releases present in the corpus"
+    description: "One studio's output, as a check on whether a house style has a moral signature."
+    titles:
+      - "Ant-Man"
+      - "Ant-Man and the Wasp"
+      - "Avengers: Age of Ultron"
+      - "Avengers: Endgame"
+      - "Avengers: Infinity War"
+      - "Black Panther"
+      - "Black Panther: Wakanda Forever"
+      - "Black Widow"
+      - "Captain America: Civil War"
+      - "Captain America: The First Avenger"
+      - "Captain America: The Winter Soldier"
+      - "Captain Marvel"
+      - "Doctor Strange"
+      - "Doctor Strange in the Multiverse of Madness"
+      - "Eternals"
+      - "Guardians of the Galaxy"
+      - "Guardians of the Galaxy Vol. 2"
+      - "Iron Man 2"
+      - "Iron Man 3"
+      - "Spider-Man: Far From Home"
+      - "Spider-Man: Homecoming"
+      - "The Avengers"
+      - "The Incredible Hulk"
+      - "Thor"
+      - "Thor: Love and Thunder"
+      - "Thor: Ragnarok"
+      - "Thor: The Dark World"
+  - id: classic-hollywood
+    name: "Hollywood before 1960"
+    colour: "#9ad07a"
+    source: "Assembled from corpus metadata: United States, released before 1960"
+    description: "American film from the studio era."
+    rule:
+      country: 'United States'
+      year_max: 1959
+  - id: modern-hollywood
+    name: "Hollywood since 2000"
+    colour: "#b48ce0"
+    source: "Assembled from corpus metadata: United States, released 2000 or later"
+    description: "American film from the current era, for contrast with the studio one."
+    rule:
+      country: 'United States'
+      year_min: 2000

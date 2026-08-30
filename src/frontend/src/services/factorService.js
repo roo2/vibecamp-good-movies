@@ -38,6 +38,10 @@ export async function loadFilmAxes(reading, filmId) {
              + `${encodeURIComponent(filmId)}?${query}`)
 }
 
+export async function loadFilmSets() {
+  return get('/api/factors/sets')
+}
+
 export async function loadProductFilmAxes(filmId) {
   return get(`/api/factors/product/films/${encodeURIComponent(filmId)}`)
 }

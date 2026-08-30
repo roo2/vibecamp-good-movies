@@ -842,3 +842,56 @@ def test_an_axis_with_an_unnamed_end_is_not_offered_as_a_reading():
                        client=Stub(), alias="s", runs=2)
     assert out[0]["coherent"] is False, (
         "the model called it coherent; an unnamed end says otherwise")
+
+
+def test_a_film_set_reports_what_it_could_not_find(monkeypatch, tmp_path):
+    """Coverage IS the caveat, so it cannot be dropped silently.
+
+    The Church of Satan's published list matched 4 of its 86 films against this
+    corpus. A reader shown "the Satanic set" without that number would take it
+    for a measurement of Satanism rather than of four films, and every claim
+    built on it would inherit the mistake.
+    """
+    from dataclasses import replace
+
+    from moral_atlas import db
+    from moral_atlas.analysis import film_sets
+    from moral_atlas.config import settings
+
+    monkeypatch.setattr(db, "settings", lambda: replace(
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "isolated.sqlite"))
+    db.init_db()
+    with db.connect() as con:
+        con.executemany(
+            "INSERT INTO films (film_id, title, year, origin_country) VALUES (?,?,?,?)",
+            [("here-1954", "Here", 1954, '["United States"]'),
+             ("also-2011", "Also", 2011, '["United States"]'),
+             ("french-1960", "Ailleurs", 1960, '["France"]')])
+
+    seed = tmp_path / "sets.yaml"
+    seed.write_text(
+        "sets:\n"
+        "  - id: listed\n"
+        "    name: Listed\n"
+        "    source: somebody's published list\n"
+        "    titles: ['Here', 'Also', 'A Film We Do Not Have']\n"
+        "  - id: american-old\n"
+        "    name: Old American\n"
+        "    source: corpus metadata\n"
+        "    rule: {country: 'United States', year_max: 1959}\n", encoding="utf-8")
+
+    report = film_sets.load(seed)
+    assert report["sets"] == 2
+    assert report["missing"]["listed"] == ["A Film We Do Not Have"], (
+        "a title that is not in the corpus must be named, not quietly dropped")
+
+    by_id = {s["set_id"]: s for s in film_sets.all_sets()}
+    assert sorted(by_id["listed"]["films"]) == ["also-2011", "here-1954"]
+    # The rule set takes the American film from before 1960 and neither other.
+    assert by_id["american-old"]["films"] == ["here-1954"]
+    assert by_id["listed"]["source"], "a set without attribution is not a finding"
+
+    # Rebuilding is idempotent rather than additive.
+    film_sets.load(seed)
+    assert len(film_sets.all_sets()) == 2

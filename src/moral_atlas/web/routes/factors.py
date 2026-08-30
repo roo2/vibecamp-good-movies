@@ -130,6 +130,20 @@ def list_models() -> dict[str, Any]:
             "withdrawn": [{"scorer": s, "reason": r} for s, r in sorted(WITHDRAWN.items())]}
 
 
+# Declared BEFORE /{scorer}, or the path parameter swallows "sets" and the
+# atlas asks for a model of that name.
+@router.get("/sets")
+def get_film_sets() -> dict[str, Any]:
+    """The named groups of films the atlas can highlight, with their sources.
+
+    Sent whole rather than per-set: six lists of film ids is a few KB, and the
+    picker has to know what exists before a reader picks anything.
+    """
+    from ...analysis import film_sets
+
+    return {"sets": film_sets.all_sets()}
+
+
 @router.get("/{scorer}")
 def get_factors(
     scorer: str, variant: str = "subs", bank: str = "", n_iter: int = 200,

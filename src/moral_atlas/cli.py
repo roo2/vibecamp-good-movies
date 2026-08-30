@@ -951,6 +951,28 @@ def name_factors_cmd(
                           "failure — it means those items co-occur without sharing a question.[/]")
 
 
+@app.command("film-sets")
+def film_sets_cmd(
+    seeds: str = typer.Option("", help="Seed YAML. Defaults to seeds/film-sets.yaml."),
+) -> None:
+    """Rebuild the named film sets the atlas can highlight.
+
+    Every set carries the source it came from. A set is somebody's claim that
+    these films belong together, made without reference to the axes — which is
+    what makes agreement between a set and a region of the space evidence
+    rather than construction.
+    """
+    from pathlib import Path as _Path
+
+    from .analysis import film_sets
+
+    report = film_sets.load(_Path(seeds) if seeds else None, progress=console.print)
+    console.print(f"\n[bold]{report['sets']}[/] sets, {report['members']} memberships")
+    for set_id, missing in report["missing"].items():
+        console.print(f"[yellow]{set_id}[/]: {len(missing)} titles not in the corpus — "
+                      f"{', '.join(missing[:6])}" + (" ..." if len(missing) > 6 else ""))
+
+
 @app.command("model-propose")
 def model_propose(
     scorers: str = typer.Option("deepseek", help="Comma-separated aliases. DeepSeek by default, on cost."),

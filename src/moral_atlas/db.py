@@ -416,6 +416,30 @@ CREATE TABLE IF NOT EXISTS session_shortlist_films (
     position   INTEGER NOT NULL,
     PRIMARY KEY (session_id, film_id)
 );
+
+-- Named groups of films, so a reader can ask where a worldview sits rather
+-- than only where one film does. Curated corpus data, not user data: they are
+-- rebuilt from seeds/film-sets.yaml and replaced wholesale on deploy like
+-- every other derived table.
+--
+-- `source` is not decoration. A set is somebody's claim about which films
+-- belong together, and a claim with no attribution is indistinguishable from
+-- one this project invented to make its axes look good.
+CREATE TABLE IF NOT EXISTS film_sets (
+    set_id      TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT,
+    source      TEXT,
+    colour      TEXT,
+    sort_order  INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS film_set_members (
+    set_id  TEXT NOT NULL REFERENCES film_sets(set_id),
+    film_id TEXT NOT NULL REFERENCES films(film_id),
+    PRIMARY KEY (set_id, film_id)
+);
 """
 
 

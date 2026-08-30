@@ -5,8 +5,11 @@ file rather than a heredoc so it can be read, reviewed and tested like code.
 
 The split below is the whole point of the script, so it is stated once, here:
 
-  CORPUS_TABLES   derived from a sweep, reproducible, and the same on every
-                  machine that has run one. Replaced wholesale.
+  the corpus       every table in the snapshot that is not named below.
+                  Derived from a sweep, reproducible, and the same on every
+                  machine that has run one. Replaced wholesale. Derived rather
+                  than listed, because a list is a thing you forget to add to
+                  and the failure is silent.
   USER_TABLES     the record that somebody used the demo. Never written. Counted
                   before and after, and the counts printed, so "user data was
                   preserved" is something you can check rather than trust.
@@ -21,18 +24,27 @@ import os
 import sqlite3
 import sys
 
-CORPUS_TABLES = ["dimensions", "evidence", "films", "item_bank", "item_dimensions",
-                 "propositions_raw", "runs", "scores", "skeletons",
-                 # Everything the per-model pipeline derives. These carry the
-                 # axes the product now reads, so omitting them does not degrade
-                 # the site gracefully — it leaves the runner with no factors at
-                 # all while the app asks for them.
-                 "model_propositions", "model_verdicts", "model_refusals",
-                 "model_axes", "model_axis_items",
-                 "latent_factors", "latent_factor_items"]
+# The user tables are the ONLY list. Everything else in the snapshot is corpus
+# and gets replaced.
+#
+# This used to be the other way round — an explicit allowlist of corpus tables —
+# and it failed exactly as an allowlist does. `film_sets` and
+# `film_set_members` shipped in the snapshot, loaded "successfully", and were
+# not copied, because nobody had added them to a list two files away from where
+# the tables are declared. Silent, and indistinguishable from a feature that
+# simply did not work.
+#
+# Deriving it inverts the failure: a new corpus table is carried automatically,
+# and the mistake you can now make is forgetting to declare something as USER
+# data — which is loud, because it deletes rows somebody made.
 USER_TABLES = ["users", "user_sessions", "movie_ratings", "test_results",
                "group_sessions", "session_members", "shortlist_reactions",
                "session_shortlist_films"]
+
+# `films` first: everything else references it, and while foreign keys are off
+# for the copy, loading the referent first keeps the orphan check at the end
+# meaningful rather than transiently alarming.
+FIRST = ["films"]
 
 LIVE = os.environ.get("ATLAS_LIVE", "/opt/atlas/data/atlas.sqlite")
 INCOMING = os.environ.get("ATLAS_INCOMING", "/opt/atlas/data/incoming-corpus.sqlite")
@@ -47,17 +59,27 @@ def main() -> int:
     con.execute("PRAGMA foreign_keys=OFF")
     con.execute("ATTACH DATABASE ? AS corpus", (INCOMING,))
 
+    incoming = [r[0] for r in con.execute(
+        "SELECT name FROM corpus.sqlite_master WHERE type='table' "
+        "AND name NOT LIKE 'sqlite_%' ORDER BY name")]
+    corpus_tables = [t for t in FIRST if t in incoming] + [
+        t for t in incoming if t not in USER_TABLES and t not in FIRST]
+    print(f"corpus tables in the snapshot: {len(corpus_tables)}")
+    skipped = [t for t in incoming if t in USER_TABLES]
+    if skipped:
+        print(f"  leaving user tables alone: {', '.join(skipped)}")
+
     def count(schema: str, table: str) -> int | None:
         try:
             return con.execute(f'SELECT COUNT(*) FROM {schema}."{table}"').fetchone()[0]
         except sqlite3.Error:
             return None
 
-    before_corpus = {t: count("main", t) for t in CORPUS_TABLES}
+    before_corpus = {t: count("main", t) for t in corpus_tables}
     before_users = {t: count("main", t) for t in USER_TABLES}
 
     con.execute("BEGIN")
-    for table in CORPUS_TABLES:
+    for table in corpus_tables:
         live_cols = [r[1] for r in con.execute(f'PRAGMA main.table_info("{table}")')]
         corp_cols = [r[1] for r in con.execute(f'PRAGMA corpus.table_info("{table}")')]
         if not corp_cols:
@@ -100,11 +122,11 @@ def main() -> int:
         con.execute(f'INSERT INTO main."{table}" ({cols}) SELECT {cols} FROM corpus."{table}"')
     con.execute("COMMIT")
 
-    after_corpus = {t: count("main", t) for t in CORPUS_TABLES}
+    after_corpus = {t: count("main", t) for t in corpus_tables}
     after_users = {t: count("main", t) for t in USER_TABLES}
 
     print("\ncorpus tables, replaced")
-    for table in CORPUS_TABLES:
+    for table in corpus_tables:
         print(f"  {table:<22} {str(before_corpus[table]):>7} -> {after_corpus[table]}")
 
     print("\nuser tables, untouched")

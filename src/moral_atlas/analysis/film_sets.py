@@ -41,13 +41,19 @@ def _norm(s: str) -> str:
 def _corpus() -> list[dict[str, Any]]:
     with db.connect(read_only=True) as con:
         return [dict(r) for r in con.execute(
-            "SELECT film_id, title, year, origin_country FROM films")]
+            "SELECT film_id, title, year, origin_country, original_language "
+            "FROM films")]
 
 
 def _by_rule(films: list[dict[str, Any]], rule: dict[str, Any]) -> list[str]:
     out = []
     for f in films:
         if (c := rule.get("country")) and c.lower() not in (f.get("origin_country") or "").lower():
+            continue
+        # Language as well as country, because "American film" without it also
+        # catches US-produced films shot in another language, which are exactly
+        # the ones least like the rest of the group being described.
+        if (l := rule.get("language")) and l.lower() not in (f.get("original_language") or "").lower():
             continue
         if (y := rule.get("year_min")) is not None and (f.get("year") or 0) < y:
             continue

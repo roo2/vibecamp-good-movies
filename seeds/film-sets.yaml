@@ -100,19 +100,41 @@ sets:
       - "Thor: Love and Thunder"
       - "Thor: Ragnarok"
       - "Thor: The Dark World"
-  - id: classic-hollywood
-    name: "Hollywood before 1960"
-    colour: "#9ad07a"
-    source: "Assembled from corpus metadata: United States, released before 1960"
-    description: "American film from the studio era."
+  - id: hollywood-pre-1950
+    name: "American film before 1950"
+    colour: "#c2a878"
+    source: "Assembled from corpus metadata: United States, English language"
+    description: "The studio era, before television and the collapse of the Production Code."
     rule:
       country: 'United States'
-      year_max: 1959
-  - id: modern-hollywood
-    name: "Hollywood since 2000"
+      language: 'English'
+      year_max: 1949
+  - id: hollywood-1950-1989
+    name: "American film 1950–1989"
+    colour: "#86b57f"
+    source: "Assembled from corpus metadata: United States, English language"
+    description: "From the studio system's decline through New Hollywood and the blockbuster."
+    rule:
+      country: 'United States'
+      language: 'English'
+      year_min: 1950
+      year_max: 1989
+  - id: hollywood-1990-2009
+    name: "American film 1990–2009"
+    colour: "#6f9fb5"
+    source: "Assembled from corpus metadata: United States, English language"
+    description: "The independent wave and the rise of the modern franchise."
+    rule:
+      country: 'United States'
+      language: 'English'
+      year_min: 1990
+      year_max: 2009
+  - id: hollywood-2010-
+    name: "American film since 2010"
     colour: "#b48ce0"
-    source: "Assembled from corpus metadata: United States, released 2000 or later"
-    description: "American film from the current era, for contrast with the studio one."
+    source: "Assembled from corpus metadata: United States, English language"
+    description: "The streaming and cinematic-universe era."
     rule:
       country: 'United States'
-      year_min: 2000
+      language: 'English'
+      year_min: 2010

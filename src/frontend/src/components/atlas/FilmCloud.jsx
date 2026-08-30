@@ -125,23 +125,46 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
       // Axes, each in its own colour so a reader can tell which line is which
       // without tracing it back to a label.
       const ends = [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
-      ctx.lineWidth = 1.2
+      ctx.lineWidth = 1.4
+      // An arrowhead at each end, because a bare line does not say which way
+      // the axis runs and the two labels are the only thing that did. Drawn
+      // both ways: an axis has two directions and neither is the default.
+      const head = (fromX, fromY, toX, toY, colour) => {
+        const a = Math.atan2(toY - fromY, toX - fromX)
+        ctx.fillStyle = colour
+        ctx.beginPath()
+        ctx.moveTo(toX, toY)
+        ctx.lineTo(toX - 9 * Math.cos(a - 0.36), toY - 9 * Math.sin(a - 0.36))
+        ctx.lineTo(toX - 9 * Math.cos(a + 0.36), toY - 9 * Math.sin(a + 0.36))
+        ctx.closePath(); ctx.fill()
+      }
       ends.forEach((e, k) => {
         const [ax, ay] = at(project({ x: -e[0], y: -e[1], z: -e[2] }, v.yaw, v.pitch))
         const [bx, by] = at(project({ x: e[0], y: e[1], z: e[2] }, v.yaw, v.pitch))
         ctx.strokeStyle = AXIS_COLOUR[k]
-        ctx.globalAlpha = 0.42
+        ctx.globalAlpha = 0.5
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke()
+        ctx.globalAlpha = 0.85
+        head(ax, ay, bx, by, AXIS_COLOUR[k])
+        head(bx, by, ax, ay, AXIS_COLOUR[k])
         ctx.globalAlpha = 1
         const label = axes[k]
         if (!label) return
         ctx.fillStyle = AXIS_COLOUR[k]
-        ctx.font = '600 10.5px ui-sans-serif, system-ui, sans-serif'
+        ctx.font = '600 13.5px ui-sans-serif, system-ui, sans-serif'
         ctx.textBaseline = 'middle'
-        ctx.textAlign = bx >= cx ? 'left' : 'right'
-        ctx.fillText(label.high || '', bx + (bx >= cx ? 6 : -6), by)
-        ctx.textAlign = ax >= cx ? 'left' : 'right'
-        ctx.fillText(label.low || '', ax + (ax >= cx ? 6 : -6), ay)
+        ctx.lineJoin = 'round'
+        const write = (text, x, y, toward) => {
+          ctx.textAlign = toward >= cx ? 'left' : 'right'
+          const px = x + (toward >= cx ? 13 : -13)
+          ctx.strokeStyle = 'rgba(15,12,10,0.95)'
+          ctx.lineWidth = 4
+          ctx.strokeText(text, px, y)
+          ctx.fillText(text, px, y)
+          ctx.lineWidth = 1.4
+        }
+        write(label.high || '', bx, by, bx)
+        write(label.low || '', ax, ay, ax)
       })
       ctx.textAlign = 'left'
 

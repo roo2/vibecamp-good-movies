@@ -234,8 +234,15 @@ export function FactorPropositions({ propositions, poleHigh, poleLow }) {
                   title={pole ? `Affirming this puts a film toward ${pole}` : undefined}>
                 {loading == null ? '—' : (
                   <>
-                    <i style={{ inlineSize: `${Math.round((Math.abs(loading) / strongest) * 100)}%` }} />
-                    <span>{high ? '+' : '−'}{Math.abs(loading).toFixed(2)}</span>
+                    {/* The track is a FIXED width and the fill is a percentage
+                        of it. Sizing the fill against the cell instead made its
+                        width depend on a column the table was still resolving —
+                        the first column claims 100% and squeezes the rest — so
+                        the bar overflowed into the neighbouring count. */}
+                    <span className="prop-bar">
+                      <i style={{ inlineSize: `${Math.round((Math.abs(loading) / strongest) * 100)}%` }} />
+                    </span>
+                    <span className="prop-num">{high ? '+' : '−'}{Math.abs(loading).toFixed(2)}</span>
                   </>
                 )}
               </td>

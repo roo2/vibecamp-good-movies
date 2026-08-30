@@ -534,19 +534,29 @@
 /* Signed loading: a bar for the size and the number for the direction. The two
    colours are the same pair used for the axis ends everywhere else, so a reader
    who has met them on a film page reads this column without a legend. */
-.prop-strength { white-space: nowrap; text-align: right; }
-.prop-strength span {
+/* Every column after the first gets a real gutter. The base table sets
+   padding-inline-start to 0, which was fine when the cells held bare numbers
+   and is not once one of them holds a bar. */
+.proposition-table th:not(:first-child),
+.proposition-table td:not(:first-child) { padding-inline-start: 16px; text-align: right; }
+/* The cell stays a table-cell — flex on a <td> takes it out of the table
+   layout — and the pieces inside are inline-blocks with fixed widths, so the
+   column reserves its space instead of negotiating for it. */
+.prop-strength { white-space: nowrap; }
+.prop-bar {
+  display: inline-block; vertical-align: middle; margin-inline-end: 9px;
+  inline-size: 46px; block-size: 2px; background: #241e19; border-radius: 1px;
+}
+.prop-bar i { display: block; block-size: 2px; border-radius: 1px; opacity: .9; }
+.prop-num {
+  display: inline-block; min-inline-size: 3.4em; text-align: right;
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-variant-numeric: tabular-nums; font-size: 11.5px;
 }
-.prop-strength i {
-  display: inline-block; vertical-align: middle; margin-inline-end: 7px;
-  block-size: 2px; max-inline-size: 46px; border-radius: 1px; opacity: .85;
-}
-.prop-strength.adds i, .prop-strength.adds span { background: none; color: #eda36b; }
-.prop-strength.adds i { background: #eda36b; }
-.prop-strength.subtracts i, .prop-strength.subtracts span { background: none; color: #5cc3c0; }
-.prop-strength.subtracts i { background: #5cc3c0; }
+.prop-strength.adds .prop-bar i { background: #eda36b; }
+.prop-strength.adds .prop-num { color: #eda36b; }
+.prop-strength.subtracts .prop-bar i { background: #5cc3c0; }
+.prop-strength.subtracts .prop-num { color: #5cc3c0; }
 
 /* --- One film against every axis ----------------------------------------- */
 .film-factors { margin: 8px 0 0; padding: 0; list-style: none; }

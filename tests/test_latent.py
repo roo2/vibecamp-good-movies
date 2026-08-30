@@ -565,3 +565,46 @@ def test_a_films_position_is_the_sum_of_the_propositions_shown_under_it(monkeypa
     # And the reverse-keyed one subtracts despite being affirmed, which is the
     # case a reader most needs the sign for.
     assert next(r for r in rows if r["item_id"] == "I3")["contribution"] < 0
+
+
+def test_a_propositions_strength_is_signed(monkeypatch, tmp_path):
+    """Which end affirming a proposition puts a film on, not just how much.
+
+    A factor holds propositions that contradict each other — films answer them
+    together, which is what makes them one axis — so affirming one and denying
+    another can put a film at the same end. On the leading axis of the current
+    reading, 19 of 40 run against the sentence as written. Magnitude alone
+    leaves a reader to work out which ones from the wording, and the affirmed
+    and denied counts do not reveal it either: the strongest proposition on
+    that axis is denied by more films than affirm it.
+    """
+    from dataclasses import replace
+
+    from moral_atlas import db
+    from moral_atlas.analysis import factor_detail
+    from moral_atlas.config import settings
+
+    monkeypatch.setattr(db, "settings", lambda: replace(
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+        db_path=tmp_path / "isolated.sqlite"))
+    db.init_db()
+    with db.connect() as con:
+        con.execute("INSERT INTO films (film_id, title) VALUES ('f', 'A Film')")
+        con.executemany(
+            "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
+            "bank_version, variant, value) VALUES (?,?,?,?,?,?,?)",
+            [("x", "m", "f", "I1", "b", "v", 1), ("x", "m", "f", "I2", "b", "v", 1)])
+
+    loadings = {"I1": 0.80, "I2": -0.55}
+    detail = factor_detail.detail(
+        scorer="x", bank_version="b", variant="v",
+        groups={"I1": 0, "I2": 0}, texts={"I1": "with", "I2": "against"},
+        loadings=loadings, vectors={"I1": [0.80], "I2": [-0.55]})
+    rows = {r["text"]: r for r in detail[0]["propositions"]}
+
+    assert rows["with"]["loading"] == 0.8 and rows["against"]["loading"] == -0.55
+    # The magnitude stays available and unsigned for anything that ranks by it.
+    assert rows["against"]["weight"] == 0.55
+    assert rows["against"]["reverse_keyed"] is True
+    # And the list still opens with what defines the axis, whichever way it runs.
+    assert [r["text"] for r in detail[0]["propositions"]] == ["with", "against"]

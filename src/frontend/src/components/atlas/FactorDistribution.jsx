@@ -200,24 +200,50 @@ export function FilmAnchors({ high, low, poleHigh, poleLow, highLabel, lowLabel,
   )
 }
 
-// Each proposition with how the corpus split on it. An item nobody ever denies
-// carries no information about differences between films however often it is
-// affirmed, so the two counts are shown rather than one engagement total.
-export function FactorPropositions({ propositions }) {
+// Each proposition with how the corpus split on it, and how much it defines the
+// axis. An item nobody ever denies carries no information about differences
+// between films however often it is affirmed, so the two counts are shown
+// rather than one engagement total.
+//
+// The strength is SIGNED, and the sign is not decoration. A factor holds
+// propositions that contradict each other — films answer them together, which
+// is what makes them one axis — so affirming one and denying another can put a
+// film at the same end. Magnitude alone would leave a reader to guess which
+// sentences run backwards, and on this corpus a third of them do.
+export function FactorPropositions({ propositions, poleHigh, poleLow }) {
   if (!propositions?.length) return null
+  const strongest = Math.max(...propositions.map((r) => Math.abs(r.loading || 0)), 0.0001)
   return (
     <table className="atlas-table proposition-table">
       <thead>
-        <tr><th>proposition</th><th>affirmed</th><th>denied</th></tr>
+        <tr>
+          <th>proposition</th>
+          <th title="How much this proposition defines the axis, and which end affirming it puts a film on">strength</th>
+          <th>affirmed</th><th>denied</th>
+        </tr>
       </thead>
       <tbody>
-        {propositions.map((row) => (
-          <tr key={row.item_id}>
-            <td>{row.text}</td>
-            <td><b>{row.affirms}</b></td>
-            <td>{row.denies || <span className="never-denied" title="No film denied this, so it cannot separate films">0</span>}</td>
-          </tr>
-        ))}
+        {propositions.map((row) => {
+          const loading = row.loading
+          const high = (loading ?? 0) >= 0
+          const pole = high ? poleHigh : poleLow
+          return (
+            <tr key={row.item_id}>
+              <td>{row.text}</td>
+              <td className={`prop-strength ${high ? 'adds' : 'subtracts'}`}
+                  title={pole ? `Affirming this puts a film toward ${pole}` : undefined}>
+                {loading == null ? '—' : (
+                  <>
+                    <i style={{ inlineSize: `${Math.round((Math.abs(loading) / strongest) * 100)}%` }} />
+                    <span>{high ? '+' : '−'}{Math.abs(loading).toFixed(2)}</span>
+                  </>
+                )}
+              </td>
+              <td><b>{row.affirms}</b></td>
+              <td>{row.denies || <span className="never-denied" title="No film denied this, so it cannot separate films">0</span>}</td>
+            </tr>
+          )
+        })}
       </tbody>
     </table>
   )

@@ -82,7 +82,9 @@ function Factor({ factor, reading }) {
             The propositions this factor is made of. Films answered these together —
             that co-movement is the axis; the name above is only a description of it.
           </p>
-          <FactorPropositions propositions={factor.propositions} />
+          <FactorPropositions propositions={factor.propositions}
+                              poleHigh={factor.pole_high_label}
+                              poleLow={factor.pole_low_label} />
         </div>
       )}
     </li>

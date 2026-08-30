@@ -169,6 +169,13 @@ def detail(
                     "distance": round((distance or {}).get(item, 0.0), 4),
                     "weight": (round(abs((loadings or {}).get(item)), 4)
                                if (loadings or {}).get(item) is not None else None),
+                    # Signed, because the magnitude alone cannot say which end
+                    # of the axis affirming this proposition puts a film on —
+                    # and a factor holds propositions that point both ways, so
+                    # a reader scanning the list needs the direction beside the
+                    # size rather than having to infer it from the sentence.
+                    "loading": (round((loadings or {}).get(item), 4)
+                                if (loadings or {}).get(item) is not None else None),
                     "reverse_keyed": ((loadings or {}).get(item) or 0) < 0,
                 } for item in item_ids),
                 key=lambda row: (-(row["weight"] or 0.0),

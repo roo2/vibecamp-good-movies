@@ -5,40 +5,44 @@ import React from 'react'
 // WHY THREE AND NOT TWO. The cloud is not flat. Standardised, its principal
 // variances run 1.20 / 1.00 / 0.80 — 40%, 33% and 27% of the spread — so a flat
 // projection would discard a real quarter of it, and the axes are close to
-// uncorrelated in where they put films (-0.14, -0.05, -0.10). There is no
-// degenerate direction to drop.
+// uncorrelated in where they put films (-0.14, -0.05, -0.10).
 //
-// WHY NO LIBRARY. 565 points with an orthographic projection is a rotation
-// matrix and a loop. three.js would roughly triple a 78KB bundle to draw dots.
+// WHY STILL NO LIBRARY. What this needs beyond a projection is zoom, pan and
+// labels: one scalar on the radius, one offset on the centre, and a greedy
+// overlap test. three.js brings a scene graph, a camera rig and orbit controls
+// — none of which is the hard part here — and would roughly triple an 80KB
+// bundle; its labels still need a second renderer on top. At 565 points the
+// library earns nothing. That changes if this ever needs tens of thousands of
+// points, in which case the answer is WebGL and regl, not a scene graph.
 //
-// WHAT THIS CANNOT SHOW, and the caption says so: the axes are not equally
-// well measured. A film's position on the first reproduces at 0.89 across a
-// split of the propositions; on the other two, at about 0.24. Width is solid,
-// depth and height are soft, and a cube invites you to read all three alike.
-const SIZE = 460
+// WHAT THE PICTURE CANNOT SHOW, and the caption says so: the axes are not
+// equally well measured. A film's position on the first reproduces at 0.89
+// across a split of the propositions; on the other two, at about 0.24.
+const SIZE = 520
 const IDLE_SPIN = 0.0022
+const AXIS_COLOUR = ['#eda36b', '#5cc3c0', '#b48ce0']
+const LABEL_BASE = 10          // labels at rest; grows as you zoom in
+const LABEL_CAP = 70
 
 function project(p, yaw, pitch) {
   const cy = Math.cos(yaw), sy = Math.sin(yaw)
   const cp = Math.cos(pitch), sp = Math.sin(pitch)
   const x = p.x * cy - p.z * sy
   const z1 = p.x * sy + p.z * cy
-  const y = p.y * cp - z1 * sp
-  const z = p.y * sp + z1 * cp
-  return { x, y, z }
+  return { x, y: p.y * cp - z1 * sp, z: p.y * sp + z1 * cp }
 }
 
-export default function FilmCloud({ factors, highlight }) {
+export default function FilmCloud({ factors, highlight, onSelect }) {
   const canvasRef = React.useRef(null)
-  const boxRef = React.useRef(null)
-  const [hover, setHover] = React.useState(null)
-  const view = React.useRef({ yaw: 0.6, pitch: -0.35, dragging: false, idle: true })
-  // Set by the drawing effect so the pointer handlers can repaint immediately
-  // rather than waiting for the idle loop, which stops on first interaction.
+  const [tip, setTip] = React.useState(null)
   const repaint = React.useRef(() => {})
+  const view = React.useRef({
+    yaw: 0.6, pitch: -0.35, zoom: 1, panX: 0, panY: 0,
+    mode: null, last: null, idle: true, hoverId: null, pinch: null,
+  })
 
-  // The three axes are sent as separate distributions; a film is a point only
-  // if all three placed it.
+  // The three axes arrive as separate distributions; a film is a point only if
+  // all three placed it.
   const { points, axes } = React.useMemo(() => {
     const list = (factors || []).slice(0, 3)
     if (list.length < 3) return { points: [], axes: [] }
@@ -52,24 +56,26 @@ export default function FilmCloud({ factors, highlight }) {
     })
     const raw = [...byFilm.entries()]
       .filter(([, f]) => f.v.length === 3 && f.v.every((n) => typeof n === 'number'))
-    // Centre on the average film and scale by spread, so the box is filled
-    // evenly and the origin means "typical", not "zero" — which is not the
-    // middle of any of these axes.
+    // Centred on the average film, not on zero — zero is not the middle of any
+    // of these axes, so an origin there would push the corpus into one corner.
     const stats = [0, 1, 2].map((k) => {
       const col = raw.map(([, f]) => f.v[k])
       const mean = col.reduce((a, b) => a + b, 0) / (col.length || 1)
       const sd = Math.sqrt(col.reduce((a, b) => a + (b - mean) ** 2, 0) / (col.length || 1)) || 1
       return { mean, sd }
     })
+    const pts = raw.map(([id, f]) => {
+      const x = (f.v[0] - stats[0].mean) / stats[0].sd / 3
+      const y = -(f.v[1] - stats[1].mean) / stats[1].sd / 3
+      const z = (f.v[2] - stats[2].mean) / stats[2].sd / 3
+      return { id, title: f.title, raw: f.v, x, y, z, out: Math.hypot(x, y, z) }
+    })
+    // Label priority: the films furthest from the average one. Those are the
+    // informative names — the middle of the cloud is where everything is.
+    const order = [...pts].sort((a, b) => b.out - a.out)
+    order.forEach((p, i) => { p.rank = i })
     return {
-      points: raw.map(([id, f]) => ({
-        id,
-        title: f.title,
-        raw: f.v,
-        x: (f.v[0] - stats[0].mean) / stats[0].sd / 3,
-        y: -(f.v[1] - stats[1].mean) / stats[1].sd / 3,
-        z: (f.v[2] - stats[2].mean) / stats[2].sd / 3,
-      })),
+      points: pts,
       axes: list.map((f) => ({ name: f.name, high: f.pole_high_label, low: f.pole_low_label })),
     }
   }, [factors])
@@ -82,53 +88,102 @@ export default function FilmCloud({ factors, highlight }) {
     let frame
 
     const draw = () => {
+      const v = view.current
       const dpr = window.devicePixelRatio || 1
       const w = canvas.clientWidth, h = canvas.clientHeight
-      if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr }
+      if (canvas.width !== Math.round(w * dpr)) {
+        canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr)
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, w, h)
-      const { yaw, pitch } = view.current
-      const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.42
+      const cx = w / 2 + v.panX, cy = h / 2 + v.panY
+      const r = Math.min(w, h) * 0.42 * v.zoom
+      const at = (q) => [cx + q.x * r, cy + q.y * r]
 
-      // The three axis lines, drawn behind the films.
+      // Axes, each in its own colour so a reader can tell which line is which
+      // without tracing it back to a label.
       const ends = [[1, 0, 0], [0, -1, 0], [0, 0, 1]]
-      ctx.lineWidth = 1
+      ctx.lineWidth = 1.2
       ends.forEach((e, k) => {
-        const a = project({ x: -e[0], y: -e[1], z: -e[2] }, yaw, pitch)
-        const b = project({ x: e[0], y: e[1], z: e[2] }, yaw, pitch)
-        ctx.strokeStyle = k === 0 ? '#4a3f36' : '#332b25'
-        ctx.beginPath()
-        ctx.moveTo(cx + a.x * r, cy + a.y * r)
-        ctx.lineTo(cx + b.x * r, cy + b.y * r)
-        ctx.stroke()
+        const [ax, ay] = at(project({ x: -e[0], y: -e[1], z: -e[2] }, v.yaw, v.pitch))
+        const [bx, by] = at(project({ x: e[0], y: e[1], z: e[2] }, v.yaw, v.pitch))
+        ctx.strokeStyle = AXIS_COLOUR[k]
+        ctx.globalAlpha = 0.42
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke()
+        ctx.globalAlpha = 1
         const label = axes[k]
-        if (label) {
-          ctx.fillStyle = k === 0 ? '#8d8478' : '#6a6158'
-          ctx.font = '10px ui-sans-serif, system-ui, sans-serif'
-          ctx.fillText(label.high || '', cx + b.x * r + 4, cy + b.y * r)
-          ctx.fillText(label.low || '', cx + a.x * r + 4, cy + a.y * r)
-        }
+        if (!label) return
+        ctx.fillStyle = AXIS_COLOUR[k]
+        ctx.font = '600 10.5px ui-sans-serif, system-ui, sans-serif'
+        ctx.textBaseline = 'middle'
+        ctx.textAlign = bx >= cx ? 'left' : 'right'
+        ctx.fillText(label.high || '', bx + (bx >= cx ? 6 : -6), by)
+        ctx.textAlign = ax >= cx ? 'left' : 'right'
+        ctx.fillText(label.low || '', ax + (ax >= cx ? 6 : -6), ay)
       })
+      ctx.textAlign = 'left'
 
       const drawn = points
-        .map((p) => ({ p, q: project(p, yaw, pitch) }))
+        .map((p) => ({ p, q: project(p, v.yaw, v.pitch) }))
         .sort((a, b) => a.q.z - b.q.z)
       for (const { p, q } of drawn) {
         const depth = (q.z + 0.6) / 1.2
         const group = highlight?.[p.id]
-        ctx.globalAlpha = group ? 1 : 0.28 + depth * 0.42
-        ctx.fillStyle = group || (hover?.id === p.id ? '#f5efe6' : '#8d8478')
+        const active = v.hoverId === p.id
+        ctx.globalAlpha = group || active ? 1 : 0.3 + depth * 0.42
+        ctx.fillStyle = group || (active ? '#f5efe6' : '#8d8478')
+        const [px, py] = at(q)
         ctx.beginPath()
-        ctx.arc(cx + q.x * r, cy + q.y * r,
-                (group || hover?.id === p.id ? 3.4 : 1.7) + depth * 1.2, 0, Math.PI * 2)
+        ctx.arc(px, py, (group || active ? 3.6 : 1.8) + depth * 1.2, 0, Math.PI * 2)
         ctx.fill()
       }
       ctx.globalAlpha = 1
-      if (!reduced && view.current.idle) {
-        view.current.yaw += IDLE_SPIN
-        frame = requestAnimationFrame(draw)
+
+      // Names, most distinctive first, skipping any that would collide. The
+      // budget grows with zoom, so the picture stays readable at rest and
+      // fills in as you go looking.
+      const budget = Math.min(LABEL_CAP, Math.round(LABEL_BASE * v.zoom * v.zoom))
+      const taken = []
+      ctx.font = '11px ui-sans-serif, system-ui, sans-serif'
+      ctx.textBaseline = 'middle'
+      const candidates = drawn
+        .filter(({ p }) => p.rank < budget * 3 || v.hoverId === p.id || highlight?.[p.id])
+        .sort((a, b) => (a.p.rank ?? 0) - (b.p.rank ?? 0))
+      let placed = 0
+      for (const { p, q } of candidates) {
+        const forced = v.hoverId === p.id
+        if (!forced && placed >= budget) break
+        const [px, py] = at(q)
+        if (px < -40 || px > w + 40 || py < -20 || py > h + 20) continue
+        const text = p.title
+        const tw = ctx.measureText(text).width
+        const box = [px + 7, py - 7, tw + 8, 14]
+        const clash = taken.some(([bx, by, bw, bh]) =>
+          box[0] < bx + bw && box[0] + box[2] > bx && box[1] < by + bh && box[1] + box[3] > by)
+        if (clash && !forced) continue
+        taken.push(box)
+        placed += 1
+        ctx.strokeStyle = 'rgba(15,12,10,0.92)'
+        ctx.lineWidth = 3
+        ctx.strokeText(text, px + 7, py)
+        ctx.fillStyle = forced ? '#f5efe6' : (highlight?.[p.id] || '#b3aa9e')
+        ctx.fillText(text, px + 7, py)
       }
+
+      if (!reduced && v.idle) { v.yaw += IDLE_SPIN; frame = requestAnimationFrame(draw) }
     }
+
+    // Registered here rather than as onWheel: React attaches wheel handlers
+    // passively, so preventDefault inside one is ignored and the page scrolls
+    // away under the cursor while you are trying to zoom.
+    const wheel = (event) => {
+      event.preventDefault()
+      const v = view.current
+      v.idle = false
+      v.zoom = Math.max(0.6, Math.min(9, v.zoom * (event.deltaY < 0 ? 1.12 : 1 / 1.12)))
+      draw()
+    }
+    canvas.addEventListener('wheel', wheel, { passive: false })
 
     repaint.current = draw
     draw()
@@ -136,21 +191,22 @@ export default function FilmCloud({ factors, highlight }) {
     window.addEventListener('resize', draw)
     return () => {
       cancelAnimationFrame(frame)
+      canvas.removeEventListener('wheel', wheel)
       window.removeEventListener('resize', draw)
       repaint.current = () => {}
     }
-  }, [points, axes, hover, highlight])
+  }, [points, axes, highlight])
 
-  const pointerAt = (event) => {
+  const hit = (event) => {
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
+    const v = view.current
     const px = event.clientX - rect.left, py = event.clientY - rect.top
-    const cx = rect.width / 2, cy = rect.height / 2
-    const r = Math.min(rect.width, rect.height) * 0.42
-    const { yaw, pitch } = view.current
-    let best = null, bestD = 10
+    const cx = rect.width / 2 + v.panX, cy = rect.height / 2 + v.panY
+    const r = Math.min(rect.width, rect.height) * 0.42 * v.zoom
+    let best = null, bestD = 11
     for (const p of points) {
-      const q = project(p, yaw, pitch)
+      const q = project(p, v.yaw, v.pitch)
       const d = Math.hypot(cx + q.x * r - px, cy + q.y * r - py)
       if (d < bestD) { bestD = d; best = p }
     }
@@ -158,53 +214,83 @@ export default function FilmCloud({ factors, highlight }) {
   }
 
   const onDown = (event) => {
-    view.current.dragging = true
-    view.current.idle = false
-    view.current.last = { x: event.clientX, y: event.clientY }
+    const v = view.current
+    v.idle = false
+    v.mode = event.shiftKey || event.button === 1 || event.button === 2 ? 'pan' : 'turn'
+    v.last = { x: event.clientX, y: event.clientY }
+    v.moved = false
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
+
   const onMove = (event) => {
-    if (view.current.dragging) {
-      const { last } = view.current
-      view.current.yaw += (event.clientX - last.x) * 0.008
-      view.current.pitch = Math.max(-1.4, Math.min(1.4,
-        view.current.pitch + (event.clientY - last.y) * 0.008))
-      view.current.last = { x: event.clientX, y: event.clientY }
-      setHover((h) => (h ? null : h))
+    const v = view.current
+    if (v.mode) {
+      const dx = event.clientX - v.last.x, dy = event.clientY - v.last.y
+      if (Math.abs(dx) + Math.abs(dy) > 2) v.moved = true
+      if (v.mode === 'pan') { v.panX += dx; v.panY += dy }
+      else {
+        v.yaw += dx * 0.008
+        v.pitch = Math.max(-1.4, Math.min(1.4, v.pitch + dy * 0.008))
+      }
+      v.last = { x: event.clientX, y: event.clientY }
+      if (v.hoverId) { v.hoverId = null; setTip(null) }
       repaint.current()
       return
     }
-    const found = pointerAt(event)
-    setHover(found ? { id: found.id, title: found.title, raw: found.raw,
-                       x: event.clientX, y: event.clientY } : null)
+    const found = hit(event)
+    const id = found?.id ?? null
+    if (id !== v.hoverId) {
+      v.hoverId = id
+      setTip(found ? { title: found.title, raw: found.raw } : null)
+      repaint.current()
+    }
   }
-  const onUp = () => { view.current.dragging = false }
+
+  const onUp = () => { view.current.mode = null }
+
+  const onClick = (event) => {
+    const v = view.current
+    if (v.moved || !onSelect) return
+    const found = hit(event)
+    if (found) onSelect(found.id)
+  }
+
+  const reset = () => {
+    const v = view.current
+    v.zoom = 1; v.panX = 0; v.panY = 0; v.yaw = 0.6; v.pitch = -0.35
+    v.hoverId = null; setTip(null)
+    repaint.current()
+  }
 
   if (!points.length) return null
   return (
-    <div className="film-cloud" ref={boxRef}>
+    <div className="film-cloud">
       <canvas
         ref={canvasRef} style={{ inlineSize: '100%', blockSize: `${SIZE}px` }}
-        onPointerDown={onDown} onPointerMove={onMove}
-        onPointerUp={onUp} onPointerLeave={() => { onUp(); setHover(null) }}
+        onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
+        onPointerLeave={() => { onUp(); view.current.hoverId = null; setTip(null); repaint.current() }}
+        onClick={onClick} onContextMenu={(e) => e.preventDefault()}
         role="img"
-        aria-label={`Every film placed on the three axes. ${points.length} films. `
-          + `The tables below list the same positions.`} />
-      {hover && (
-        <div className="cloud-tip" style={{ left: 12, top: 12 }}>
-          <b>{hover.title}</b>
+        aria-label={`All ${points.length} films placed on the three axes. `
+          + 'The tables below list the same positions.'} />
+      <button type="button" className="cloud-reset" onClick={reset}>reset view</button>
+      {tip && (
+        <div className="cloud-tip">
+          <b>{tip.title}</b>
           {axes.map((a, k) => (
             <span key={a.name}>
-              {hover.raw[k] >= 0 ? '+' : '−'}{Math.abs(hover.raw[k]).toFixed(2)} {a.name}
+              {tip.raw[k] >= 0 ? '+' : '−'}{Math.abs(tip.raw[k]).toFixed(2)} {a.name}
             </span>
           ))}
         </div>
       )}
       <p className="cloud-note">
-        Drag to turn it. Each dot is a film, placed on all three axes and centred on the
-        average film rather than on zero. The width is measured far better than the depth:
-        a film's position on <em>{axes[0]?.name}</em> reproduces at 0.89 across a split of
-        the propositions, and on the other two at about 0.24.
+        Drag to turn, scroll to zoom, shift-drag to pan, click a film to open it. Names
+        appear for the films furthest from the average one, and more of them as you zoom
+        in. Each dot is a film, centred on the average film rather than on zero.
+        The width is measured far better than the depth: a film's position on{' '}
+        <em>{axes[0]?.name}</em> reproduces at 0.89 across a split of the propositions,
+        and on the other two at about 0.24.
       </p>
     </div>
   )

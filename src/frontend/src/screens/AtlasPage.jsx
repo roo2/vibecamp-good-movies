@@ -127,7 +127,9 @@ function AtlasPage({ onBack }) {
           {/* Before the per-axis breakdown, because the shape of the whole
               corpus is the thing a reader most wants and cannot get from three
               separate distributions read one after another. */}
-          {factors?.factors?.length >= 3 && <FilmCloud factors={factors.factors} />}
+          {factors?.factors?.length >= 3 && (
+            <FilmCloud factors={factors.factors} onSelect={setSelectedId} />
+          )}
           <Factors data={factors} />
         </>
       )}

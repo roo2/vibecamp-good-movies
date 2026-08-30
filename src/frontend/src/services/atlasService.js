@@ -148,3 +148,32 @@ export function filterFilms(atlas, { query = '', filter = 'all' } = {}) {
     return haystack.includes(needle)
   })
 }
+
+// Where every film sits on all three axes, joined from the per-axis
+// distributions the factors payload already carries.
+export function filmPositions(factors) {
+  const list = (factors || []).slice(0, 3)
+  const out = new Map()
+  if (list.length < 3) return out
+  list.forEach((factor, k) => {
+    for (const row of factor.distribution || []) {
+      const seen = out.get(row.film_id) || []
+      seen[k] = row.score
+      out.set(row.film_id, seen)
+    }
+  })
+  for (const [id, v] of out) {
+    if (v.length !== 3 || v.some((n) => typeof n !== 'number')) out.delete(id)
+  }
+  return out
+}
+
+// The average position of a set, in the axes' own units. One implementation,
+// used both to draw the marker and to print the numbers beside it, so the two
+// cannot drift apart and quietly disagree about where a set is.
+export function setCentroid(positions, filmIds) {
+  const found = (filmIds || []).map((id) => positions.get(id)).filter(Boolean)
+  if (!found.length) return null
+  const mean = [0, 1, 2].map((k) => found.reduce((a, v) => a + v[k], 0) / found.length)
+  return { mean, n: found.length }
+}

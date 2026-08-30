@@ -78,6 +78,7 @@ function CompassScreen({ access, shareToken, onContinue }) {
               scales came from, and what the same scales make of a film they
               already have in mind. */}
           <a className="quiet-link" href="#/corpus">Look up a film you love →</a>
+          <a className="quiet-link" href="#/atlas?me=1">See where you sit among the films →</a>
           <a className="quiet-link" href="#/atlas">Where do these scales come from? →</a>
         </div>
       </section>

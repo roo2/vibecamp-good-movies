@@ -39,7 +39,22 @@ function project(p, yaw, pitch) {
   return { x, y: p.y * cp - z1 * sp, z: p.y * sp + z1 * cp }
 }
 
-export default function FilmCloud({ factors, highlight, onSelect }) {
+// `sets` are the switched-on groups, each {set_id, name, colour, films}. The
+// component derives the per-film colouring from them rather than being handed a
+// map, so it can also place each set's CENTRE — which is the thing worth seeing.
+// A set of nineteen films scattered through a cloud of 565 is hard to read as a
+// position; one marker at its average is not.
+//
+// `viewer` is the reader's own compass, ALREADY MEASURED FROM THE AVERAGE FILM
+// by score_preferences, so it is scaled but not re-centred here. Centring it
+// twice would put a typical viewer a full standard deviation from where they
+// belong.
+export default function FilmCloud({ factors, sets, viewer, onSelect }) {
+  const highlight = React.useMemo(() => {
+    const out = {}
+    for (const s of sets || []) for (const id of s.films || []) out[id] = s.colour
+    return Object.keys(out).length ? out : undefined
+  }, [sets])
   const canvasRef = React.useRef(null)
   const [tip, setTip] = React.useState(null)
   const repaint = React.useRef(() => {})
@@ -50,9 +65,9 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
 
   // The three axes arrive as separate distributions; a film is a point only if
   // all three placed it.
-  const { points, axes } = React.useMemo(() => {
+  const { points, axes, stats } = React.useMemo(() => {
     const list = (factors || []).slice(0, 3)
-    if (list.length < 3) return { points: [], axes: [] }
+    if (list.length < 3) return { points: [], axes: [], stats: null }
     const byFilm = new Map()
     list.forEach((factor, k) => {
       for (const row of factor.distribution || []) {
@@ -82,7 +97,7 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
     const order = [...pts].sort((a, b) => b.out - a.out)
     order.forEach((p, i) => { p.rank = i })
     return {
-      points: pts,
+      points: pts, stats,
       axes: list.map((f) => ({ name: f.name, high: f.pole_high_label, low: f.pole_low_label })),
     }
   }, [factors])
@@ -130,6 +145,7 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
       })
       ctx.textAlign = 'left'
 
+      const byId = new Map(points.map((p) => [p.id, p]))
       const drawn = points
         .map((p) => ({ p, q: project(p, v.yaw, v.pitch) }))
         .sort((a, b) => a.q.z - b.q.z)
@@ -177,6 +193,40 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
         ctx.fillText(text, px + 7, py)
       }
 
+      // Set centres and the reader's own position, drawn last so nothing
+      // covers them.
+      const marks = []
+      for (const s of sets || []) {
+        const found = (s.films || []).map((id) => byId.get(id)).filter(Boolean)
+        if (!found.length) continue
+        marks.push({
+          colour: s.colour, label: s.name,
+          x: found.reduce((a, p) => a + p.x, 0) / found.length,
+          y: found.reduce((a, p) => a + p.y, 0) / found.length,
+          z: found.reduce((a, p) => a + p.z, 0) / found.length,
+        })
+      }
+      if (viewer && stats) {
+        marks.push({
+          colour: '#f5efe6', label: viewer.label || 'You', ring: true,
+          x: viewer.scores[0] / stats[0].sd / 3,
+          y: -viewer.scores[1] / stats[1].sd / 3,
+          z: viewer.scores[2] / stats[2].sd / 3,
+        })
+      }
+      for (const m of marks) {
+        const [mx, my] = at(project(m, v.yaw, v.pitch))
+        ctx.strokeStyle = m.colour
+        ctx.fillStyle = m.colour
+        ctx.lineWidth = 2
+        ctx.beginPath(); ctx.arc(mx, my, m.ring ? 9 : 7, 0, Math.PI * 2); ctx.stroke()
+        ctx.beginPath(); ctx.arc(mx, my, 2.6, 0, Math.PI * 2); ctx.fill()
+        ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif'
+        ctx.strokeStyle = 'rgba(15,12,10,0.92)'; ctx.lineWidth = 3
+        ctx.strokeText(m.label, mx + 13, my)
+        ctx.fillText(m.label, mx + 13, my)
+      }
+
       if (!reduced && v.idle) {
         v.started ??= performance.now()
         if (performance.now() - v.started < DEMO_MS) {
@@ -217,7 +267,7 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
       window.removeEventListener('resize', draw)
       repaint.current = () => {}
     }
-  }, [points, axes, highlight])
+  }, [points, axes, highlight, sets, viewer, stats])
 
   const hit = (event) => {
     const canvas = canvasRef.current

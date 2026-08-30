@@ -13,6 +13,7 @@ sets:
     name: "Catholic"
     colour: "#eda36b"
     source: "National Catholic Register reader vote (top 100) and Franciscan Magazine picks"
+    url: "https://www.ncregister.com/info/top-100-pro-catholic-movies"
     description: "Films two Catholic publications recommend as worth watching as a Catholic."
     titles:
       - "2001: A Space Odyssey"
@@ -38,6 +39,7 @@ sets:
     name: "Satanic"
     colour: "#c05a7a"
     source: "Church of Satan, published 'Satanic Sources' film list"
+    url: "https://churchofsatan.com/sources-film-list/"
     description: "Films the Church of Satan names as sources for its own outlook."
     titles:
       - "Blade Runner"
@@ -48,6 +50,7 @@ sets:
     name: "Socialist"
     colour: "#c9524a"
     source: "r/socialism_101 reader thread on socialist and anti-capitalist film"
+    url: "https://www.reddit.com/r/socialism_101/"
     description: "Films a socialist reading community names as explicitly leftist."
     titles:
       - "American Psycho"
@@ -56,6 +59,25 @@ sets:
       - "Parasite"
       - "Platoon"
       - "The Great Dictator"
+  - id: conservative
+    name: "Conservative"
+    colour: "#7ea6e0"
+    source: "National Review's 2009 'Best Conservative Movies', as compiled on Letterboxd by Kilo_Orange"
+    url: "https://letterboxd.com/kilo_orange/list/the-best-conservative-movies-according-to/"
+    description: "Films a mainstream conservative magazine named as conservative in spirit."
+    titles:
+      - "300"
+      - "Braveheart"
+      - "Ghostbusters"
+      - "Gran Torino"
+      - "Groundhog Day"
+      - "Master and Commander: The Far Side of the World"
+      - "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe"
+      - "The Dark Knight"
+      - "The Lives of Others"
+      - "The Lord of the Rings: The Two Towers"
+      - "The Pursuit of Happyness"
+      - "The Truman Show"
   - id: mcu
     name: "Marvel Cinematic Universe"
     colour: "#5c8fe0"

@@ -91,10 +91,11 @@ def load(path: Path | None = None, progress=None) -> dict[str, Any]:
         for order, entry in enumerate(sets):
             ids, missing = resolve(entry)
             con.execute(
-                "INSERT INTO film_sets (set_id, name, description, source, colour, "
-                "sort_order, created_at) VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO film_sets (set_id, name, description, source, url, "
+                "colour, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?)",
                 [entry["id"], entry.get("name") or entry["id"], entry.get("description"),
-                 entry.get("source"), entry.get("colour"), order, db.now()])
+                 entry.get("source"), entry.get("url"), entry.get("colour"),
+                 order, db.now()])
             con.executemany(
                 "INSERT OR IGNORE INTO film_set_members (set_id, film_id) VALUES (?,?)",
                 [(entry["id"], f) for f in ids])
@@ -113,7 +114,7 @@ def all_sets() -> list[dict[str, Any]]:
     """Every set with its members, ordered as the seed file lists them."""
     with db.connect(read_only=True) as con:
         rows = [dict(r) for r in con.execute(
-            "SELECT set_id, name, description, source, colour FROM film_sets "
+            "SELECT set_id, name, description, source, url, colour FROM film_sets "
             "ORDER BY sort_order, set_id")]
         members: dict[str, list[str]] = {}
         for r in con.execute("SELECT set_id, film_id FROM film_set_members"):

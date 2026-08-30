@@ -430,6 +430,10 @@ CREATE TABLE IF NOT EXISTS film_sets (
     name        TEXT NOT NULL,
     description TEXT,
     source      TEXT,
+    -- Where the claim can be checked. `source` says who made it; this says
+    -- where to go and read it, which is the difference between an attribution
+    -- and a citation.
+    url         TEXT,
     colour      TEXT,
     sort_order  INTEGER NOT NULL DEFAULT 0,
     created_at  TEXT NOT NULL
@@ -479,6 +483,7 @@ def init_db() -> None:
         con.executescript(SCHEMA)
         _add_column_if_missing(con, "films", "description", "TEXT")
         _add_column_if_missing(con, "films", "artwork_url", "TEXT")
+        _add_column_if_missing(con, "film_sets", "url", "TEXT")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
         _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")

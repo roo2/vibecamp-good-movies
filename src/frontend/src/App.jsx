@@ -186,7 +186,7 @@ function App() {
   }, [navigate])
 
   if (route === '/atlas') {
-    return <AtlasPage onBack={() => navigate('/')} />
+    return <AtlasPage onBack={() => navigate('/')} access={access} />
   }
 
   if (route === '/corpus') {

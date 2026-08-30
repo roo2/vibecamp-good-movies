@@ -3,7 +3,8 @@ import Factors from '../components/atlas/Factors.jsx'
 import FilmCloud from '../components/atlas/FilmCloud.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
-import { loadAtlas } from '../services/atlasService.js'
+import { filmPositions, loadAtlas, setCentroid } from '../services/atlasService.js'
+import { loadMoralProfile } from '../services/profileService.js'
 import { loadFactors, loadFilmSets, loadModels } from '../services/factorService.js'
 import '../styles/atlas.css'
 
@@ -25,7 +26,7 @@ function filmParam() {
   return new URLSearchParams(search).get('film')
 }
 
-function AtlasPage({ onBack }) {
+function AtlasPage({ onBack, access }) {
   const [models, setModels] = React.useState(null)
   const [withdrawn, setWithdrawn] = React.useState([])
   const [selected, setSelected] = React.useState(null)
@@ -43,16 +44,41 @@ function AtlasPage({ onBack }) {
     return () => { live = false }
   }, [])
 
-  // film_id -> colour, for whichever sets are switched on. Later sets win an
-  // overlap, which is what the ordering in the seed file is for.
-  const highlight = React.useMemo(() => {
+  const chosen = React.useMemo(
+    () => filmSets.filter((s) => activeSets.has(s.set_id)), [filmSets, activeSets])
+
+  // Where each chosen set sits on average, in the axes' own units — computed
+  // once here so the marker on the cloud and the numbers underneath it come
+  // from the same arithmetic.
+  const centres = React.useMemo(() => {
+    const positions = filmPositions(factors?.factors)
     const out = {}
-    for (const s of filmSets) {
-      if (!activeSets.has(s.set_id)) continue
-      for (const id of s.films || []) out[id] = s.colour
-    }
-    return Object.keys(out).length ? out : undefined
-  }, [filmSets, activeSets])
+    for (const s of chosen) out[s.set_id] = setCentroid(positions, s.films)
+    return out
+  }, [factors, chosen])
+
+  // The reader's own compass, if they followed the link from it. Read on
+  // demand rather than always: the atlas is a public page and most of its
+  // readers have not taken the survey.
+  const [viewer, setViewer] = React.useState(null)
+  // A compass is measured against ONE reading. The atlas can be switched to any
+  // of them, and plotting a person derived from deepseek's axes onto dolphin's
+  // would put them somewhere meaningless with no sign that anything was wrong.
+  const viewerHere = React.useMemo(() => {
+    if (!viewer || viewer.scores?.length !== 3) return null
+    if (viewer.dim_version !== selected?.scorer) return null
+    if (viewer.bank_version !== selected?.bank_version) return null
+    return { scores: viewer.scores.map((s) => s.score), label: 'You' }
+  }, [viewer, selected])
+  const wantsMe = (window.location.hash.split('?')[1] || '').includes('me=1')
+  React.useEffect(() => {
+    if (!wantsMe || !access) return undefined
+    let live = true
+    loadMoralProfile(access)
+      .then((p) => live && setViewer(p))
+      .catch(() => {})
+    return () => { live = false }
+  }, [wantsMe, access])
 
   React.useEffect(() => {
     let live = true
@@ -172,13 +198,37 @@ function AtlasPage({ onBack }) {
                 </div>
               )}
               <FilmCloud factors={factors.factors} onSelect={setSelectedId}
-                         highlight={highlight} />
+                         sets={chosen} viewer={viewerHere} />
+              {wantsMe && !viewerHere && (
+                <p className="atlas-note">
+                  {!access ? 'Take the survey first and this will show where you sit.'
+                    : !viewer ? 'Reading your compass…'
+                      : 'Your compass was measured against the '
+                        + `${viewer.dim_version} reading, so it cannot be placed on this one. `
+                        + 'Switch the reading above to see yourself.'}
+                </p>
+              )}
               {[...activeSets].map((id) => {
                 const s = filmSets.find((x) => x.set_id === id)
+                const c = centres[id]
                 return s ? (
                   <p key={id} className="set-source">
                     <b style={{ color: s.colour }}>{s.name}</b> — {s.description}{' '}
-                    <em>Source: {s.source}.</em> {s.n} of its films are in the corpus.
+                    <em>
+                      Source: {s.url
+                        ? <a href={s.url} target="_blank" rel="noreferrer noopener">{s.source}</a>
+                        : s.source}.
+                    </em>{' '}
+                    {s.n} of its films are in the corpus.
+                    {c && (
+                      <span className="set-centre">
+                        Centre:{' '}
+                        {c.mean.map((m, k) => (
+                          <b key={k}>{m >= 0 ? '+' : '−'}{Math.abs(m).toFixed(3)}</b>
+                        )).reduce((a, b) => [a, ' / ', b])}
+                        {' '}on {factors.factors.slice(0, 3).map((f) => f.name).join(', ')}.
+                      </span>
+                    )}
                   </p>
                 ) : null
               })}

@@ -1,5 +1,6 @@
 import React from 'react'
 import Factors from '../components/atlas/Factors.jsx'
+import FilmCloud from '../components/atlas/FilmCloud.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
 import { loadAtlas } from '../services/atlasService.js'
@@ -123,6 +124,10 @@ function AtlasPage({ onBack }) {
                        selected={selected?.reading_id} onSelect={setSelected} />
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
+          {/* Before the per-axis breakdown, because the shape of the whole
+              corpus is the thing a reader most wants and cannot get from three
+              separate distributions read one after another. */}
+          {factors?.factors?.length >= 3 && <FilmCloud factors={factors.factors} />}
           <Factors data={factors} />
         </>
       )}

@@ -19,7 +19,14 @@ import React from 'react'
 // equally well measured. A film's position on the first reproduces at 0.89
 // across a split of the propositions; on the other two, at about 0.24.
 const SIZE = 520
-const IDLE_SPIN = 0.0022
+// A slow drift, and only briefly. Its whole job is to say "this turns" — a dot
+// cloud is otherwise indistinguishable from a flat scatter, and nothing on the
+// page tells you it can be grabbed. At 0.0022 it read as a screensaver rotating
+// under a reader trying to look at it. This is about a fifth of that, roughly a
+// degree and a half a second, and it stops on its own after DEMO_MS whether or
+// not anybody has touched it.
+const IDLE_SPIN = 0.00045
+const DEMO_MS = 14000
 const AXIS_COLOUR = ['#eda36b', '#5cc3c0', '#b48ce0']
 const LABEL_BASE = 10          // labels at rest; grows as you zoom in
 const LABEL_CAP = 70
@@ -38,7 +45,7 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
   const repaint = React.useRef(() => {})
   const view = React.useRef({
     yaw: 0.6, pitch: -0.35, zoom: 1, panX: 0, panY: 0,
-    mode: null, last: null, idle: true, hoverId: null, pinch: null,
+    mode: null, last: null, idle: true, hoverId: null, pinch: null, started: null,
   })
 
   // The three axes arrive as separate distributions; a film is a point only if
@@ -170,7 +177,15 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
         ctx.fillText(text, px + 7, py)
       }
 
-      if (!reduced && v.idle) { v.yaw += IDLE_SPIN; frame = requestAnimationFrame(draw) }
+      if (!reduced && v.idle) {
+        v.started ??= performance.now()
+        if (performance.now() - v.started < DEMO_MS) {
+          v.yaw += IDLE_SPIN
+          frame = requestAnimationFrame(draw)
+        } else {
+          v.idle = false
+        }
+      }
     }
 
     // Registered here rather than as onWheel: React attaches wheel handlers
@@ -266,6 +281,8 @@ export default function FilmCloud({ factors, highlight, onSelect }) {
     const v = view.current
     v.zoom = 1; v.panX = 0; v.panY = 0; v.yaw = 0.6; v.pitch = -0.35
     v.hoverId = null; setTip(null)
+    // Deliberately does NOT restart the drift: a reader pressing reset wants
+    // the view back, not the introduction again.
     repaint.current()
   }
 

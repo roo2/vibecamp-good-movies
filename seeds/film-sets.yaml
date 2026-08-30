@@ -100,40 +100,40 @@ sets:
       - "Thor: Love and Thunder"
       - "Thor: Ragnarok"
       - "Thor: The Dark World"
-  - id: hollywood-pre-1950
-    name: "American film before 1950"
+  - id: old-hollywood
+    name: "Old Hollywood"
     colour: "#c2a878"
     source: "Assembled from corpus metadata: United States, English language"
-    description: "The studio era, before television and the collapse of the Production Code."
+    description: "The studio era: the majors, the star system and the Production Code, up to its collapse."
     rule:
       country: 'United States'
       language: 'English'
-      year_max: 1949
-  - id: hollywood-1950-1989
-    name: "American film 1950–1989"
+      year_max: 1966
+  - id: new-hollywood
+    name: "New Hollywood"
     colour: "#86b57f"
     source: "Assembled from corpus metadata: United States, English language"
-    description: "From the studio system's decline through New Hollywood and the blockbuster."
+    description: "The American New Wave — director-led, permissive, and pessimistic by reputation."
     rule:
       country: 'United States'
       language: 'English'
-      year_min: 1950
-      year_max: 1989
-  - id: hollywood-1990-2009
-    name: "American film 1990–2009"
+      year_min: 1967
+      year_max: 1984
+  - id: blockbuster-hollywood
+    name: "Blockbuster Hollywood"
     colour: "#6f9fb5"
     source: "Assembled from corpus metadata: United States, English language"
-    description: "The independent wave and the rise of the modern franchise."
+    description: "Conglomerate-owned Hollywood: the high-concept blockbuster alongside the independent wave."
     rule:
       country: 'United States'
       language: 'English'
-      year_min: 1990
+      year_min: 1985
       year_max: 2009
-  - id: hollywood-2010-
-    name: "American film since 2010"
+  - id: franchise-hollywood
+    name: "Franchise Hollywood"
     colour: "#b48ce0"
     source: "Assembled from corpus metadata: United States, English language"
-    description: "The streaming and cinematic-universe era."
+    description: "The shared-universe and streaming era."
     rule:
       country: 'United States'
       language: 'English'

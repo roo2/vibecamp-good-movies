@@ -237,13 +237,24 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
           z: viewer.scores[2] / stats[2].sd / 3,
         })
       }
+      // A crosshair along the three axes rather than a ring. A circle competes
+      // with the dots it sits among — same shape, slightly bigger — whereas
+      // three ticks running parallel to the axes read as a POSITION in the
+      // space and stay legible whichever way the cloud is turned.
+      const TICK = 0.13
       for (const m of marks) {
         const [mx, my] = at(project(m, v.yaw, v.pitch))
         ctx.strokeStyle = m.colour
         ctx.fillStyle = m.colour
-        ctx.lineWidth = 2
-        ctx.beginPath(); ctx.arc(mx, my, m.ring ? 9 : 7, 0, Math.PI * 2); ctx.stroke()
-        ctx.beginPath(); ctx.arc(mx, my, 2.6, 0, Math.PI * 2); ctx.fill()
+        ctx.lineWidth = m.ring ? 2.4 : 1.8
+        for (const e of [[TICK, 0, 0], [0, TICK, 0], [0, 0, TICK]]) {
+          const [sx, sy] = at(project(
+            { x: m.x - e[0], y: m.y - e[1], z: m.z - e[2] }, v.yaw, v.pitch))
+          const [ex, ey] = at(project(
+            { x: m.x + e[0], y: m.y + e[1], z: m.z + e[2] }, v.yaw, v.pitch))
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke()
+        }
+        ctx.beginPath(); ctx.arc(mx, my, m.ring ? 3.4 : 2.6, 0, Math.PI * 2); ctx.fill()
         ctx.font = '600 11px ui-sans-serif, system-ui, sans-serif'
         ctx.strokeStyle = 'rgba(15,12,10,0.92)'; ctx.lineWidth = 3
         ctx.strokeText(m.label, mx + 13, my)

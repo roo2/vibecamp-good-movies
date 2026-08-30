@@ -35,17 +35,6 @@ sets:
       - "The Lord of the Rings: The Two Towers"
       - "The Passion of the Christ"
       - "The Sound of Music"
-  - id: satanic
-    name: "Satanic"
-    colour: "#c05a7a"
-    source: "Church of Satan, published 'Satanic Sources' film list"
-    url: "https://churchofsatan.com/sources-film-list/"
-    description: "Films the Church of Satan names as sources for its own outlook."
-    titles:
-      - "Blade Runner"
-      - "Blue Velvet"
-      - "Citizen Kane"
-      - "Metropolis"
   - id: socialist
     name: "Socialist"
     colour: "#c9524a"

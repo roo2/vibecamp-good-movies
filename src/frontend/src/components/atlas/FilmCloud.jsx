@@ -154,13 +154,29 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
         ctx.font = '600 13.5px ui-sans-serif, system-ui, sans-serif'
         ctx.textBaseline = 'middle'
         ctx.lineJoin = 'round'
+        // Kept inside the frame. The label hangs off the end of an axis, and
+        // the end of an axis leaves the canvas as soon as you zoom or pan —
+        // taking the only thing that says which pole is which with it. So the
+        // anchor is clamped to the visible area and the alignment is chosen
+        // from where it lands, not from where the axis points.
+        const PAD = 8
         const write = (text, x, y, toward) => {
-          ctx.textAlign = toward >= cx ? 'left' : 'right'
-          const px = x + (toward >= cx ? 13 : -13)
+          const wide = ctx.measureText(text).width
+          let px = x + (toward >= cx ? 13 : -13)
+          let align = toward >= cx ? 'left' : 'right'
+          if (align === 'left' && px + wide > w - PAD) {
+            px = Math.min(px, w - PAD); align = 'right'
+          } else if (align === 'right' && px - wide < PAD) {
+            px = Math.max(px, PAD); align = 'left'
+          }
+          px = Math.min(Math.max(px, align === 'left' ? PAD : PAD + wide),
+                        align === 'left' ? w - PAD - wide : w - PAD)
+          const py = Math.min(Math.max(y, PAD + 6), h - PAD - 6)
+          ctx.textAlign = align
           ctx.strokeStyle = 'rgba(15,12,10,0.95)'
           ctx.lineWidth = 4
-          ctx.strokeText(text, px, y)
-          ctx.fillText(text, px, y)
+          ctx.strokeText(text, px, py)
+          ctx.fillText(text, px, py)
           ctx.lineWidth = 1.4
         }
         write(label.high || '', bx, by, bx)

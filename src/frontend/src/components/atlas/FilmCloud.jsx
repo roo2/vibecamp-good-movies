@@ -61,6 +61,7 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
   const view = React.useRef({
     yaw: 0.6, pitch: -0.35, zoom: 1, panX: 0, panY: 0,
     mode: null, last: null, idle: true, hoverId: null, pinch: null, started: null,
+    pointers: new Map(),
   })
 
   // The three axes arrive as separate distributions; a film is a point only if
@@ -335,17 +336,49 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
     return best
   }
 
+  // Every active pointer, so two fingers can be told from one. A touch device
+  // has no wheel and no shift key, which left it with no way to zoom or pan at
+  // all — the two things the labels and the crowded middle most need.
+  const span = () => {
+    const pts = [...view.current.pointers.values()]
+    const dx = pts[0].x - pts[1].x, dy = pts[0].y - pts[1].y
+    return { dist: Math.hypot(dx, dy) || 1,
+             mid: { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 } }
+  }
+
   const onDown = (event) => {
     const v = view.current
     v.idle = false
-    v.mode = event.shiftKey || event.button === 1 || event.button === 2 ? 'pan' : 'turn'
-    v.last = { x: event.clientX, y: event.clientY }
-    v.moved = false
+    v.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    if (v.pointers.size === 2) {
+      v.mode = 'pinch'
+      v.pinch = span()
+      v.moved = true            // a pinch is never a click
+    } else if (v.pointers.size === 1) {
+      v.mode = event.shiftKey || event.button === 1 || event.button === 2 ? 'pan' : 'turn'
+      v.last = { x: event.clientX, y: event.clientY }
+      v.moved = false
+    }
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
 
   const onMove = (event) => {
     const v = view.current
+    if (v.pointers.has(event.pointerId)) {
+      v.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+    }
+    if (v.mode === 'pinch' && v.pointers.size >= 2) {
+      const now = span()
+      // Zoom by the ratio of the finger gap, and pan by where the pair moved,
+      // so the picture tracks the hands rather than only growing.
+      v.zoom = Math.max(0.6, Math.min(9, v.zoom * (now.dist / v.pinch.dist)))
+      v.panX += now.mid.x - v.pinch.mid.x
+      v.panY += now.mid.y - v.pinch.mid.y
+      v.pinch = now
+      if (v.hoverId) { v.hoverId = null; setTip(null) }
+      repaint.current()
+      return
+    }
     if (v.mode) {
       const dx = event.clientX - v.last.x, dy = event.clientY - v.last.y
       if (Math.abs(dx) + Math.abs(dy) > 2) v.moved = true
@@ -368,7 +401,13 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
     }
   }
 
-  const onUp = () => { view.current.mode = null }
+  const onUp = (event) => {
+    const v = view.current
+    if (event?.pointerId !== undefined) v.pointers.delete(event.pointerId)
+    // Dropping to one finger ends the gesture rather than silently becoming a
+    // rotate, which would spin the cloud every time a pinch is released.
+    if (v.pointers.size < 2) v.mode = null
+  }
 
   const onClick = (event) => {
     const v = view.current
@@ -392,7 +431,10 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
       <canvas
         ref={canvasRef} style={{ inlineSize: '100%', blockSize: `${SIZE}px` }}
         onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
-        onPointerLeave={() => { onUp(); view.current.hoverId = null; setTip(null); repaint.current() }}
+        onPointerCancel={onUp}
+        onPointerLeave={(e) => {
+          onUp(e); view.current.hoverId = null; setTip(null); repaint.current()
+        }}
         onClick={onClick} onContextMenu={(e) => e.preventDefault()}
         role="img"
         aria-label={`All ${points.length} films placed on the three axes. `
@@ -409,7 +451,8 @@ export default function FilmCloud({ factors, sets, viewer, onSelect }) {
         </div>
       )}
       <p className="cloud-note">
-        Drag to turn, scroll to zoom, shift-drag to pan, click a film to open it. Names
+        Drag to turn, scroll or pinch to zoom, shift-drag or two fingers to pan, click a
+        film to open it. Names
         appear for the films furthest from the average one, and more of them as you zoom
         in. Each dot is a film, centred on the average film rather than on zero.
         The width is measured far better than the depth: a film's position on{' '}

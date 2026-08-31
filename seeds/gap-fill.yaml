@@ -1,0 +1,324 @@
+# Films to ingest, chosen to make the blocked ideological sets measurable.
+#
+# Allocated by power rather than evenly: a set with five films needs a 1.25
+# standard-deviation displacement before it can show anything, so the sets
+# with almost nothing get the most. `note` records which set wants each film,
+# so partial progress can still be checked against the set it was for.
+films:
+  - title: "The Night of the Hunter"
+    year: 1955
+    note: satanist+arts-and-faith
+  - title: "Wings of Desire"
+    year: 1987
+    note: humanist+arts-and-faith
+  - title: "Certain Women"
+    year: 2016
+    note: humanist+feminist
+  - title: "Orlando"
+    year: 1992
+    note: humanist+feminist
+  - title: "One Sings, the Other Doesn't"
+    year: 1977
+    note: humanist+feminist
+  - title: "Mustang"
+    year: 2015
+    note: humanist+feminist
+  - title: "The Passion of Joan of Arc"
+    year: 1928
+    note: feminist+arts-and-faith
+  - title: "The Last Days of Disco"
+    note: arts-and-faith+conservative
+  - title: "Witness"
+    note: arts-and-faith+conservative
+  - title: "The Cabinet of Dr. Caligari"
+    year: 1920
+    note: satanist
+  - title: "The Great Gabbo"
+    year: 1929
+    note: satanist
+  - title: "Dr. Jekyll and Mr. Hyde"
+    year: 1931
+    note: satanist
+  - title: "M"
+    year: 1931
+    note: satanist
+  - title: "Svengali"
+    year: 1931
+    note: satanist
+  - title: "Freaks"
+    year: 1932
+    note: satanist
+  - title: "I Am a Fugitive from a Chain Gang"
+    year: 1932
+    note: satanist
+  - title: "Island of Lost Souls"
+    year: 1932
+    note: satanist
+  - title: "The Most Dangerous Game"
+    year: 1932
+    note: satanist
+  - title: "Roman Scandals"
+    year: 1933
+    note: satanist
+  - title: "The Bitter Tea of General Yen"
+    year: 1932
+    note: satanist
+  - title: "The Invisible Man"
+    year: 1933
+    note: satanist
+  - title: "The Testament of Dr. Mabuse"
+    year: 1933
+    note: satanist
+  - title: "The Black Cat"
+    year: 1934
+    note: satanist
+  - title: "The Scoundrel"
+    year: 1935
+    note: satanist
+  - title: "The Puritan"
+    year: 1938
+    note: satanist
+  - title: "Fantasia"
+    year: 1940
+    note: satanist
+  - title: "All That Money Can Buy"
+    year: 1941
+    note: satanist
+  - title: "The Sea Wolf"
+    year: 1941
+    note: satanist
+  - title: "The Moon and Sixpence"
+    year: 1942
+    note: satanist
+  - title: "Shadow of a Doubt"
+    year: 1943
+    note: satanist
+  - title: "The Leopard Man"
+    year: 1943
+    note: satanist
+  - title: "The Seventh Victim"
+    year: 1943
+    note: satanist
+  - title: "The Great Flamarion"
+    year: 1945
+    note: satanist
+  - title: "The Picture of Dorian Gray"
+    year: 1945
+    note: satanist
+  - title: "Duel in the Sun"
+    year: 1946
+    note: satanist
+  - title: "Specter of the Rose"
+    year: 1946
+    note: satanist
+  - title: "A Double Life"
+    year: 1947
+    note: satanist
+  - title: "Happy-Go-Lucky"
+    year: 2008
+    note: humanist
+  - title: "The Incredibly True Adventure of Two Girls in Love"
+    year: 1995
+    note: humanist
+  - title: "Lady Bird"
+    year: 2017
+    note: humanist
+  - title: "Short Term 12"
+    year: 2013
+    note: humanist
+  - title: "Portrait of a Lady on Fire"
+    year: 2019
+    note: humanist
+  - title: "Roma"
+    year: 2018
+    note: humanist
+  - title: "The Last Black Man in San Francisco"
+    year: 2019
+    note: humanist
+  - title: "Never Rarely Sometimes Always"
+    year: 2020
+    note: humanist
+  - title: "Columbus"
+    year: 2017
+    note: humanist
+  - title: "First Cow"
+    year: 2019
+    note: humanist
+  - title: "The Father"
+    year: 2020
+    note: humanist
+  - title: "Blindspotting"
+    year: 2018
+    note: humanist
+  - title: "A Single Man"
+    year: 2009
+    note: humanist
+  - title: "The Assistant"
+    year: 2019
+    note: humanist
+  - title: "Pride"
+    year: 2014
+    note: humanist
+  - title: "I, Daniel Blake"
+    year: 2016
+    note: humanist
+  - title: "A Hard Day's Night"
+    year: 1964
+    note: humanist
+  - title: "Thunder Road"
+    year: 2018
+    note: humanist
+  - title: "The Rider"
+    year: 2017
+    note: humanist
+  - title: "Skate Kitchen"
+    year: 2018
+    note: humanist
+  - title: "Water Lilies"
+    year: 2007
+    note: humanist
+  - title: "Lovers Rock"
+    year: 2020
+    note: humanist
+  - title: "The Watermelon Woman"
+    year: 1996
+    note: humanist
+  - title: "Duck Soup"
+    year: 1933
+    note: humanist
+  - title: "Jeanne Dielman, 23, quai du Commerce, 1080 Bruxelles"
+    year: 1975
+    note: feminist
+  - title: "His Girl Friday"
+    year: 1940
+    note: feminist
+  - title: "The Piano"
+    year: 1993
+    note: feminist
+  - title: "Cléo from 5 to 7"
+    year: 1962
+    note: feminist
+  - title: "A Woman Under the Influence"
+    year: 1974
+    note: feminist
+  - title: "Daughters of the Dust"
+    year: 1991
+    note: feminist
+  - title: "4 Months, 3 Weeks and 2 Days"
+    year: 2007
+    note: feminist
+  - title: "Ladies and Gentlemen, the Fabulous Stains"
+    year: 1982
+    note: feminist
+  - title: "Desperately Seeking Susan"
+    year: 1985
+    note: feminist
+  - title: "Diary of a Lost Girl"
+    year: 1929
+    note: feminist
+  - title: "Rosetta"
+    year: 1999
+    note: feminist
+  - title: "Persona"
+    year: 1966
+    note: feminist
+  - title: "Foxy Brown"
+    year: 1974
+    note: feminist
+  - title: "Female Trouble"
+    year: 1974
+    note: feminist
+  - title: "Born in Flames"
+    year: 1983
+    note: feminist
+  - title: "Meshes of the Afternoon"
+    year: 1943
+    note: feminist
+  - title: "How to Participate"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2023"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2022"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2021"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2020"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2018"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2017"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2016"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2015"
+    note: arts-and-faith
+  - title: "The Arts & Faith Ecumenical Jury — 2014"
+    note: arts-and-faith
+  - title: "The Addiction"
+    note: arts-and-faith
+  - title: "Andrei Rublev"
+    note: arts-and-faith
+  - title: "The Apostle"
+    note: arts-and-faith
+  - title: "Au hasard Balthazar"
+    note: arts-and-faith
+  - title: "The Incredibles"
+    year: 2004
+    note: conservative
+  - title: "Metropolitan"
+    year: 1990
+    note: conservative
+  - title: "Forrest Gump"
+    year: 1994
+    note: conservative
+  - title: "Juno"
+    year: 2007
+    note: conservative
+  - title: "Blast from the Past"
+    year: 1999
+    note: conservative
+  - title: "A Simple Plan"
+    year: 1998
+    note: conservative
+  - title: "Red Dawn"
+    year: 1984
+    note: conservative
+  - title: "The Edge"
+    year: 1997
+    note: conservative
+  - title: "We Were Soldiers"
+    year: 2002
+    note: conservative
+  - title: "Gattaca"
+    year: 1997
+    note: conservative
+  - title: "Heartbreak Ridge"
+    year: 1986
+    note: conservative
+  - title: "Brazil"
+    year: 1985
+    note: conservative
+  - title: "United 93"
+    year: 2006
+    note: conservative
+  - title: "Team America: World Police"
+    year: 2004
+    note: conservative
+  - title: "Drive"
+    year: 2011
+    note: red-pilled
+  - title: "Nightcrawler"
+    year: 2014
+    note: red-pilled
+  - title: "Prisoners"
+    year: 2013
+    note: red-pilled
+  - title: "Good Time"
+    year: 2017
+    note: red-pilled
+  - title: "Primal Fear"
+    year: 1996
+    note: red-pilled
+  - title: "Nobody"
+    year: 2021
+    note: red-pilled

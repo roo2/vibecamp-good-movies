@@ -468,3 +468,34 @@ def test_a_factors_name_and_its_propositions_come_from_the_same_reading(isolated
         con.execute("UPDATE latent_factors SET estimator=NULL WHERE scorer='m'")
     assert factor_names.estimator_for("m", "subs", "b") == "dense", (
         "rows written before the column existed were all produced densely")
+
+
+def _reading(db, bank, scorer="deepseek"):
+    """One verdict and one named factor, the minimum for a listed reading."""
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO model_verdicts (scorer, model, film_id, item_id, bank_version, "
+            "variant, value) VALUES (?,?,?,?,?,?,?)",
+            [scorer, "m", "film-0", "I001", bank, "subs", 1])
+        con.execute(
+            "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
+            "n_items, eigenvalue, margin) VALUES (?,?,?,?,?,?,?,?)",
+            [scorer, "subs", bank, 0, "An axis", 5, 2.0, 0.5])
+
+
+def test_a_pooled_bank_names_both_authors_rather_than_itself(isolated_web_database):
+    """The picker reads "who wrote the questions -> who answered them", and the
+    writer is taken from the bank name. That holds only while a bank has one
+    author: a bank pooling two models' propositions would answer "pooled",
+    which names the bank instead of the authors."""
+    from moral_atlas.web.routes import factors
+
+    db = isolated_web_database
+    _reading(db, "pooled-subs")
+    _reading(db, "dolphin-subs")
+
+    wrote = {m["bank_version"]: m["wrote"] for m in factors.list_models()["models"]}
+    assert wrote["pooled-subs"] == "dolphin + deepseek"
+    # A single-author bank must keep reporting its own author, or the mapping
+    # has been applied too widely.
+    assert wrote["dolphin-subs"] == "dolphin"

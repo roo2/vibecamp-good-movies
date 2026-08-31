@@ -56,6 +56,11 @@ WITHDRAWN = {
     "grok": "answers too few propositions per film for any axis to reach significance",
 }
 
+# Banks whose propositions were written by more than one model. The writer is
+# otherwise read off the bank name, which works only while a bank has one
+# author; a pooled bank would report itself as written by "pooled".
+POOLED_WRITERS = {"pooled": "dolphin + deepseek"}
+
 _cache: dict[str, Any] = {}
 
 
@@ -112,7 +117,11 @@ def list_models() -> dict[str, Any]:
         entry = dict(row)
         # The bank is named after whoever wrote it, which is the one place that
         # authorship is recorded at all.
-        entry["wrote"] = (row["bank_version"] or "").split("-")[0] or "unknown"
+        wrote = (row["bank_version"] or "").split("-")[0] or "unknown"
+        # A pooled bank has no single author: its propositions are two banks
+        # concatenated. The picker reads "who wrote → who answered", and
+        # "pooled" would name a bank rather than answer the question.
+        entry["wrote"] = POOLED_WRITERS.get(wrote, wrote)
         entry["reading_id"] = f"{row['scorer']}|{row['bank_version']}|{row['variant']}"
         if row["factors"]:
             readings.append(entry)

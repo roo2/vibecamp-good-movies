@@ -907,3 +907,31 @@
   .film-taste li { grid-template-columns: 1fr auto; }
   .film-taste-track { grid-column: 1 / -1; }
 }
+
+/* --- plot and film panel, side by side ----------------------------------- */
+
+.film-explorer {
+  display: grid; grid-template-columns: minmax(300px, 600px) minmax(0, 1fr);
+  gap: 34px; align-items: start; margin: 26px 0 10px;
+}
+.explorer-plot { position: sticky; top: 18px; }
+.explorer-plot .atlas-search { width: 100%; margin: 0 0 8px; }
+.explorer-matches { margin: 0 0 10px; }
+.explorer-matches .link-button { font-size: inherit; }
+.explorer-panel { min-width: 0; padding-top: 4px; }
+.explorer-empty { max-width: 42ch; }
+
+/* A search match is findable without pretending it has been opened. */
+.plane-mark.matched path { stroke: #e8b04b; stroke-width: 2; opacity: 1; }
+.plane-mark.chosen path { stroke: #f5efe6; stroke-width: 2.4; opacity: 1; }
+
+/* Taste borrows the moral scale's geometry and not its colour: it is not a
+   moral claim and should not look like one. */
+.film-factor-bar.taste { background: #8a8078; }
+.film-factor.taste .film-factor-scale em.lit { color: #d5ccc1; }
+.film-taste { margin-top: 24px; padding-top: 18px; border-top: 1px solid #241e19; }
+
+@media (max-width: 900px) {
+  .film-explorer { grid-template-columns: 1fr; gap: 22px; }
+  .explorer-plot { position: static; }
+}

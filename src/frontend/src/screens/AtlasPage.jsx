@@ -1,11 +1,10 @@
 import React from 'react'
 import Factors from '../components/atlas/Factors.jsx'
-import FilmPlane from '../components/atlas/FilmPlane.jsx'
+import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
 import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
-import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
-import { filmPositions, loadAtlas, planePoints, setCentroid } from '../services/atlasService.js'
+import { filmPositions, loadAtlas, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
@@ -66,9 +65,6 @@ function AtlasPage({ onBack, access }) {
 
   // The two axes the plane draws, in whichever space is selected. Built here so
   // the toggle changes one value and everything downstream follows.
-  const plane = React.useMemo(
-    () => planePoints(factors, taste, space), [space, taste, factors])
-
   // The reader's own compass, if they followed the link from it. Read on
   // demand rather than always: the atlas is a public page and most of its
   // readers have not taken the survey.
@@ -215,27 +211,10 @@ function AtlasPage({ onBack, access }) {
                   ))}
                 </div>
               )}
-              {(taste?.dimensions || []).length > 0 && (
-                <div className="plane-axis-pick" role="tablist"
-                     aria-label="Which axes to plot">
-                  <button type="button" role="tab" aria-selected={space === 'moral'}
-                          className={space === 'moral' ? 'on' : undefined}
-                          onClick={() => setSpace('moral')}>
-                    What films argue
-                  </button>
-                  <button type="button" role="tab" aria-selected={space === 'taste'}
-                          className={space === 'taste' ? 'on' : undefined}
-                          onClick={() => setSpace('taste')}>
-                    What people choose by
-                  </button>
-                </div>
-              )}
-              {plane && (
-                <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
-                           sets={space === 'moral' ? chosen : []}
-                           viewer={space === 'moral' ? viewerHere : null}
-                           selectedId={selectedId} onSelect={setSelectedId} />
-              )}
+              <FilmExplorer films={corpus?.films || []} factors={factors} taste={taste}
+                            reading={selected} selectedId={selectedId}
+                            onSelect={setSelectedId} sets={chosen} viewer={viewerHere}
+                            space={space} onSpaceChange={setSpace} />
               {wantsMe && !viewerHere && (
                 <p className="atlas-note">
                   {!access ? 'Take the survey first and this will show where you sit.'
@@ -315,16 +294,6 @@ function AtlasPage({ onBack, access }) {
         </section>
       )}
 
-      {selectedId && (
-        <FilmDetail
-          film={(corpus?.films || []).find((f) => f.id === selectedId)}
-          scorer={selected?.scorer}
-          taste={taste}
-          variant={selected?.variant}
-          bank={selected?.bank_version}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
 
       <footer className="atlas-footer">
         <p>

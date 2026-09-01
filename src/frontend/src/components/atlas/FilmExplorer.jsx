@@ -40,12 +40,14 @@ export default function FilmExplorer({
   // The plot carries films the corpus list may not; falling back to the point
   // keeps a click from opening an empty panel.
   const point = plane?.points.find((p) => p.id === selectedId)
+  const listed = !plane && matches.length ? matches.slice(0, 40) : []
   const title = selected?.title || point?.title
 
-  if (!plane) return null
-
+  // Degrade rather than vanish. Returning null here took the search box and the
+  // film panel down with the plot, so one failed request emptied the whole page
+  // with nothing on screen to say why.
   return (
-    <section className="film-explorer">
+    <section className={plane ? 'film-explorer' : 'film-explorer no-plot'}>
       <div className="explorer-plot">
         {onSpaceChange && (
           <div className="plane-axis-pick" role="tablist" aria-label="Which axes to plot">
@@ -70,6 +72,18 @@ export default function FilmExplorer({
           onChange={(event) => setQuery(event.target.value)}
         />
 
+        {listed.length > 0 && (
+          <ul className="film-list">
+            {listed.map((f) => (
+              <li key={f.id}>
+                <button type="button" onClick={() => onSelect(f.id)}>
+                  <b>{f.title}</b> <span>{f.year}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {query.trim() && (
           <p className="atlas-note explorer-matches">
             {matches.length
@@ -86,11 +100,11 @@ export default function FilmExplorer({
           </p>
         )}
 
-        <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
+        {plane && <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
                    sets={space === 'moral' ? sets : []}
                    viewer={space === 'moral' ? viewer : null}
                    selectedId={selectedId} matchIds={matchIds}
-                   onSelect={onSelect} />
+                   onSelect={onSelect} />}
       </div>
 
       <div className="explorer-panel">

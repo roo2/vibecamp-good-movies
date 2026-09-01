@@ -40,7 +40,12 @@ export default function CorpusPage({ onBack }) {
   React.useEffect(() => {
     if (!reading) return undefined
     let live = true
-    loadFactors(reading).then((f) => live && setFactors(f)).catch(() => {})
+    // Three positional arguments, not the reading object. Passing the object
+    // asked for /api/factors/[object Object], which 404s — and the silent catch
+    // below turned that into a blank page rather than a message.
+    loadFactors(reading.scorer, reading.variant, reading.bank_version)
+      .then((f) => live && setFactors(f))
+      .catch((e) => live && setError(e.message))
     return () => { live = false }
   }, [reading])
 

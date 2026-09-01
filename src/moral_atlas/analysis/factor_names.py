@@ -77,9 +77,9 @@ class FactorName(BaseModel):
     # side it could not see. The names below are anchored to the two LISTS,
     # which the model can see, and the code maps lists to poles.
     first_label: str = Field(
-        description="Two or three words naming the position the FIRST list of "
-                    "propositions asserts. A stance somebody would own, never "
-                    "the negation of the other end.")
+        description="ONE word naming the position the FIRST list of propositions "
+                    "asserts, or two if one truly will not do. A stance somebody "
+                    "would own, never the negation of the other end.")
     second_label: str = Field(
         description="The same for the SECOND list — or, if that list is empty, "
                     "for the position a work would hold that denied every "
@@ -131,9 +131,19 @@ reader can see what it runs BETWEEN, because they will be shown their own place
 on it as a point on a line, and a line has to be labelled at both ends.
 
   - `first_label` names the position the FIRST list asserts; `second_label` the
-    SECOND. Two or three words each. Each must be a position in its own right,
-    never the absence or negation of the other: "Self-preservation", not "Not
-    self-sacrificing"; "Absolute values", not "Non-relativist". If you cannot
+    SECOND. ONE WORD EACH. Two only where one genuinely cannot carry it, and a
+    two-word label is a failure to find the one word, not a richer answer.
+    These are read at a glance off the ends of a short line by someone deciding
+    what to watch tonight. Give up accuracy for brevity — the sentence below
+    each label is where precision belongs. The rule, stated without giving you
+    the words: if your label is a qualifier plus a noun, drop the qualifier and
+    keep the noun, unless the qualifier IS the disagreement. If it is a
+    hyphenated compound, find the single word underneath it. Do not reach for a
+    narrower or more loaded word than the propositions support just because it
+    is shorter — a shorter label that says something the films do not is worse
+    than a long one. Each must still be a position in its own
+    right, never the absence or negation of the other: "Self-preservation", not
+    "Not self-sacrificing"; "Absolutes", not "Non-relativist". If you cannot
     name one of them as something a person would own, you have probably named
     the other as a topic rather than a stance — reword both.
   - `first` and `second` say, in a sentence each, what a work at that end

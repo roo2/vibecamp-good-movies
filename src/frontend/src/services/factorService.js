@@ -72,8 +72,15 @@ export function isClear(factor) {
 export async function loadTaste() {
   try {
     const body = await get('/api/factors/taste')
-    return { dimensions: body.dimensions || [], films: body.films || [] }
+    // `findings` too. Dropping it here made every measured figure on the page
+    // render as an em dash — the endpoint served them, the component asked for
+    // them, and this function quietly threw them away in between.
+    return {
+      dimensions: body.dimensions || [],
+      films: body.films || [],
+      findings: body.findings || {},
+    }
   } catch {
-    return { dimensions: [], films: [] }
+    return { dimensions: [], films: [], findings: {} }
   }
 }

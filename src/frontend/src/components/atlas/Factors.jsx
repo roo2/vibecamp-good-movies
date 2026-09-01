@@ -170,6 +170,32 @@ export function Factors({ data }) {
 
         <Scree eigenvalues={data.eigenvalues} thresholds={data.null_threshold} />
 
+        {/* The same test, with taste taken out of the verdicts first. Absent
+            when the corpus has moved since it was last computed, because a
+            chart drawn from a stale row asserts a result nothing produced any
+            more and nothing about looking at it would say so. */}
+        {!!(data.adjusted_null_test?.eigenvalues || []).length && (
+          <>
+            <p className="atlas-note">
+              <b>And the same test with taste taken out.</b> Every proposition&apos;s verdicts
+              are replaced with what remains once a film&apos;s taste position is subtracted,
+              and the whole test is run again. The bars fall — the leading factor was partly
+              taste — and more of the smaller factors clear the line, because the largest one
+              is no longer crowding them.
+            </p>
+            <Scree eigenvalues={data.adjusted_null_test.eigenvalues}
+                   thresholds={data.adjusted_null_test.null_threshold} />
+            <p className="atlas-note">
+              Read against the {data.adjusted_null_test.films} films that have a taste
+              position, not the {data.films} above — those same films with taste left in give
+              a leading eigenvalue of{' '}
+              <b>{(data.adjusted_null_test.control_eigenvalues?.[0] ?? 0).toFixed(1)}</b>,
+              against <b>{(data.adjusted_null_test.eigenvalues[0] ?? 0).toFixed(1)}</b> here.
+              That pair is the comparison; the chart above uses a larger corpus.
+            </p>
+          </>
+        )}
+
         <p className="atlas-note">
           <b>How silence is handled.</b> A film&apos;s verdict is recorded only for the
           propositions it takes a position on, and two propositions are compared over the

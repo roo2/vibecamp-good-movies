@@ -1460,3 +1460,46 @@ def packet(
 
 if __name__ == "__main__":
     app()
+
+
+@app.command("taste-null")
+def taste_null_cmd(
+    scorers: str = typer.Option("deepseek", help="Comma-separated aliases."),
+    variant: str = typer.Option("subs", help="Evidence condition to read."),
+    banks: str = typer.Option("", help="Comma-separated banks. Default: every bank "
+                                       "the scorer has verdicts for."),
+    iterations: int = typer.Option(200, help="Permutations for the null."),
+) -> None:
+    """Re-run the permutation test on verdicts with taste subtracted out.
+
+    Run this after ANY reanalysis that moves the verdicts, the taste dimensions
+    or the film placements. The stored answer carries a fingerprint of those
+    three, and the atlas draws no adjusted chart at all while it disagrees —
+    which is the failure everybody wants, rather than a chart quietly showing
+    last month's corpus.
+    """
+    from .analysis import taste_null
+    from . import db as _db
+
+    for alias in _ready_scorers(scorers):
+        wanted = [b.strip() for b in banks.split(",") if b.strip()]
+        if not wanted:
+            with _db.connect(read_only=True) as con:
+                wanted = [r["bank_version"] for r in con.execute(
+                    "SELECT DISTINCT bank_version FROM model_verdicts "
+                    "WHERE scorer=? AND variant=?", [alias, variant])]
+        for bank in wanted:
+            console.print(f"[bold]{alias}[/] · {bank} — residualising and permuting…")
+            try:
+                result = taste_null.compute(alias, bank_version=bank, variant=variant,
+                                            n_iter=iterations)
+            except Exception as error:
+                console.print(f"  [yellow]failed: {type(error).__name__}: {error}[/]")
+                continue
+            if not result:
+                console.print("  [yellow]skipped — no taste positions for these films[/]")
+                continue
+            taste_null.store(alias, variant, bank, result)
+            console.print(
+                f"  {result['films']} films · taste in {result['control_n_factors']} factors"
+                f" · taste out {result['n_factors']} factors")

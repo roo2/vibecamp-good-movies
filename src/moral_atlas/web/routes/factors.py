@@ -64,6 +64,18 @@ POOLED_WRITERS = {"pooled": "dolphin + deepseek"}
 _cache: dict[str, Any] = {}
 
 
+def _adjusted_null_test(scorer: str, variant: str, bank: str) -> dict[str, Any] | None:
+    """The permutation test with taste subtracted out, if it is still current.
+
+    `taste_null.load` returns nothing when the corpus has moved since the answer
+    was computed, so a stale chart is never drawn. Regenerate with
+    `atlas taste-null`.
+    """
+    from ...analysis import taste_null
+
+    return taste_null.load(scorer, variant, bank)
+
+
 def _fingerprint(scorer: str, variant: str, bank: str) -> tuple:
     """Counts, not file stats — the store is in WAL mode and its mtime lies."""
     with db.connect(read_only=True) as con:
@@ -291,6 +303,13 @@ def get_factors(
         "n_clear_factors": report["n_clear_factors"],
         "eigenvalues": report["eigenvalues"],
         "null_threshold": report["null_threshold"],
+        # The same test run again on verdicts with the taste-predictable part
+        # removed. Precomputed: two hundred permutations over a residualised
+        # matrix does not belong inside a page load. Carries its own control,
+        # because the adjusted run can only use films that have a taste
+        # position and a chart comparing 565 against 543 would show a drop that
+        # is partly just the smaller corpus.
+        "adjusted_null_test": _adjusted_null_test(scorer, variant, bank),
         "margins": report["margins"],
         "group_sizes": report["group_sizes"],
         "factors": [

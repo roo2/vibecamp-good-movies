@@ -44,7 +44,7 @@ function extent(values) {
 }
 
 export default function FilmPlane({
-  points, xAxis, yAxis, sets, viewer, onSelect, selectedId,
+  points, xAxis, yAxis, sets, viewer, onSelect, selectedId, matchIds,
 }) {
   const [hover, setHover] = React.useState(null)
 
@@ -98,9 +98,14 @@ export default function FilmPlane({
         )}
 
         {placed.map((p) => {
-          const r = p.id === selectedId ? 4.5 : 2.6
+          // A search match is drawn like a selection-in-waiting: findable at a
+          // glance without pretending it has been opened.
+          const matched = matchIds ? matchIds.has(p.id) : false
+          const r = p.id === selectedId ? 5.5 : matched ? 4.5 : 2.6
           return (
-            <g key={p.id} className={`plane-mark${p.colour ? ' in-set' : ''}`}
+            <g key={p.id}
+               className={`plane-mark${p.colour ? ' in-set' : ''}`
+                 + (matched ? ' matched' : '') + (p.id === selectedId ? ' chosen' : '')}
                style={p.colour ? { stroke: p.colour } : undefined}
                onMouseEnter={() => setHover(p)}
                onMouseLeave={() => setHover((h) => (h && h.id === p.id ? null : h))}

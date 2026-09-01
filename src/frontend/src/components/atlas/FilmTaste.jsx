@@ -8,10 +8,18 @@ import React from 'react'
 // only the moral position invites a reader to attribute to morality whatever
 // they can see about the film.
 //
-// Positions are shown as percentiles rather than raw scores. The underlying
-// numbers are component scores whose units differ by an order of magnitude
-// between dimensions, so "55.7" and "-3.3" are not comparable and reading them
-// side by side would be actively misleading.
+// It borrows the moral scale's markup deliberately — same grid, same track,
+// same bar growing from the centre — because these two things were built a week
+// apart and looked it: different row heights, different markers, different type.
+// A reader should not have to learn two instruments to read one film.
+//
+// What stays different is the colour. The moral axes carry the two colours the
+// plot uses for them; taste is deliberately neutral, because it is not a moral
+// claim and should not borrow the authority of looking like one.
+//
+// Positions are percentiles rather than raw scores. The underlying component
+// scores differ by an order of magnitude between dimensions, so "55.7" and
+// "-3.3" are not comparable and printing them side by side would mislead.
 
 const SHOWN = 5
 
@@ -36,26 +44,42 @@ export default function FilmTaste({ taste, filmId }) {
   if (!rows.length) return null
 
   return (
-    <div className="film-taste">
-      <h4>And what kind of film it is</h4>
+    <div className="detail-field film-taste">
+      <span>And what kind of film it is</span>
       <p className="atlas-note">
         Discovered from which films the same people enjoy, not from anything this film says.
-        Nothing here is moral — that is the point of showing it separately.
+        Nothing here is moral — which is the point of showing it apart.
       </p>
-      <ul>
-        {rows.map(({ dim, pct }) => (
-          <li key={dim.dim_id}>
-            <span className="film-taste-low">{dim.pole_low}</span>
-            <span className="film-taste-track" aria-hidden="true">
-              <i style={{ left: `${pct}%` }} />
-            </span>
-            <span className="film-taste-high">{dim.pole_high}</span>
-            <b>{pct}<small>%</small></b>
-          </li>
-        ))}
+      <ul className="film-factors">
+        {rows.map(({ dim, pct }) => {
+          // Drawn from the middle, like the moral bars, so the two scales read
+          // as one instrument. The middle is the median film, and the bar is
+          // how far from typical this one is.
+          const magnitude = Math.abs(pct - 50)
+          const high = pct >= 50
+          return (
+            <li key={dim.dim_id} className="film-factor taste">
+              <span className="film-factor-scale">
+                <em className={!high ? 'lit' : ''}>{dim.pole_low}</em>
+                <span className="film-factor-track">
+                  <u className="film-factor-mid" />
+                  <i className="film-factor-bar taste"
+                     style={high
+                       ? { insetInlineStart: '50%', inlineSize: `${magnitude}%` }
+                       : { insetInlineEnd: '50%', inlineSize: `${magnitude}%` }} />
+                </span>
+                <em className={high ? 'lit' : ''}>{dim.pole_high}</em>
+              </span>
+              <span className="film-factor-score">
+                {pct}<em>percentile</em>
+              </span>
+            </li>
+          )
+        })}
       </ul>
       <p className="atlas-note">
-        Read as a percentile: the share of films this one sits above on that dimension.
+        Read as a percentile: the share of films this one sits above. The middle of each bar is
+        the typical film.
       </p>
     </div>
   )

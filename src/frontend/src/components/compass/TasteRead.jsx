@@ -21,7 +21,7 @@ export default function TasteRead({ taste }) {
 
   return (
     <>
-      <h2 className="axis-group-head">And what kind of films they are</h2>
+      <h2 className="axis-group-head taste">Taste</h2>
       <ul className="moral-axes taste-axes">
         {rows.map((row) => (
           <li key={row.dim_id} className="moral-axis taste">
@@ -38,9 +38,7 @@ export default function TasteRead({ taste }) {
           </li>
         ))}
       </ul>
-      <p className="taste-axes-note">
-        From which films the same people enjoy — nothing here is moral.
-      </p>
+      <p className="taste-axes-note">Which films the same people enjoy. Nothing moral here.</p>
     </>
   )
 }

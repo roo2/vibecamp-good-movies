@@ -276,3 +276,23 @@ button { cursor: pointer; }
 /* No detail to open, so no affordance suggesting there is. */
 .moral-axis.taste .moral-axis-row { cursor: default; }
 .taste-axes-note { margin: 10px 0 0; color: #7e766c; font-size: 12px; }
+
+/* Values and taste are different KINDS of measure, so they are different
+   colours. Values keeps the two-colour pair the atlas plot uses for the same
+   axes — two opposed poles, two colours. Taste takes one colour for both ends,
+   because its ends are not opposed positions anybody holds. */
+.axis-group-head.values { color: #eda36b; }
+.axis-group-head.taste { color: #a99bd0; }
+.moral-axis.taste .moral-axis-poles span:first-child,
+.moral-axis.taste .moral-axis-poles span:last-child { color: #a99bd0; opacity: .5; }
+.moral-axis.taste .moral-axis-poles .lit { color: #a99bd0; opacity: 1; }
+.moral-axis.taste .moral-axis-marker { background: #a99bd0; }
+
+/* Compressed. Seven rows had been running to two and a half screens. */
+.moral-axis-row { padding: 9px 0 11px; }
+.moral-axis-poles { margin-bottom: 7px; }
+.axis-group-head { margin: 18px 0 4px; }
+.compass-lede { margin-bottom: 14px; }
+.taste-axes-note { margin-top: 6px; }
+
+.compass-hint { margin: 8px 0 0; color: #7e766c; font-size: 12px; }

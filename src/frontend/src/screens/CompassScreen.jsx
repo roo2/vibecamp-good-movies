@@ -43,22 +43,12 @@ function CompassScreen({ access, shareToken, onContinue }) {
     <main className="app-page">
       <section className="phone-screen compass-screen">
         <header className="compass-header">
-          <span>Your compass · {profile.scores.length} axes</span>
+          <span>Your compass</span>
           <span className="compass-view-label">{profile.evidence.films_used} films read</span>
         </header>
 
         <h1>Where the films put you.</h1>
-        <p className="compass-lede">
-          This compass reads your choices against the values films explore.{' '}
-          {reading ? (
-            <>
-              We read <strong>{reading}</strong> against the moral propositions each
-              film argues for, and this is where that leaves you.
-            </>
-          ) : (
-            <>You have not told us about any films yet, so there is nothing to read you against.</>
-          )}
-        </p>
+        <p className="compass-lede">Implied by the films you chose.</p>
 
         {profile.is_provisional && (
           <p className="compass-provisional">
@@ -67,11 +57,15 @@ function CompassScreen({ access, shareToken, onContinue }) {
         )}
 
         <MoralAxes scores={profile.scores} companions={companions} />
+        <p className="compass-hint">
+          {companions.length
+            ? 'Tap a value to see the question, and where each of you landed.'
+            : 'Tap a value to see the question behind it.'}
+        </p>
 
         <TasteRead taste={profile.taste} />
 
         <div className="compass-action">
-          <p>{companions.length ? 'Tap an axis to see the question, and where each of you landed on it.' : 'Tap an axis to see the question behind it.'}</p>
           <button className="peach-button" type="button" onClick={onContinue}>
             See tonight’s list <span aria-hidden="true">→</span>
           </button>

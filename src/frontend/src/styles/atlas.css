@@ -935,3 +935,19 @@
   .film-explorer { grid-template-columns: 1fr; gap: 22px; }
   .explorer-plot { position: static; }
 }
+
+/* In the side panel both scales are narrow, and a three-column row squeezed
+   every pole label onto two or three lines. Labels take a row of their own and
+   the track spans beneath — applied to BOTH scales, since they share this
+   markup, so the fix cannot drift between them. */
+.explorer-panel .film-factor-scale {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "low high" "track track";
+  gap: 5px 14px; align-items: baseline;
+}
+.explorer-panel .film-factor-scale > em:first-of-type { grid-area: low; text-align: left; }
+.explorer-panel .film-factor-scale > em:last-of-type { grid-area: high; text-align: right; }
+.explorer-panel .film-factor-track { grid-area: track; margin-top: 2px; }
+.explorer-panel .film-factor > button,
+.explorer-panel .film-factor > span:first-child { padding-block: 4px; }
+.explorer-panel .film-factor-score { white-space: nowrap; }

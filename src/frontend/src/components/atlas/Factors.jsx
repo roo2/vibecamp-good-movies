@@ -109,12 +109,10 @@ export function Factors({ data }) {
           {shown === 1 ? 'One axis' : `${shown} axes`}, and where they came from
         </h2>
         <p className="atlas-note">
-          Nobody chose these and nobody chose how many there are. {data.scorer} wrote its own
-          bank of moral propositions from {data.films} films&apos; dialogue and scored those
-          films against it. The groups are the propositions the same films answer the same
-          way; the count is whatever survives the test below. Only then was the model asked
-          what each group is about — so a name describes a finished result rather than a
-          theory the propositions were sorted into.
+          Nobody chose these, or how many. {data.scorer} wrote its own propositions from{' '}
+          {data.films} films&apos; dialogue and scored the films against them; a group is the
+          propositions the same films answer the same way. Names came last, so each describes a
+          finished result rather than a theory the propositions were sorted into.
         </p>
 
         <p className="factor-headline">
@@ -131,15 +129,12 @@ export function Factors({ data }) {
 
         {!!data.unanimous_items && (
           <p className="atlas-note">
-            <b>Propositions every film agrees with are set aside first.</b> {data.unanimous_items} of
-            them here — the bank&apos;s median proposition had 98% of the films that engaged it on
-            one side, and 60 had no disagreement at all. A claim nobody argues with cannot tell two
-            films apart, so it can carry no moral dimension. Worse, it actively invents one: each
-            film is judged against its own rate of agreement, which turns a unanimously affirmed
-            proposition into a negated copy of how agreeable that film is. Those items correlated
-            −1.00 with a film&apos;s affirm rate and carried three times the weight of everything
-            else, so the correction for agreeableness was manufacturing an agreeableness factor out
-            of them. Removing them cut the count from 20 axes to {shown} and made what remains more
+            <b>Propositions every film agrees with are set aside first</b> —{' '}
+            {data.unanimous_items} here. A claim nobody argues with cannot tell two films apart,
+            and worse, invents a dimension: each film is judged against its own affirm rate, which
+            turns a unanimously affirmed item into a negated copy of how agreeable that film is.
+            Those items correlated −1.00 with affirm rate and carried three times the weight of
+            everything else. Removing them cut 20 axes to {shown} and made what remains more
             reproducible, not less.
           </p>
         )}

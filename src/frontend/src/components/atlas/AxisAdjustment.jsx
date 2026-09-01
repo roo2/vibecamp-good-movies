@@ -12,18 +12,27 @@ import React from 'react'
 // reading they were measured on; quoting them against a different bank would
 // attach evidence to axes it was never gathered from.
 
-const MEASURED = {
-  'dolphin-subs': [
-    { coherence: 0.89, separation: 15.9, person: 0.37, keep: true },
-    { coherence: 0.29, separation: 5.9, person: 0.31, keep: true },
-    { coherence: 0.51, separation: 1.8, person: 0.13, keep: false },
-  ],
+// Which reading these were measured on. Quoting them beside a different bank
+// would attach evidence to axes it was never gathered from.
+const MEASURED_ON = 'dolphin-subs'
+
+function num(found, key) {
+  const f = found?.[key]
+  return f ? (f.display ?? f.value) : null
 }
 
-export default function AxisAdjustment({ data }) {
+export default function AxisAdjustment({ data, taste }) {
   const axes = data?.factors || []
+  const found = taste?.findings
   if (!axes.length) return null
-  const verdicts = MEASURED[data?.bank_version]
+  const verdicts = data?.bank_version === MEASURED_ON
+    ? [1, 2, 3].map((i) => ({
+      coherence: num(found, `axis${i}_coherence`),
+      separation: num(found, `axis${i}_separation`),
+      person: num(found, `axis${i}_person`),
+      keep: i < 3,
+    }))
+    : null
   const anyAdjusted = axes.some((f) => typeof f.taste_explained === 'number')
   if (!anyAdjusted && !verdicts) return null
 
@@ -31,10 +40,8 @@ export default function AxisAdjustment({ data }) {
     <section className="axis-adjust" aria-labelledby="adjust">
       <h2 id="adjust">The axes, before and after taste is taken out</h2>
       <p>
-        Every moral position shown on this page has had the part predictable from a
-        film&apos;s taste position removed. The raw number confounds two things a reader cannot
-        separate by eye — what a film argues, and what kind of film it is — and how much is
-        removed differs enormously from one axis to the next.
+        Every moral position on this page has had the part predictable from taste removed. How
+        much that is differs enormously by axis.
       </p>
 
       <table className="figures">
@@ -60,9 +67,9 @@ export default function AxisAdjustment({ data }) {
                   {typeof f.taste_explained === 'number'
                     ? `${(f.taste_explained * 100).toFixed(0)}%` : '—'}
                 </td>
-                {verdicts && <td className="n">{v ? v.coherence.toFixed(2) : '—'}</td>}
-                {verdicts && <td className="n">{v ? `F = ${v.separation.toFixed(1)}` : '—'}</td>}
-                {verdicts && <td className="n">{v ? v.person.toFixed(2) : '—'}</td>}
+                {verdicts && <td className="n">{v?.coherence ?? '—'}</td>}
+                {verdicts && <td className="n">{v ? `F = ${v.separation}` : '—'}</td>}
+                {verdicts && <td className="n">{v?.person ?? '—'}</td>}
               </tr>
             )
           })}
@@ -73,22 +80,21 @@ export default function AxisAdjustment({ data }) {
         <div className="note open">
           <h3>Why the plot has two axes and not three</h3>
           <p>
-            The third fails three of these four tests. Its own propositions agree only weakly.
-            No ideological list separates along it — F = 1.8, where shuffling the films produces
-            2.0, so it does not clear what chance produces. And a person&apos;s position on it
-            cannot be told from noise: 0.13 against a floor of 0.27.
+            It fails three of the four. No ideological list separates along it —
+            F = {num(found, 'axis3_separation') ?? '—'}, where shuffling the films produces{' '}
+            {num(found, 'separation_null') ?? '—'}. And a person&apos;s position on it cannot be
+            told from noise: {num(found, 'axis3_person') ?? '—'} against a floor of{' '}
+            {num(found, 'person_floor') ?? '—'}.
           </p>
           <p>
-            It is a real grouping of propositions with no demonstrated validity, which is a
-            different thing from a moral dimension. It stays measured and visible here — this is
-            an audit page, and an axis that failed is a result — but it is not plotted and
-            nothing is recommended from it.
+            A real grouping of propositions with no demonstrated validity is not a moral
+            dimension. It stays visible here — this is an audit page — but nothing is plotted or
+            recommended from it.
           </p>
           <p className="atlas-note">
-            The second is the awkward one and is published anyway: its propositions are the
-            <em> least</em> coherent of the three at 0.29, yet it separates ideological lists
-            strongly and a person can be placed on it. Most likely it is correctly identified and
-            badly delimited.
+            The second is awkward and published anyway: its propositions are the <em>least</em>
+            coherent of the three, yet it separates ideological lists strongly and a person can be
+            placed on it. Most likely correctly identified and badly delimited.
           </p>
         </div>
       )}

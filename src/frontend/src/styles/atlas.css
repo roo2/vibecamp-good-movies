@@ -955,3 +955,12 @@
 /* No plot: the search and panel take the full width rather than sitting in a
    column sized for a chart that is not there. */
 .film-explorer.no-plot { grid-template-columns: 1fr; }
+
+/* Narrow: bigger type and heavier strokes, both in viewBox units, so they come
+   out the same physical size a phone needs rather than scaling away. */
+.film-plane.narrow .plane-pole { font-size: 19px; }
+.film-plane.narrow .plane-mark path { stroke-width: 2.2; }
+.film-plane.narrow .plane-mark.matched path,
+.film-plane.narrow .plane-mark.chosen path { stroke-width: 3.2; }
+.film-plane.narrow .plane-rule { stroke-width: 2.4; }
+.film-plane.narrow figcaption { font-size: 13px; }

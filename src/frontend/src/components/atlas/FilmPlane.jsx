@@ -12,8 +12,14 @@ import React from 'react'
 // SVG rather than canvas: five hundred points is nothing to a browser, and
 // hit-testing, focus and titles come free instead of being reimplemented.
 
-const PAD = 46
 const SIZE = 600
+// Padding and type are in viewBox units, so they shrink with the plot. At 390px
+// wide a 600-unit box renders 11-unit labels at about seven real pixels, which
+// is unreadable — so a narrow screen gets bigger units to end up with bigger
+// pixels. Measured against the rendered width rather than a breakpoint, because
+// the plot sits in a 600px column on the atlas and full-bleed on a phone.
+const PAD_WIDE = 46
+const PAD_NARROW = 62
 
 // One colour per axis, used for its rule, its ticks and both its pole labels,
 // so a label is tied to its axis by something other than position. Carried over
@@ -47,6 +53,20 @@ export default function FilmPlane({
   points, xAxis, yAxis, sets, viewer, onSelect, selectedId, matchIds,
 }) {
   const [hover, setHover] = React.useState(null)
+  const box = React.useRef(null)
+  const [narrow, setNarrow] = React.useState(false)
+
+  React.useEffect(() => {
+    const el = box.current
+    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const watch = new ResizeObserver(([entry]) => {
+      setNarrow(entry.contentRect.width < 520)
+    })
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [])
+
+  const PAD = narrow ? PAD_NARROW : PAD_WIDE
 
   const { placed, cx, cy, centroids } = React.useMemo(() => {
     if (!points || points.length < 2) return { placed: [], centroids: [] }
@@ -79,13 +99,13 @@ export default function FilmPlane({
       cx: sx(0) > PAD && sx(0) < SIZE - PAD ? sx(0) : null,
       cy: sy(0) > PAD && sy(0) < SIZE - PAD ? sy(0) : null,
     }
-  }, [points, sets])
+  }, [points, sets, PAD])
 
   if (!placed.length) return null
   const me = viewer && placed.find((p) => p.id === viewer.id)
 
   return (
-    <figure className="film-plane">
+    <figure className={narrow ? 'film-plane narrow' : 'film-plane'} ref={box}>
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img"
            aria-label={`${points.length} films placed on ${xAxis.high} against ${yAxis.high}`}>
         {cy != null && (
@@ -101,7 +121,8 @@ export default function FilmPlane({
           // A search match is drawn like a selection-in-waiting: findable at a
           // glance without pretending it has been opened.
           const matched = matchIds ? matchIds.has(p.id) : false
-          const r = p.id === selectedId ? 5.5 : matched ? 4.5 : 2.6
+          const base = narrow ? 4.2 : 2.6
+          const r = p.id === selectedId ? base + 3 : matched ? base + 2 : base
           return (
             <g key={p.id}
                className={`plane-mark${p.colour ? ' in-set' : ''}`

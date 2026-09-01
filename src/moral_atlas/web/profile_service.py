@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..config import settings
 from ..analysis import user_scores
 from .film_service import film_card
-from .schemas import MoralProfile, MoralScore, ProfileEvidence
+from .schemas import MoralProfile, MoralScore, ProfileEvidence, TasteReading
 from .store import user_pair_answers, user_rating_inputs
 
 # Below this, the profile is a shape drawn through too few points to trust. The
@@ -83,7 +83,63 @@ def moral_profile(user_id: str) -> MoralProfile:
         ),
         is_provisional=len({p.film_id for p in preferences} - set(unscored)) < MIN_FILMS_FOR_A_READ,
         summary=_summary(scored, len({p.film_id for p in preferences} - set(unscored))),
+        taste=[TasteReading(**row) for row in _taste_reading(preferences)],
     )
+
+
+def _taste_reading(preferences) -> list[dict]:
+    """Where someone's choices sit on the dimensions of taste.
+
+    The same preferences the moral profile is built from, read against a
+    different set of coordinates. A rejection pushes away exactly as it does
+    there: a person is as much defined by what they turned down.
+
+    Reported as a percentile of the corpus, because the raw component scores
+    differ by an order of magnitude between dimensions and would invite a reader
+    to compare numbers that are not comparable.
+    """
+    from .. import db
+
+    weights: dict[str, float] = {}
+    for pref in preferences:
+        if pref.weight and abs(pref.weight) >= abs(weights.get(pref.film_id, 0.0)):
+            weights[pref.film_id] = pref.weight
+    if not weights:
+        return []
+
+    try:
+        with db.connect(read_only=True) as con:
+            dims = con.execute(
+                "SELECT dim_id, pole_high, pole_low FROM taste_dimensions "
+                "WHERE status='named' ORDER BY variance DESC").fetchall()
+            places = con.execute("SELECT film_id, dim_id, position FROM film_taste").fetchall()
+    except Exception:
+        # Nothing derived yet. The screen simply omits the section.
+        return []
+
+    by_dim: dict[int, dict[str, float]] = {}
+    for row in places:
+        by_dim.setdefault(row["dim_id"], {})[row["film_id"]] = row["position"]
+
+    out = []
+    for dim in dims:
+        positions = by_dim.get(dim["dim_id"]) or {}
+        mine = [(positions[f], w) for f, w in weights.items() if f in positions]
+        if len(mine) < 3:
+            continue
+        total = sum(abs(w) for _p, w in mine)
+        if not total:
+            continue
+        mean = sum(p * w for p, w in mine) / total
+        corpus = sorted(positions.values())
+        below = sum(1 for v in corpus if v < mean)
+        out.append({
+            "dim_id": dim["dim_id"], "pole_high": dim["pole_high"],
+            "pole_low": dim["pole_low"],
+            "percentile": int(round(100.0 * below / len(corpus))),
+            "films_used": len(mine),
+        })
+    return out
 
 
 def _label(film_id: str) -> str:

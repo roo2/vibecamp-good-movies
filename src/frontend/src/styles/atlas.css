@@ -831,3 +831,44 @@
 .set-source a:hover { color: #f5efe6; }
 .set-centre { display: block; margin-block-start: 2px; color: #6a6158; }
 .set-centre b { color: #b3aa9e; font-variant-numeric: tabular-nums; font-weight: 500; }
+
+/* --- the film plane, and the taste section ------------------------------- */
+
+.film-plane { margin: 0; }
+.film-plane svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
+.plane-rule { stroke: var(--rule, #d9dce4); stroke-width: 1; stroke-dasharray: 3 4; }
+.plane-dot {
+  fill: var(--faint, #858c9b); opacity: 0.55; cursor: pointer;
+  transition: r 90ms ease, opacity 90ms ease;
+}
+.plane-dot:hover { opacity: 1; }
+.plane-dot.in-set { opacity: 0.95; }
+.plane-centre line { stroke-width: 2.5; stroke-linecap: round; }
+.plane-you { fill: none; stroke: currentColor; stroke-width: 2.5; }
+.plane-pole {
+  font-family: var(--sans, system-ui); font-size: 12px; font-weight: 600;
+  fill: var(--muted, #5b6373); letter-spacing: 0.02em;
+}
+.film-plane figcaption {
+  font-family: var(--sans, system-ui); font-size: 13px; color: var(--muted, #5b6373);
+  text-align: center; margin-top: 6px; min-height: 1.4em;
+}
+
+.plane-axis-pick { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.plane-axis-pick button {
+  font-family: var(--sans, system-ui); font-size: 13px; padding: 5px 11px;
+  border-radius: 999px; border: 1px solid var(--rule, #d9dce4);
+  background: transparent; color: var(--muted, #5b6373); cursor: pointer;
+}
+.plane-axis-pick button.on {
+  border-color: currentColor; color: var(--ink, #191d27); font-weight: 600;
+}
+
+.taste-how ol { padding-left: 1.1em; }
+.taste-how li { margin-bottom: 8px; }
+.taste-table td small.taste-tags {
+  display: block; font-family: var(--mono, ui-monospace); font-size: 11px;
+  color: var(--faint, #858c9b); margin-top: 3px;
+}
+.taste-lead-note, .taste-conclusion { max-width: 62ch; }
+.taste-conclusion { border-left: 3px solid currentColor; padding-left: 14px; }

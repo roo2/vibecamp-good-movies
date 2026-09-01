@@ -1,11 +1,12 @@
 import React from 'react'
 import Factors from '../components/atlas/Factors.jsx'
-import FilmCloud from '../components/atlas/FilmCloud.jsx'
+import FilmPlane from '../components/atlas/FilmPlane.jsx'
+import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
 import { filmPositions, loadAtlas, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
-import { loadFactors, loadFilmSets, loadModels } from '../services/factorService.js'
+import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
 // This page used to be built around one dimension set: eight axes a model was
@@ -37,10 +38,15 @@ function AtlasPage({ onBack, access }) {
   const [corpus, setCorpus] = React.useState(null)
   const [query, setQuery] = React.useState('')
   const [selectedId, setSelectedId] = React.useState(filmParam)
+  const [taste, setTaste] = React.useState(null)
+  // Which pair of axes the plane draws. Moral by default — this is an atlas of
+  // what films argue, and taste is the comparison rather than the subject.
+  const [space, setSpace] = React.useState('moral')
 
   React.useEffect(() => {
     let live = true
     loadFilmSets().then((p) => live && setFilmSets(p.sets || [])).catch(() => {})
+    loadTaste().then((t) => live && setTaste(t)).catch(() => {})
     return () => { live = false }
   }, [])
 
@@ -56,6 +62,46 @@ function AtlasPage({ onBack, access }) {
     for (const s of chosen) out[s.set_id] = setCentroid(positions, s.films)
     return out
   }, [factors, chosen])
+
+  // The two axes the plane draws, in whichever space is selected. Built here so
+  // the toggle changes one value and everything downstream follows.
+  const plane = React.useMemo(() => {
+    if (space === 'taste') {
+      const dims = (taste?.dimensions || []).filter((d) => d.status === 'named').slice(0, 2)
+      if (dims.length < 2) return null
+      const [dx, dy] = dims
+      const points = (taste.films || []).flatMap((f) => {
+        const x = f.position?.[String(dx.dim_id)]
+        const y = f.position?.[String(dy.dim_id)]
+        return typeof x === 'number' && typeof y === 'number'
+          ? [{ id: f.film_id, title: f.title, x, y }] : []
+      })
+      return {
+        points,
+        xAxis: { high: dx.pole_high, low: dx.pole_low },
+        yAxis: { high: dy.pole_high, low: dy.pole_low },
+      }
+    }
+    const list = (factors?.factors || []).slice(0, 2)
+    if (list.length < 2) return null
+    const byFilm = new Map()
+    list.forEach((factor, k) => {
+      for (const row of factor.distribution || []) {
+        const seen = byFilm.get(row.film_id) || { title: row.title, v: [] }
+        seen.v[k] = row.score
+        byFilm.set(row.film_id, seen)
+      }
+    })
+    const points = [...byFilm.entries()]
+      .filter(([, f]) => f.v.length === 2 && f.v.every((n) => typeof n === 'number'))
+      .map(([id, f]) => ({ id, title: f.title, x: f.v[0], y: f.v[1] }))
+    const label = (f, end) => f?.[`pole_${end}_label`] || f?.name || ''
+    return {
+      points,
+      xAxis: { high: label(list[0], 'high'), low: label(list[0], 'low') },
+      yAxis: { high: label(list[1], 'high'), low: label(list[1], 'low') },
+    }
+  }, [space, taste, factors])
 
   // The reader's own compass, if they followed the link from it. Read on
   // demand rather than always: the atlas is a public page and most of its
@@ -197,8 +243,27 @@ function AtlasPage({ onBack, access }) {
                   ))}
                 </div>
               )}
-              <FilmCloud factors={factors.factors} onSelect={setSelectedId}
-                         sets={chosen} viewer={viewerHere} />
+              {(taste?.dimensions || []).length > 0 && (
+                <div className="plane-axis-pick" role="tablist"
+                     aria-label="Which axes to plot">
+                  <button type="button" role="tab" aria-selected={space === 'moral'}
+                          className={space === 'moral' ? 'on' : undefined}
+                          onClick={() => setSpace('moral')}>
+                    What films argue
+                  </button>
+                  <button type="button" role="tab" aria-selected={space === 'taste'}
+                          className={space === 'taste' ? 'on' : undefined}
+                          onClick={() => setSpace('taste')}>
+                    What people choose by
+                  </button>
+                </div>
+              )}
+              {plane && (
+                <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
+                           sets={space === 'moral' ? chosen : []}
+                           viewer={space === 'moral' ? viewerHere : null}
+                           selectedId={selectedId} onSelect={setSelectedId} />
+              )}
               {wantsMe && !viewerHere && (
                 <p className="atlas-note">
                   {!access ? 'Take the survey first and this will show where you sit.'
@@ -242,6 +307,12 @@ function AtlasPage({ onBack, access }) {
           not here used to unmount the whole section — including the search box —
           so the reader was left staring at a gap with no way to undo the typing
           that caused it. */}
+      {/* After the axes, not before: the moral axes only survive being shown
+          next to taste, and a reader has to see taste at full strength for that
+          to mean anything. Outside the corpus gate, because it does not depend
+          on the film list having loaded. */}
+      <TasteDimensions taste={taste} />
+
       {!!(corpus?.films || []).length && (
         <section aria-labelledby="films">
           <h2 id="films">The corpus</h2>

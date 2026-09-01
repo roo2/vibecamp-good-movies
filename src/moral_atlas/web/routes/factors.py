@@ -153,6 +153,56 @@ def get_film_sets() -> dict[str, Any]:
     return {"sets": film_sets.all_sets()}
 
 
+# Also before /{scorer}, for the same reason.
+@router.get("/taste")
+def get_taste_dimensions() -> dict[str, Any]:
+    """The dimensions of taste, and where each film sits on them.
+
+    Served beside the moral axes rather than merged into them: they answer a
+    different question — who enjoys this, rather than what it argues — and the
+    relationship between the two is itself a result worth showing.
+
+    `status` travels with every dimension because three of them have no name.
+    1,128 human tags could not characterise them, and a reader has to be able to
+    tell "we know what this is" from "this is real and we do not know what it
+    is". Three more are franchise artefacts of a 546-film corpus and say so.
+    """
+    import json
+
+    with db.connect(read_only=True) as con:
+        try:
+            rows = con.execute(
+                "SELECT dim_id, pole_high, pole_low, variance, replication, evidence, "
+                "tags_high, tags_low, status, source FROM taste_dimensions "
+                "ORDER BY variance DESC").fetchall()
+            places = con.execute(
+                "SELECT t.film_id, t.dim_id, t.position, f.title, f.year "
+                "FROM film_taste t JOIN films f USING (film_id)").fetchall()
+        except Exception:
+            # Nothing derived yet: the atlas hides the section rather than erroring.
+            return {"dimensions": [], "films": []}
+
+    films: dict[str, dict[str, Any]] = {}
+    for row in places:
+        entry = films.setdefault(
+            row["film_id"], {"film_id": row["film_id"], "title": row["title"],
+                             "year": row["year"], "position": {}})
+        entry["position"][str(row["dim_id"])] = round(row["position"], 4)
+
+    return {
+        "dimensions": [
+            {"dim_id": r["dim_id"], "pole_high": r["pole_high"],
+             "pole_low": r["pole_low"], "variance": r["variance"],
+             "replication": r["replication"], "evidence": r["evidence"],
+             "tags_high": json.loads(r["tags_high"] or "[]"),
+             "tags_low": json.loads(r["tags_low"] or "[]"),
+             "status": r["status"], "source": r["source"]}
+            for r in rows
+        ],
+        "films": list(films.values()),
+    }
+
+
 @router.get("/{scorer}")
 def get_factors(
     scorer: str, variant: str = "subs", bank: str = "", n_iter: int = 200,

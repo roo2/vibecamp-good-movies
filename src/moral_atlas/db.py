@@ -469,6 +469,39 @@ CREATE TABLE IF NOT EXISTS film_neighbours (
 
 CREATE INDEX IF NOT EXISTS idx_film_neighbours_film
     ON film_neighbours (film_id, similarity DESC);
+
+-- The dimensions of TASTE, factored out of co-preference the same way the moral
+-- axes were factored out of proposition verdicts. They are stored beside the
+-- moral axes rather than mixed into them because they answer a different
+-- question — who enjoys this, not what it argues — and because the relationship
+-- between the two is the finding: they share about a quarter of their variance
+-- and the moral axes survive having these subtracted out.
+--
+-- `evidence` is the strongest tag correlation behind the name. A dimension whose
+-- best evidence is 0.21 is real and unnamed, and must be published saying so
+-- rather than carrying a confident label a model invented from film titles.
+CREATE TABLE IF NOT EXISTS taste_dimensions (
+    dim_id      INTEGER PRIMARY KEY,
+    pole_high   TEXT,
+    pole_low    TEXT,
+    variance    REAL,    -- share of preference variation it accounts for
+    replication REAL,    -- agreement across independent halves of the raters
+    evidence    REAL,    -- |r| of the strongest tag behind the name
+    tags_high   TEXT,    -- JSON array, the tags at each end
+    tags_low    TEXT,
+    -- 'named', 'unnamed' where no instrument could characterise it, or
+    -- 'franchise' where it describes one film series rather than a taste.
+    status      TEXT,
+    source      TEXT,
+    created_at  TEXT
+);
+
+CREATE TABLE IF NOT EXISTS film_taste (
+    film_id  TEXT NOT NULL REFERENCES films(film_id),
+    dim_id   INTEGER NOT NULL REFERENCES taste_dimensions(dim_id),
+    position REAL NOT NULL,
+    PRIMARY KEY (film_id, dim_id)
+);
 """
 
 

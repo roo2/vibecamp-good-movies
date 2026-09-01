@@ -499,3 +499,40 @@ def test_a_pooled_bank_names_both_authors_rather_than_itself(isolated_web_databa
     # A single-author bank must keep reporting its own author, or the mapping
     # has been applied too widely.
     assert wrote["dolphin-subs"] == "dolphin"
+
+
+def test_taste_dimensions_are_empty_rather_than_broken_before_derivation(isolated_web_database):
+    """The atlas hides the section when nothing has been derived. A database
+    built before these tables existed must still serve the page."""
+    from moral_atlas.web.routes import factors
+
+    body = factors.get_taste_dimensions()
+    assert body == {"dimensions": [], "films": []}
+
+
+def test_a_taste_dimension_carries_the_evidence_that_named_it(isolated_web_database):
+    """Three of the real dimensions have no name, because 1,128 tags could not
+    characterise them. `status` and `evidence` travel with every row so the page
+    can tell "we know what this is" from "this is real and we do not"."""
+    from moral_atlas.web.routes import factors
+
+    db = isolated_web_database
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO taste_dimensions (dim_id, pole_high, pole_low, variance, "
+            "replication, evidence, tags_high, tags_low, status) "
+            "VALUES (1,'Enjoyable trash','Acclaimed craft',0.234,1.0,0.73,"
+            "'[\"predictable\"]','[\"masterpiece\"]','named')")
+        con.execute(
+            "INSERT INTO taste_dimensions (dim_id, variance, replication, evidence, status) "
+            "VALUES (14,0.026,0.93,0.21,'unnamed')")
+        con.execute("INSERT INTO film_taste VALUES ('film-0', 1, 55.67)")
+
+    body = factors.get_taste_dimensions()
+    named, unnamed = body["dimensions"][0], body["dimensions"][1]
+    assert named["pole_high"] == "Enjoyable trash"
+    assert named["tags_high"] == ["predictable"], "tag evidence should arrive parsed"
+    assert unnamed["pole_high"] is None and unnamed["status"] == "unnamed"
+    # Ordered by how much variation each accounts for, largest first.
+    assert named["variance"] > unnamed["variance"]
+    assert body["films"][0]["position"] == {"1": 55.67}

@@ -61,3 +61,19 @@ export const CLEAR_MARGIN = 0.05
 export function isClear(factor) {
   return (factor.margin ?? 0) >= CLEAR_MARGIN
 }
+
+// The dimensions of taste, and where each film sits on them. Separate from the
+// moral axes on purpose: they are a different measurement of the same films —
+// who enjoys this, rather than what it argues — and the page shows the
+// relationship between the two rather than merging them into one list.
+//
+// Returns empty when nothing has been derived, so the section hides itself
+// rather than the page failing on a database that predates it.
+export async function loadTaste() {
+  try {
+    const body = await get('/api/factors/taste')
+    return { dimensions: body.dimensions || [], films: body.films || [] }
+  } catch {
+    return { dimensions: [], films: [] }
+  }
+}

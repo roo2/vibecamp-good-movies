@@ -444,6 +444,31 @@ CREATE TABLE IF NOT EXISTS film_set_members (
     film_id TEXT NOT NULL REFERENCES films(film_id),
     PRIMARY KEY (set_id, film_id)
 );
+
+-- Which films are liked by the same people, learned from an outside ratings
+-- corpus rather than from anything this project measured. It is the strongest
+-- predictor of preference found so far by a wide margin — 83% against 57% for
+-- the moral axes on the same test — and it knows nothing about morality, which
+-- is precisely why it is kept in its own table rather than mixed into the axes.
+--
+-- `source` records where the co-preference came from, because a similarity with
+-- no provenance cannot be checked, re-derived, or withdrawn if its licence
+-- requires it.
+CREATE TABLE IF NOT EXISTS film_neighbours (
+    film_id      TEXT NOT NULL REFERENCES films(film_id),
+    neighbour_id TEXT NOT NULL REFERENCES films(film_id),
+    similarity   REAL NOT NULL,
+    -- How many people rated both. A correlation over 20 shared raters and one
+    -- over 20,000 are not the same claim, and only the second should be
+    -- allowed to move a recommendation.
+    support      INTEGER,
+    source       TEXT,
+    created_at   TEXT,
+    PRIMARY KEY (film_id, neighbour_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_film_neighbours_film
+    ON film_neighbours (film_id, similarity DESC);
 """
 
 

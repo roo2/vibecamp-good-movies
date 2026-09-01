@@ -37,6 +37,7 @@ from typing import Any
 
 from .. import db
 from ..config import settings
+from ..analysis import neighbours as neighbour_scores
 from ..analysis import user_scores
 from .film_service import _recency as _film_recency
 from .store import user_pair_answers, user_rating_inputs
@@ -93,6 +94,16 @@ VARIATION = 0.05
 # empties the top of the deck of films from before 2000, and it leaves the choice
 # between modern films where it was — on how well they actually fit.
 RECENCY_WEIGHT = 0.40
+
+# The neighbour score replaces the moral alignment as the ranking, and the two
+# do not have the same spread: measured over every film for nineteen real
+# raters, alignment varies with sd 0.086 and the neighbour score with sd 0.147.
+# Dropped in raw, the wider score would make RECENCY_WEIGHT a third of what it
+# was calibrated to be, and VARIATION's noise correspondingly deafer. Scaling by
+# the ratio leaves every constant below meaning what it was tuned to mean, and
+# is a change of units rather than of ranking: within a single request it cannot
+# reorder anything.
+NEIGHBOUR_SCALE = 0.59
 
 
 def _sampled_order(ranked: list[dict[str, Any]], variation: float) -> list[dict[str, Any]]:
@@ -180,19 +191,33 @@ def _alignment(scores: dict[int, float], stances: dict[int, user_scores.Stance],
     return (numerator / (denominator + PRIOR) if denominator else 0.0), parts
 
 
-def _member_profiles(user_ids: list[str], dimensions, stances,
-                     baseline=None) -> dict[str, dict[int, float]]:
-    profiles = {}
+def _member_preferences(user_ids: list[str]) -> dict[str, list[Any]]:
+    """Everything a person has told us, per person, read once.
+
+    Both the moral profile and the neighbour score are built from this. They
+    used to be loaded separately, which meant two round trips per member and
+    two chances for them to disagree about what somebody had said.
+    """
+    preferences = {}
     for user_id in user_ids:
-        preferences = user_scores.rating_preferences(user_rating_inputs(user_id))
+        got = user_scores.rating_preferences(user_rating_inputs(user_id))
         for choice, film_ids in user_pair_answers(user_id):
-            preferences.extend(user_scores.pair_preferences(choice, film_ids))
-        profiles[user_id] = {
+            got.extend(user_scores.pair_preferences(choice, film_ids))
+        preferences[user_id] = got
+    return preferences
+
+
+def _member_profiles(user_ids: list[str], dimensions, stances,
+                     baseline=None, preferences=None) -> dict[str, dict[int, float]]:
+    preferences = preferences or _member_preferences(user_ids)
+    return {
+        user_id: {
             score.dim_id: score.score
             for score in user_scores.score_preferences(
-                preferences, dimensions, stances, baseline=baseline)
+                preferences[user_id], dimensions, stances, baseline=baseline)
         }
-    return profiles
+        for user_id in user_ids
+    }
 
 
 def _already_seen(user_ids: list[str]) -> set[str]:
@@ -231,8 +256,27 @@ def ranked_shortlist(
     stances = user_scores.factor_stances(
         settings().product_scorer, settings().product_variant, _factor_bank())
     baseline = user_scores.corpus_baseline(stances)
-    profiles = _member_profiles(user_ids, dimensions, stances, baseline)
+    preferences = _member_preferences(user_ids)
+    profiles = _member_profiles(user_ids, dimensions, stances, baseline, preferences)
     seen = _already_seen(user_ids)
+
+    # Co-preference ranks; the moral axes explain. On outside raters the
+    # neighbour score orders a liked film above a disliked one 83% of the time
+    # against the axes' 57%, and learned weights give the axes nothing to add on
+    # top of it. When the table is absent — an older database, a fresh test —
+    # `neighbours` is empty and the ranking silently falls back to the moral
+    # alignment it used before, which is the previous behaviour rather than an
+    # error.
+    neighbours = neighbour_scores.load()
+    member_weights = {user_id: neighbour_scores.preference_weights(preferences[user_id])
+                      for user_id in user_ids}
+    # Scored for every film once per member rather than per film per member:
+    # the shortlist walks the whole corpus, and the inner form of this loop was
+    # already the slowest thing the endpoint does.
+    cf_scores = {
+        user_id: neighbour_scores.score(member_weights[user_id], neighbours, stances)
+        for user_id in user_ids
+    } if neighbours else {}
 
     ranked = []
     for film_id, film_stances in stances.items():
@@ -248,17 +292,28 @@ def ranked_shortlist(
         # second-best film it can actually show.
         if not (film.get("artwork_url") or "").strip():
             continue
+        # Still computed for every film: the note is the only thing that can
+        # say WHY, and it is read off the moral axes whatever does the ranking.
         per_member = {user_id: _alignment(profiles[user_id], film_stances, baseline)
                       for user_id in user_ids}
         alignments = [value for value, _parts in per_member.values()]
+        if cf_scores:
+            merit = [NEIGHBOUR_SCALE * cf_scores[user_id].get(film_id, 0.0)
+                     for user_id in user_ids]
+        else:
+            merit = alignments
+        # The worst member, not the average, for the reason the room cares
+        # about: a film one person actively rejects is not a shared pick however
+        # much the other two like it.
         ranked.append({
             "id": film["film_id"],
             "title": film["title"],
             "year": film.get("year"),
             "description": film.get("description"),
             "artwork_url": film.get("artwork_url"),
-            "agreement": round(min(alignments), 4),
-            "mean_alignment": round(st.mean(alignments), 4),
+            "agreement": round(min(merit), 4),
+            "mean_alignment": round(st.mean(merit), 4),
+            "moral_agreement": round(min(alignments), 4),
             "note": _note(per_member, names, len(user_ids)),
         })
 

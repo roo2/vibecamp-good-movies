@@ -25,3 +25,9 @@ dist/
 # is an optional export rather than something the page depends on — and a
 # committed copy is wrong by default between pipeline runs.
 src/frontend/public/data/
+
+# MovieLens: licensed for non-commercial research and NOT redistributable.
+# The derived similarities in film_neighbours are aggregates and do ship; the
+# ratings themselves must not enter the repository.
+ml-25m*
+ml-latest*

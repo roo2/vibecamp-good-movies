@@ -13,7 +13,7 @@ import React from 'react'
 // hit-testing, focus and titles come free instead of being reimplemented.
 
 const PAD = 46
-const SIZE = 420
+const SIZE = 600
 
 // One colour per axis, used for its rule, its ticks and both its pole labels,
 // so a label is tied to its axis by something other than position. Carried over

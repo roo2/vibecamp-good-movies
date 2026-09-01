@@ -1,4 +1,5 @@
 import React from 'react'
+import FilmTaste from './FilmTaste.jsx'
 import FilmFactors from './FilmFactors.jsx'
 import { loadFilmEvidence } from '../../services/atlasService.js'
 
@@ -12,7 +13,7 @@ import { loadFilmEvidence } from '../../services/atlasService.js'
 //
 // What is left is what a reader actually needs to argue with a verdict: the film,
 // and the words it was scored from.
-function FilmDetail({ film, scorer, variant, bank, onClose }) {
+function FilmDetail({ film, scorer, variant, bank, taste, onClose }) {
   const [state, setState] = React.useState({ status: 'loading' })
 
   React.useEffect(() => {
@@ -69,6 +70,7 @@ function FilmDetail({ film, scorer, variant, bank, onClose }) {
           ))}
         </div>
       )}
+      <FilmTaste taste={taste} filmId={film.id} />
     </aside>
   )
 }

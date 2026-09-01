@@ -152,9 +152,9 @@ export function filterFilms(atlas, { query = '', filter = 'all' } = {}) {
 // Where every film sits on all three axes, joined from the per-axis
 // distributions the factors payload already carries.
 export function filmPositions(factors) {
-  const list = (factors || []).slice(0, 3)
+  const list = (factors || []).slice(0, 2)
   const out = new Map()
-  if (list.length < 3) return out
+  if (list.length < 2) return out
   list.forEach((factor, k) => {
     for (const row of factor.distribution || []) {
       const seen = out.get(row.film_id) || []
@@ -166,7 +166,7 @@ export function filmPositions(factors) {
     }
   })
   for (const [id, v] of out) {
-    if (v.length !== 3 || v.some((n) => typeof n !== 'number')) out.delete(id)
+    if (v.length !== 2 || v.some((n) => typeof n !== 'number')) out.delete(id)
   }
   return out
 }
@@ -179,4 +179,51 @@ export function setCentroid(positions, filmIds) {
   if (!found.length) return null
   const mean = [0, 1, 2].map((k) => found.reduce((a, v) => a + v[k], 0) / found.length)
   return { mean, n: found.length }
+}
+
+// The points and pole labels for the film plane, in either space.
+//
+// Lives here rather than in a page because two pages draw it. The corpus page
+// and the atlas already drifted apart once — one defaulted to the reading with
+// the most verdicts and the other to the reading the product uses, so the same
+// film showed different numbers depending on which page you opened.
+export function planePoints(factors, taste, space = 'moral') {
+  if (space === 'taste') {
+    const dims = (taste?.dimensions || []).filter((d) => d.status === 'named').slice(0, 2)
+    if (dims.length < 2) return null
+    const [dx, dy] = dims
+    const points = (taste.films || []).flatMap((f) => {
+      const x = f.position?.[String(dx.dim_id)]
+      const y = f.position?.[String(dy.dim_id)]
+      return typeof x === 'number' && typeof y === 'number'
+        ? [{ id: f.film_id, title: f.title, x, y }] : []
+    })
+    return {
+      points,
+      xAxis: { high: dx.pole_high, low: dx.pole_low },
+      yAxis: { high: dy.pole_high, low: dy.pole_low },
+    }
+  }
+
+  const list = (factors?.factors || []).slice(0, 2)
+  if (list.length < 2) return null
+  const byFilm = new Map()
+  list.forEach((factor, k) => {
+    for (const row of factor.distribution || []) {
+      const seen = byFilm.get(row.film_id) || { title: row.title, v: [] }
+      // Taste-adjusted where it exists. A raw position confounds what a film
+      // argues with what kind of film it is.
+      seen.v[k] = row.score_adjusted ?? row.score
+      byFilm.set(row.film_id, seen)
+    }
+  })
+  const points = [...byFilm.entries()]
+    .filter(([, f]) => f.v.length === 2 && f.v.every((n) => typeof n === 'number'))
+    .map(([id, f]) => ({ id, title: f.title, x: f.v[0], y: f.v[1] }))
+  const label = (f, end) => f?.[`pole_${end}_label`] || f?.name || ''
+  return {
+    points,
+    xAxis: { high: label(list[0], 'high'), low: label(list[0], 'low') },
+    yAxis: { high: label(list[1], 'high'), low: label(list[1], 'low') },
+  }
 }

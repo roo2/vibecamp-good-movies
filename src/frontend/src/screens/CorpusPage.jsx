@@ -1,7 +1,9 @@
 import React from 'react'
 import FilmFactors from '../components/atlas/FilmFactors.jsx'
-import { loadAtlas } from '../services/atlasService.js'
-import { loadModels } from '../services/factorService.js'
+import FilmPlane from '../components/atlas/FilmPlane.jsx'
+import FilmTaste from '../components/atlas/FilmTaste.jsx'
+import { loadAtlas, planePoints } from '../services/atlasService.js'
+import { loadFactors, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
 // Look up any film and read where it stands.
@@ -18,13 +20,34 @@ export default function CorpusPage({ onBack }) {
   const [query, setQuery] = React.useState('')
   const [selected, setSelected] = React.useState(null)
   const [error, setError] = React.useState(null)
+  const [factors, setFactors] = React.useState(null)
+  const [taste, setTaste] = React.useState(null)
 
   React.useEffect(() => {
     let live = true
     loadAtlas().then((payload) => live && setCorpus(payload)).catch((e) => live && setError(e.message))
-    loadModels().then(({ models }) => live && models.length && setReading(models[0])).catch(() => {})
+    // The reading the PRODUCT reads, which the server marks — not whichever
+    // has the most verdicts. Picking models[0] here while the atlas picked the
+    // product's reading meant the two pages quietly showed different data.
+    loadModels()
+      .then(({ models }) => {
+        if (live && models.length) setReading(models.find((m) => m.product) || models[0])
+      })
+      .catch(() => {})
+    loadTaste().then((t) => live && setTaste(t)).catch(() => {})
     return () => { live = false }
   }, [])
+
+  // The same axes the atlas draws, from the same reading, through the same
+  // helper — so a film cannot sit in one place here and another there.
+  React.useEffect(() => {
+    if (!reading) return undefined
+    let live = true
+    loadFactors(reading).then((f) => live && setFactors(f)).catch(() => {})
+    return () => { live = false }
+  }, [reading])
+
+  const plane = React.useMemo(() => planePoints(factors, taste, 'moral'), [factors, taste])
 
   const all = corpus?.films || []
   const matches = React.useMemo(() => {
@@ -95,6 +118,28 @@ export default function CorpusPage({ onBack }) {
               ? <FilmFactors scorer={reading.scorer} filmId={selected.id}
                              variant={reading.variant} bank={reading.bank_version} />
               : <p className="atlas-note">No model has read the corpus yet.</p>}
+            <FilmTaste taste={taste} filmId={selected.id} />
+          </section>
+        )}
+
+        {/* Where it sits among everything else. A film's axis scores mean
+            little as bare numbers — "0.47 on redemptive" is only legible next
+            to where every other film landed. */}
+        {plane && (
+          <section className="corpus-plane">
+            <h2>{selected ? `Where ${selected.title} sits` : 'The corpus, on two axes'}</h2>
+            <p className="atlas-note">
+              {selected
+                ? 'Highlighted among every film that has been read. Click any other to open it.'
+                : 'Every film that has been read, positioned with taste held constant. '
+                  + 'Click one to open it.'}
+            </p>
+            <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
+                       selectedId={selected?.id}
+                       onSelect={(id) => {
+                         const film = all.find((f) => f.id === id)
+                         if (film) { setSelected(film); setQuery('') }
+                       }} />
           </section>
         )}
 

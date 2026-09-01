@@ -836,7 +836,7 @@
 
 /* The plot is a reading aid, not a centrepiece: at full column width the dots
    spread so far apart that no cluster is visible as a cluster. */
-.film-plane { margin: 0 auto; max-width: 420px; }
+.film-plane { margin: 0 auto; max-width: 600px; }
 .film-plane svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
 .plane-rule { stroke-width: 1.5; opacity: 0.5; }
 .plane-mark path {
@@ -880,3 +880,30 @@
 
 .axis-adjust td small { color: var(--faint, #858c9b); font-style: italic; }
 .axis-adjust tr.axis-dropped { opacity: 0.62; }
+
+/* A film's taste position, shown beside its moral one. Percentiles, because the
+   raw component scores differ by an order of magnitude between dimensions. */
+.film-taste { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule, #d9dce4); }
+.film-taste h4 { font-family: var(--sans, system-ui); margin: 0 0 4px; }
+.film-taste ul { list-style: none; padding: 0; margin: 14px 0 8px; }
+.film-taste li {
+  display: grid; grid-template-columns: minmax(0, 1fr) 2.4fr minmax(0, 1fr) auto;
+  align-items: center; gap: 10px; margin-bottom: 9px;
+  font-family: var(--sans, system-ui); font-size: 12px;
+}
+.film-taste-low { text-align: right; color: var(--muted, #5b6373); }
+.film-taste-high { color: var(--muted, #5b6373); }
+.film-taste-track {
+  position: relative; height: 3px; border-radius: 2px;
+  background: var(--rule, #d9dce4);
+}
+.film-taste-track i {
+  position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+  background: currentColor; transform: translate(-50%, -50%);
+}
+.film-taste b { font-variant-numeric: tabular-nums; font-size: 13px; }
+.film-taste b small { font-size: 10px; color: var(--faint, #858c9b); margin-left: 1px; }
+@media (max-width: 520px) {
+  .film-taste li { grid-template-columns: 1fr auto; }
+  .film-taste-track { grid-column: 1 / -1; }
+}

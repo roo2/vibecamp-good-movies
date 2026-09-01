@@ -406,9 +406,17 @@ def score_preferences(
 # into the floor. Clearing a permutation null and surviving a change of sample
 # are different tests, and most of the twenty pass only the first.
 #
-# So three, and the atlas still shows all twenty — auditing the corpus is what
-# that page is for.
-PRODUCT_AXES = 3
+# So three by that test — and then the third failed three later ones. Its own
+# propositions agree only weakly (0.51); no ideological list separates along it
+# (F = 1.8, where shuffling the films produces 2.0, so it does not clear what
+# chance produces); and a person's position on it cannot be told from noise
+# (0.13 against a floor of 0.27). It also buys nothing: the leading axis alone
+# predicts as well as all three together.
+#
+# A real grouping of propositions with no demonstrated validity is not a moral
+# dimension. So two, and the atlas still shows the rest with its evidence
+# beside it — auditing the corpus is what that page is for.
+PRODUCT_AXES = 2
 
 # A factor needs items before it is a factor. Three of the twenty axes the last
 # rebuild produced were built from a SINGLE proposition, and one of those was

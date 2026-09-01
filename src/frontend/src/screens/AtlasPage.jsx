@@ -5,7 +5,7 @@ import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
-import { filmPositions, loadAtlas, setCentroid } from '../services/atlasService.js'
+import { filmPositions, loadAtlas, planePoints, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
@@ -66,46 +66,8 @@ function AtlasPage({ onBack, access }) {
 
   // The two axes the plane draws, in whichever space is selected. Built here so
   // the toggle changes one value and everything downstream follows.
-  const plane = React.useMemo(() => {
-    if (space === 'taste') {
-      const dims = (taste?.dimensions || []).filter((d) => d.status === 'named').slice(0, 2)
-      if (dims.length < 2) return null
-      const [dx, dy] = dims
-      const points = (taste.films || []).flatMap((f) => {
-        const x = f.position?.[String(dx.dim_id)]
-        const y = f.position?.[String(dy.dim_id)]
-        return typeof x === 'number' && typeof y === 'number'
-          ? [{ id: f.film_id, title: f.title, x, y }] : []
-      })
-      return {
-        points,
-        xAxis: { high: dx.pole_high, low: dx.pole_low },
-        yAxis: { high: dy.pole_high, low: dy.pole_low },
-      }
-    }
-    const list = (factors?.factors || []).slice(0, 2)
-    if (list.length < 2) return null
-    const byFilm = new Map()
-    list.forEach((factor, k) => {
-      for (const row of factor.distribution || []) {
-        const seen = byFilm.get(row.film_id) || { title: row.title, v: [] }
-        // Taste-adjusted where it exists. A raw position confounds what a film
-        // argues with what kind of film it is, and the adjusted one is what
-        // every other number on this page is now quoted in.
-        seen.v[k] = row.score_adjusted ?? row.score
-        byFilm.set(row.film_id, seen)
-      }
-    })
-    const points = [...byFilm.entries()]
-      .filter(([, f]) => f.v.length === 2 && f.v.every((n) => typeof n === 'number'))
-      .map(([id, f]) => ({ id, title: f.title, x: f.v[0], y: f.v[1] }))
-    const label = (f, end) => f?.[`pole_${end}_label`] || f?.name || ''
-    return {
-      points,
-      xAxis: { high: label(list[0], 'high'), low: label(list[0], 'low') },
-      yAxis: { high: label(list[1], 'high'), low: label(list[1], 'low') },
-    }
-  }, [space, taste, factors])
+  const plane = React.useMemo(
+    () => planePoints(factors, taste, space), [space, taste, factors])
 
   // The reader's own compass, if they followed the link from it. Read on
   // demand rather than always: the atlas is a public page and most of its
@@ -115,7 +77,7 @@ function AtlasPage({ onBack, access }) {
   // of them, and plotting a person derived from deepseek's axes onto dolphin's
   // would put them somewhere meaningless with no sign that anything was wrong.
   const viewerHere = React.useMemo(() => {
-    if (!viewer || viewer.scores?.length !== 3) return null
+    if (!viewer || (viewer.scores?.length || 0) < 2) return null
     if (viewer.dim_version !== selected?.scorer) return null
     if (viewer.bank_version !== selected?.bank_version) return null
     return { scores: viewer.scores.map((s) => s.score), label: 'You' }
@@ -301,7 +263,7 @@ function AtlasPage({ onBack, access }) {
                         {c.mean.map((m, k) => (
                           <b key={k}>{m >= 0 ? '+' : '−'}{Math.abs(m).toFixed(3)}</b>
                         )).reduce((a, b) => [a, ' / ', b])}
-                        {' '}on {factors.factors.slice(0, 3).map((f) => f.name).join(', ')}.
+                        {' '}on {factors.factors.slice(0, 2).map((f) => f.name).join(', ')}.
                       </span>
                     )}
                   </p>
@@ -357,6 +319,7 @@ function AtlasPage({ onBack, access }) {
         <FilmDetail
           film={(corpus?.films || []).find((f) => f.id === selectedId)}
           scorer={selected?.scorer}
+          taste={taste}
           variant={selected?.variant}
           bank={selected?.bank_version}
           onClose={() => setSelectedId(null)}

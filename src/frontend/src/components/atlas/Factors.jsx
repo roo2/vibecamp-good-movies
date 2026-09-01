@@ -51,9 +51,7 @@ function Factor({ factor, reading }) {
 
       {factor.coherent === false && (
         <p className="factor-warning">
-          The model that named this would not call it coherent: these propositions are
-          answered together by the same films without obviously sharing a moral question.
-          Kept rather than hidden — a statistical factor that resists naming is a result.
+          The namer would not call this coherent: the same films answer these together with no obvious shared question. Kept, not hidden — that is a result.
         </p>
       )}
 
@@ -79,8 +77,7 @@ function Factor({ factor, reading }) {
           <p className="atlas-note">Tap any film to read the propositions it answered on this axis.</p>
 
           <p className="factor-examples-label">
-            The propositions this factor is made of. Films answered these together —
-            that co-movement is the axis; the name above is only a description of it.
+            The propositions this axis is made of. Films answered them together — that is the axis. The name is only a description.
           </p>
           <FactorPropositions propositions={factor.propositions}
                               poleHigh={factor.pole_high_label}
@@ -143,11 +140,7 @@ export function Factors({ data }) {
           <>
             <p className="atlas-note">
               <b>Beating chance is not the same as being real.</b> The test below asks whether a
-              factor beats what the margins give away free in <em>this</em> corpus. A stricter
-              question is whether it survives a different one: split the films in half at random,
-              run the whole analysis separately on each half, and measure how much of the same
-              variation both halves describe. A factor can pass the first test and fail this one,
-              and most of them do.
+              factor beats what the margins give away free in <em>this</em> corpus. A stricter test: split the films in half at random and run the analysis separately on each. Most factors pass the first test and fail this one.
             </p>
             <ul className="replication">
               {data.replication.map((row) => (
@@ -172,14 +165,7 @@ export function Factors({ data }) {
         )}
 
         <p className="atlas-note">
-          A factor is kept only if its eigenvalue beats the 95th percentile of a null built by
-          permuting each proposition&apos;s own column — which destroys the relationships
-          between propositions while leaving each one&apos;s engagement rate and affirm/deny
-          balance untouched. So it has to explain more than the amount of structure those
-          margins hand out for free. Everything that passes is on this page, however narrowly
-          it got through — the app itself shows only the strongest few, because somebody
-          deciding what to watch is not auditing a corpus, but that is a choice about a screen
-          and not about what counts as a finding.
+          A factor is kept only if it beats the 95th percentile of a null that shuffles each proposition&apos;s own answers, leaving how often it is engaged and affirmed untouched. So it has to explain more than the margins hand out free. Everything that passes is here; the app shows only the strongest few.
         </p>
 
         <Scree eigenvalues={data.eigenvalues} thresholds={data.null_threshold} />
@@ -187,19 +173,10 @@ export function Factors({ data }) {
         <p className="atlas-note">
           <b>How silence is handled.</b> A film&apos;s verdict is recorded only for the
           propositions it takes a position on, and two propositions are compared over the
-          films that answered <em>both</em> — so what is measured is agreement, not which
-          films happen to talk about the same things. Each film is also judged against its
-          own rate of agreement, because the scorers say &ldquo;affirms&rdquo; far more often
-          than &ldquo;denies&rdquo; and that habit would otherwise be the largest pattern in
-          the data. Read the other way, with silence counted as an answer, the biggest axis
-          turned out to be how talkative a film is.
+          films that answered <em>both</em> — so what is measured is agreement, not which films raise the same subjects. Each film is judged against its own affirm rate too: the scorers say &ldquo;affirms&rdquo; far more often than &ldquo;denies&rdquo;. Counting silence as an answer instead made the biggest axis how talkative a film is.
         </p>
         <p className="atlas-note">
-          <b>Where this is weakest.</b> The count holds up as long as silence is a property
-          of films — a film argues about more or fewer things — rather than scattered at
-          random over propositions. On the second kind of data it inflates badly, and this
-          corpus is the first kind, but that is an assumption the number rests on rather than
-          something it proves.
+          <b>Where this is weakest.</b> This holds while silence is a property of films — some argue about more things than others — rather than scattered at random. An assumption the count rests on, not something it proves.
         </p>
       </section>
 

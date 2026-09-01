@@ -54,7 +54,16 @@ function FilmDetail({ film, scorer, variant, bank, taste, onClose }) {
       {state.status === 'ready' && (
         <div className="detail-field evidence">
           <span>Read from</span>
-          {state.document.layers.map((layer) => (
+          {/* Only the layer the axes were SCORED from. The document carries a
+              plot summary and a critical-reception section too, and showing
+              them here implied they fed the positions — they did not, and
+              deliberately so: a plot summary is an editor's account of which
+              events mattered, and reception is critics' moral opinions
+              outright. Scoring on either measures the writer, not the film. */}
+          {(state.document.layers || [])
+            .filter((layer) => layer.layer === variant
+              || /dialogue|subtitle|subs/i.test(`${layer.layer} ${layer.label}`))
+            .map((layer) => (
             <details key={layer.layer}>
               <summary>
                 {layer.label}

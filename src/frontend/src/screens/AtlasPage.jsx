@@ -36,7 +36,6 @@ function AtlasPage({ onBack, access }) {
   const [activeSets, setActiveSets] = React.useState(() => new Set())
   const [factorsError, setFactorsError] = React.useState(null)
   const [corpus, setCorpus] = React.useState(null)
-  const [query, setQuery] = React.useState('')
   const [selectedId, setSelectedId] = React.useState(filmParam)
   const [taste, setTaste] = React.useState(null)
   // Which pair of axes the plane draws. Moral by default — this is an atlas of
@@ -125,12 +124,6 @@ function AtlasPage({ onBack, access }) {
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  const films = React.useMemo(() => {
-    const all = corpus?.films || []
-    const needle = query.trim().toLowerCase()
-    if (!needle) return all
-    return all.filter((film) => `${film.title} ${film.year ?? ''}`.toLowerCase().includes(needle))
-  }, [corpus, query])
 
   if (models === null) {
     return <main className="app-page"><p className="message">Reading the atlas…</p></main>
@@ -250,7 +243,7 @@ function AtlasPage({ onBack, access }) {
               })}
             </>
           )}
-          <AxisAdjustment data={factors} />
+          <AxisAdjustment data={factors} taste={taste} />
           <Factors data={factors} />
         </>
       )}
@@ -259,48 +252,6 @@ function AtlasPage({ onBack, access }) {
           not here used to unmount the whole section — including the search box —
           so the reader was left staring at a gap with no way to undo the typing
           that caused it. */}
-      {!!(corpus?.films || []).length && (
-        <section aria-labelledby="films">
-          <h2 id="films">The corpus</h2>
-          <p className="atlas-note">
-            {(corpus?.films || []).length} films. Open one to read the dialogue every claim about
-            it was scored from — the point of showing it is that a reader can disagree with the
-            verdict.
-          </p>
-          <input
-            className="atlas-search"
-            value={query}
-            placeholder="Find a film"
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          {!films.length && (
-            <p className="atlas-note">
-              Nothing here matches &ldquo;{query.trim()}&rdquo;. The corpus is
-              {' '}{(corpus?.films || []).length} films, so a lot of cinema is missing from it.
-            </p>
-          )}
-          <ul className="film-list">
-            {films.slice(0, 60).map((film) => (
-              <li key={film.id}>
-                <button type="button" onClick={() => setSelectedId(film.id)}>
-                  <b>{film.title}</b> <span>{film.year}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {films.length > 60 && (
-            <p className="atlas-note">Showing 60 of {films.length} — search to narrow.</p>
-          )}
-        </section>
-      )}
-
-
-      <footer className="atlas-footer">
-        <p>
-          Read live from the store — there is no published snapshot to go stale.
-          {corpus?.generated_at && ` Corpus read ${new Date(corpus.generated_at).toLocaleString()}.`}
-        </p>
-      </footer>
     </main>
   )
 }

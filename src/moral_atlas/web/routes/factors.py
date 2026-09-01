@@ -187,9 +187,15 @@ def get_taste_dimensions() -> dict[str, Any]:
             places = con.execute(
                 "SELECT t.film_id, t.dim_id, t.position, f.title, f.year "
                 "FROM film_taste t JOIN films f USING (film_id)").fetchall()
+            # The measured figures the page quotes. They used to be typed into
+            # the components, where a number that changed could go on being
+            # asserted with nothing to show it had.
+            measured = con.execute(
+                "SELECT key, value, display, note, source, measured_at "
+                "FROM findings").fetchall()
         except Exception:
             # Nothing derived yet: the atlas hides the section rather than erroring.
-            return {"dimensions": [], "films": []}
+            return {"dimensions": [], "films": [], "findings": {}}
 
     films: dict[str, dict[str, Any]] = {}
     for row in places:
@@ -209,6 +215,12 @@ def get_taste_dimensions() -> dict[str, Any]:
             for r in rows
         ],
         "films": list(films.values()),
+        "findings": {
+            r["key"]: {"value": r["value"], "display": r["display"],
+                       "note": r["note"], "source": r["source"],
+                       "measured_at": r["measured_at"]}
+            for r in measured
+        },
     }
 
 

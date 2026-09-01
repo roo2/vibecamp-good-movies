@@ -512,6 +512,26 @@ CREATE TABLE IF NOT EXISTS film_taste (
 -- adjusting changes the first noticeably and the second barely — which is
 -- itself worth being able to see, and is why `taste_explained` is stored
 -- per axis rather than assumed uniform.
+-- Measured results the pages quote, with the provenance to check them.
+--
+-- These used to be string literals in the interface — "57%", "0.81", "162,265"
+-- typed into JSX. That is fine until a number changes, at which point the page
+-- asserts a figure nothing produced any more and there is no way to tell by
+-- looking. Storing them means a reader can ask where a number came from and an
+-- editor can see which are stale.
+--
+-- Not everything here can be recomputed on demand: some come from experiments
+-- that take an hour over an outside corpus. `measured_at` and `source` are the
+-- honest substitute for liveness.
+CREATE TABLE IF NOT EXISTS findings (
+    key         TEXT PRIMARY KEY,
+    value       REAL NOT NULL,
+    display     TEXT,          -- preformatted, when the raw number reads badly
+    note        TEXT,          -- what it means, in one line
+    source      TEXT,          -- what produced it
+    measured_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS film_moral_adjusted (
     scorer          TEXT NOT NULL,
     variant         TEXT NOT NULL,

@@ -507,7 +507,7 @@ def test_taste_dimensions_are_empty_rather_than_broken_before_derivation(isolate
     from moral_atlas.web.routes import factors
 
     body = factors.get_taste_dimensions()
-    assert body == {"dimensions": [], "films": []}
+    assert body == {"dimensions": [], "films": [], "findings": {}}
 
 
 def test_a_taste_dimension_carries_the_evidence_that_named_it(isolated_web_database):
@@ -577,3 +577,20 @@ def test_a_reading_with_no_taste_coverage_still_serves(isolated_web_database):
     from moral_atlas.analysis import factor_detail
 
     assert factor_detail._taste_adjusted("nobody", "nothing", "subs") == ({}, {})
+
+
+def test_quoted_figures_come_from_the_database_with_their_provenance(isolated_web_database):
+    """These were string literals in the components. A number that changed could
+    go on being asserted by the page with nothing to show it had."""
+    from moral_atlas.web.routes import factors
+
+    db = isolated_web_database
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO findings (key, value, display, note, source, measured_at) "
+            "VALUES ('ml_raters', 162265, '162,265', 'outside raters', 'MovieLens', '2026-09-01')")
+
+    found = factors.get_taste_dimensions()["findings"]["ml_raters"]
+    assert found["display"] == "162,265"
+    # Provenance travels with the number, or it cannot be checked.
+    assert found["source"] and found["measured_at"]

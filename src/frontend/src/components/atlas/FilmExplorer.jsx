@@ -24,6 +24,24 @@ export default function FilmExplorer({
   sets, viewer, space = 'moral', onSpaceChange,
 }) {
   const [query, setQuery] = React.useState('')
+  const panel = React.useRef(null)
+
+  // Choosing a film has to LOOK like it did something. The matches list used to
+  // stay on screen unchanged while the panel opened underneath it — and on a
+  // phone the panel is below the fold, so the whole interaction read as a click
+  // that did nothing. Clearing the search is the confirmation.
+  const choose = React.useCallback((id) => {
+    onSelect(id)
+    if (!id) return
+    setQuery('')
+    // Stacked layout puts the panel past the plot; bring it into view.
+    window.requestAnimationFrame(() => {
+      const el = panel.current
+      if (el && window.matchMedia('(max-width: 900px)').matches) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  }, [onSelect])
   const plane = React.useMemo(
     () => planePoints(factors, taste, space), [factors, taste, space])
 
@@ -76,7 +94,7 @@ export default function FilmExplorer({
           <ul className="film-list">
             {listed.map((f) => (
               <li key={f.id}>
-                <button type="button" onClick={() => onSelect(f.id)}>
+                <button type="button" onClick={() => choose(f.id)}>
                   <b>{f.title}</b> <span>{f.year}</span>
                 </button>
               </li>
@@ -92,7 +110,7 @@ export default function FilmExplorer({
                   <React.Fragment key={f.id}>
                     {i > 0 && ', '}
                     <button type="button" className="link-button"
-                            onClick={() => onSelect(f.id)}>{f.title}</button>
+                            onClick={() => choose(f.id)}>{f.title}</button>
                   </React.Fragment>
                 ))}</>
               : <>Nothing matches &ldquo;{query.trim()}&rdquo;. The corpus is {all.length} films,
@@ -104,10 +122,10 @@ export default function FilmExplorer({
                    sets={space === 'moral' ? sets : []}
                    viewer={space === 'moral' ? viewer : null}
                    selectedId={selectedId} matchIds={matchIds}
-                   onSelect={onSelect} />}
+                   onSelect={choose} />}
       </div>
 
-      <div className="explorer-panel">
+      <div className="explorer-panel" ref={panel}>
         {title ? (
           // FilmDetail already carries the axes, the taste position and the
           // dialogue a claim was read from. Rendering its parts again here put
@@ -119,9 +137,8 @@ export default function FilmExplorer({
             onClose={() => onSelect(null)} />
         ) : (
           <p className="atlas-note explorer-empty">
-            Pick a film — click a point, or search. Every dot is one film, placed by what its
-            dialogue argues with taste held constant, so two films near each other are making
-            similar moral claims rather than merely appealing to the same people.
+            Every dot is one film, placed by what its dialogue argues. Films near each other
+            make similar moral claims.
           </p>
         )}
       </div>

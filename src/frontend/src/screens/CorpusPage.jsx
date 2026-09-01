@@ -63,9 +63,8 @@ export default function CorpusPage({ onBack }) {
 
       <div className="atlas-wrap">
         <p className="atlas-lede">
-          Every film here was read for the moral positions it takes, from its own dialogue —
-          no reviews, no synopsis. Search {all.length ? `${all.length} films` : 'the corpus'} and
-          open one to see where it lands on each axis, and the propositions that put it there.
+          Every film here was read from its own dialogue — no reviews, no synopsis.
+          Search {all.length ? `${all.length} films` : 'the corpus'}, or pick a point.
         </p>
 
         {error && <p className="atlas-note">{error}</p>}

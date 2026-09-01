@@ -615,3 +615,39 @@ def test_a_film_in_the_app_is_shown_on_the_product_axes_only(monkeypatch):
     assert [f["factor_id"] for f in payload["factors"]] == list(range(PRODUCT_AXES))
     # Everything else about the film survives the cap.
     assert payload["title"] == "A film"
+
+
+def test_a_stale_adjusted_null_test_is_withheld_rather_than_drawn(isolated_web_database):
+    """Two hundred permutations over a residualised matrix is too slow for a
+    page load, so the answer is stored — and anything stored can go stale. A
+    chart drawn from a row whose corpus has moved asserts a result nothing
+    produced any more, with nothing on screen to say so. It is withheld until
+    `atlas taste-null` runs again."""
+    from moral_atlas.analysis import taste_null
+
+    db = isolated_web_database
+    current = taste_null.fingerprint("m", "subs", "b")
+    row = ["m", "subs", "b", 543, "[13.1]", "[4.4]", "[16.0]", "[4.4]"]
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO null_test_adjusted (scorer, variant, bank_version, films, "
+            "eigenvalues, thresholds, control_eigen, control_thresh, source_fingerprint) "
+            "VALUES (?,?,?,?,?,?,?,?,?)", [*row, current])
+
+    assert taste_null.load("m", "subs", "b")["films"] == 543
+
+    with db.connect() as con:
+        con.execute("UPDATE null_test_adjusted SET source_fingerprint='moved'")
+    assert taste_null.load("m", "subs", "b") is None, "a stale row must not be served"
+
+
+def test_the_fingerprint_moves_when_the_taste_placements_do(isolated_web_database):
+    """Residuals are computed from the taste placements, so a changed placement
+    means a different test — and the stored answer has to know that."""
+    from moral_atlas.analysis import taste_null
+
+    db = isolated_web_database
+    before = taste_null.fingerprint("m", "subs", "b")
+    with db.connect() as con:
+        con.execute("INSERT INTO film_taste VALUES ('film-0', 1, 0.5)")
+    assert taste_null.fingerprint("m", "subs", "b") != before

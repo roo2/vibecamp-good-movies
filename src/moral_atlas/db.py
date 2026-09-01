@@ -532,6 +532,33 @@ CREATE TABLE IF NOT EXISTS findings (
     measured_at TEXT
 );
 
+-- The same permutation test the atlas draws, run again on verdicts with the
+-- taste-predictable part subtracted out. Stored rather than computed on demand:
+-- it is two hundred permutations over a residualised matrix, which is far too
+-- slow to sit inside a page load.
+--
+-- `films` is recorded because the adjusted run can only use films that have a
+-- taste position, and a chart comparing 565 films against 543 would show a drop
+-- that is partly just the smaller corpus. The control — the same films with
+-- taste left in — is stored alongside so the comparison is like for like.
+CREATE TABLE IF NOT EXISTS null_test_adjusted (
+    scorer          TEXT NOT NULL,
+    variant         TEXT NOT NULL,
+    bank_version    TEXT NOT NULL,
+    films           INTEGER,
+    eigenvalues     TEXT,   -- JSON array, taste removed
+    thresholds      TEXT,   -- JSON array, the null it is measured against
+    control_eigen   TEXT,   -- JSON array, same films, taste left in
+    control_thresh  TEXT,
+    -- What this was computed FROM. A stored answer whose inputs have moved is
+    -- worse than none: it asserts a result nothing produced any more, and
+    -- nothing about looking at the chart says so. `taste_null.load` compares
+    -- this against the live inputs and returns nothing when they differ.
+    source_fingerprint TEXT,
+    computed_at     TEXT,
+    PRIMARY KEY (scorer, variant, bank_version)
+);
+
 CREATE TABLE IF NOT EXISTS film_moral_adjusted (
     scorer          TEXT NOT NULL,
     variant         TEXT NOT NULL,
@@ -582,6 +609,10 @@ def init_db() -> None:
         _add_column_if_missing(con, "films", "description", "TEXT")
         _add_column_if_missing(con, "films", "artwork_url", "TEXT")
         _add_column_if_missing(con, "film_sets", "url", "TEXT")
+        # Added after the table shipped: rows written before this carry no
+        # fingerprint, so `taste_null.load` treats them as stale and the atlas
+        # draws no adjusted chart until `atlas taste-null` runs again.
+        _add_column_if_missing(con, "null_test_adjusted", "source_fingerprint", "TEXT")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
         _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")

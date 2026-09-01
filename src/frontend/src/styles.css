@@ -264,3 +264,15 @@ button { cursor: pointer; }
   margin: 26px 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .04em;
   text-transform: uppercase; color: #7e766c;
 }
+
+/* Taste rows use the compass axis geometry, so they line up with the moral ones
+   exactly. What they do NOT take is the pole colours: those two colours mean
+   "this is a moral axis, and it is the one the plot draws in this colour".
+   Taste is not a moral claim and should not look like one. */
+.moral-axis.taste .moral-axis-poles span:first-child,
+.moral-axis.taste .moral-axis-poles span:last-child { color: #b3aa9e; opacity: .55; }
+.moral-axis.taste .moral-axis-poles .lit { color: #d5ccc1; opacity: 1; }
+.moral-axis.taste .moral-axis-marker { background: #8a8078; }
+/* No detail to open, so no affordance suggesting there is. */
+.moral-axis.taste .moral-axis-row { cursor: default; }
+.taste-axes-note { margin: 10px 0 0; color: #7e766c; font-size: 12px; }

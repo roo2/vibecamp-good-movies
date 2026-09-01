@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import MoralAxes from '../components/compass/MoralAxes.jsx'
+import TasteRead from '../components/compass/TasteRead.jsx'
 import { loadMoralProfile, loadSessionMoralProfiles } from '../services/profileService.js'
 
 function readingOf({ films_rated: rated, pairs_answered: pairs }) {
@@ -65,9 +66,9 @@ function CompassScreen({ access, shareToken, onContinue }) {
           </p>
         )}
 
-        <div className="compass-reading"><span aria-hidden="true">◇</span><p>{profile.summary}</p></div>
-
         <MoralAxes scores={profile.scores} companions={companions} />
+
+        <TasteRead taste={profile.taste} />
 
         <div className="compass-action">
           <p>{companions.length ? 'Tap an axis to see the question, and where each of you landed on it.' : 'Tap an axis to see the question behind it.'}</p>

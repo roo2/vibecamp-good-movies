@@ -951,3 +951,17 @@
 .explorer-panel .film-factor > button,
 .explorer-panel .film-factor > span:first-child { padding-block: 4px; }
 .explorer-panel .film-factor-score { white-space: nowrap; }
+
+/* The taste read on the compass, using the film scales' markup. Narrow screen,
+   so pole labels take their own row exactly as they do in the atlas panel. */
+.taste-read { margin-top: 26px; padding-top: 18px; border-top: 1px solid #241e19; }
+.taste-read h2 { font-size: 15px; letter-spacing: .01em; margin: 0 0 12px; }
+.taste-read .film-factor-scale {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "low high" "track track";
+  gap: 5px 14px; align-items: baseline;
+}
+.taste-read .film-factor-scale > em:first-of-type { grid-area: low; text-align: left; }
+.taste-read .film-factor-scale > em:last-of-type { grid-area: high; text-align: right; }
+.taste-read .film-factor-track { grid-area: track; margin-top: 2px; }
+.taste-read .film-factor-score { white-space: nowrap; }

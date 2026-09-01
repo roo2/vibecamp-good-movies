@@ -75,6 +75,20 @@ class ProfileEvidence(BaseModel):
     films_without_scores: list[str] = Field(default_factory=list)
 
 
+class TasteReading(BaseModel):
+    """Where someone's choices sit on a dimension of taste, as a percentile.
+
+    Percentile rather than the raw position: the underlying component scores
+    differ by an order of magnitude between dimensions, so the numbers are not
+    comparable to each other and printing them side by side would mislead.
+    """
+    dim_id: int
+    pole_high: str
+    pole_low: str
+    percentile: int
+    films_used: int
+
+
 class MoralProfile(BaseModel):
     user_id: str
     dim_version: str
@@ -83,6 +97,10 @@ class MoralProfile(BaseModel):
     evidence: ProfileEvidence
     is_provisional: bool
     summary: str
+    # What KIND of film they are drawn to, which is a different question from
+    # what those films argue and — measured on outside raters — a considerably
+    # better predictor of what someone will enjoy.
+    taste: list[TasteReading] = []
 
 
 class GroupSession(BaseModel):

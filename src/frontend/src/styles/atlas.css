@@ -834,23 +834,28 @@
 
 /* --- the film plane, and the taste section ------------------------------- */
 
-.film-plane { margin: 0; }
+/* The plot is a reading aid, not a centrepiece: at full column width the dots
+   spread so far apart that no cluster is visible as a cluster. */
+.film-plane { margin: 0 auto; max-width: 420px; }
 .film-plane svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
-.plane-rule { stroke: var(--rule, #d9dce4); stroke-width: 1; stroke-dasharray: 3 4; }
-.plane-dot {
-  fill: var(--faint, #858c9b); opacity: 0.55; cursor: pointer;
-  transition: r 90ms ease, opacity 90ms ease;
+.plane-rule { stroke-width: 1.5; opacity: 0.5; }
+.plane-mark path {
+  stroke: var(--faint, #858c9b); stroke-width: 1.2; opacity: 0.5;
+  transition: opacity 90ms ease;
 }
-.plane-dot:hover { opacity: 1; }
-.plane-dot.in-set { opacity: 0.95; }
-.plane-centre line { stroke-width: 2.5; stroke-linecap: round; }
+.plane-mark.in-set path { stroke-width: 1.8; opacity: 1; }
+.plane-mark:hover path { opacity: 1; stroke-width: 2; }
+.plane-hit { fill: transparent; cursor: pointer; }
+.plane-centre { fill: none; }
+.plane-centre circle { stroke-width: 2; }
+.plane-centre line { stroke-width: 2; stroke-linecap: round; }
 .plane-you { fill: none; stroke: currentColor; stroke-width: 2.5; }
 .plane-pole {
-  font-family: var(--sans, system-ui); font-size: 12px; font-weight: 600;
-  fill: var(--muted, #5b6373); letter-spacing: 0.02em;
+  font-family: var(--sans, system-ui); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .film-plane figcaption {
-  font-family: var(--sans, system-ui); font-size: 13px; color: var(--muted, #5b6373);
+  font-family: var(--sans, system-ui); font-size: 12px; color: var(--muted, #5b6373);
   text-align: center; margin-top: 6px; min-height: 1.4em;
 }
 
@@ -872,3 +877,6 @@
 }
 .taste-lead-note, .taste-conclusion { max-width: 62ch; }
 .taste-conclusion { border-left: 3px solid currentColor; padding-left: 14px; }
+
+.axis-adjust td small { color: var(--faint, #858c9b); font-style: italic; }
+.axis-adjust tr.axis-dropped { opacity: 0.62; }

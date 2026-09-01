@@ -1,6 +1,7 @@
 import React from 'react'
 import Factors from '../components/atlas/Factors.jsx'
 import FilmPlane from '../components/atlas/FilmPlane.jsx'
+import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import FilmDetail from '../components/atlas/FilmDetail.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
@@ -88,7 +89,10 @@ function AtlasPage({ onBack, access }) {
     list.forEach((factor, k) => {
       for (const row of factor.distribution || []) {
         const seen = byFilm.get(row.film_id) || { title: row.title, v: [] }
-        seen.v[k] = row.score
+        // Taste-adjusted where it exists. A raw position confounds what a film
+        // argues with what kind of film it is, and the adjusted one is what
+        // every other number on this page is now quoted in.
+        seen.v[k] = row.score_adjusted ?? row.score
         byFilm.set(row.film_id, seen)
       }
     })
@@ -133,9 +137,11 @@ function AtlasPage({ onBack, access }) {
         if (!live) return
         setModels(found)
         setWithdrawn(gone)
-        // Most verdicts first, so the page opens on the model with the most to
-        // say rather than on whichever sorts first alphabetically.
-        if (found.length) setSelected(found[0])
+        // Open on the reading the PRODUCT reads, which the server marks. It
+        // used to open on whichever reading had the most verdicts — a fact
+        // about how much scoring has been done, not about which answer is in
+        // use — so the atlas and the recommender disagreed by default.
+        if (found.length) setSelected(found.find((m) => m.product) || found[0])
       })
       .catch(() => live && setModels([]))
     // The corpus index is a separate, cheaper read: it carries the films and
@@ -213,6 +219,10 @@ function AtlasPage({ onBack, access }) {
         <>
           <ModelPicker models={models} withdrawn={withdrawn}
                        selected={selected?.reading_id} onSelect={setSelected} />
+          {/* Before the axes, not after. The moral axes are weak predictors of
+              what anyone enjoys, and a reader who meets them first is being
+              shown the answer without the thing it has to survive. */}
+          <TasteDimensions taste={taste} />
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
           {/* Before the per-axis breakdown, because the shape of the whole
@@ -299,6 +309,7 @@ function AtlasPage({ onBack, access }) {
               })}
             </>
           )}
+          <AxisAdjustment data={factors} />
           <Factors data={factors} />
         </>
       )}
@@ -307,12 +318,6 @@ function AtlasPage({ onBack, access }) {
           not here used to unmount the whole section — including the search box —
           so the reader was left staring at a gap with no way to undo the typing
           that caused it. */}
-      {/* After the axes, not before: the moral axes only survive being shown
-          next to taste, and a reader has to see taste at full strength for that
-          to mean anything. Outside the corpus gate, because it does not depend
-          on the film list having loaded. */}
-      <TasteDimensions taste={taste} />
-
       {!!(corpus?.films || []).length && (
         <section aria-labelledby="films">
           <h2 id="films">The corpus</h2>

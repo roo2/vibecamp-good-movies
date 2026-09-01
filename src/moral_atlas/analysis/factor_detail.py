@@ -55,6 +55,30 @@ def _titles() -> dict[str, str]:
                 con.execute("SELECT film_id, title FROM films")}
 
 
+def _taste_adjusted(scorer: str, bank_version: str, variant: str):
+    """{(film_id, dim_id): score} with the taste-predictable part removed.
+
+    Returned empty when nothing has been derived, so a reading with no taste
+    coverage — or a database built before this existed — still serves its raw
+    positions rather than failing.
+    """
+    from .. import db
+
+    out: dict[tuple[str, int], float] = {}
+    explained: dict[int, float] = {}
+    try:
+        with db.connect(read_only=True) as con:
+            for row in con.execute(
+                    "SELECT film_id, dim_id, score, taste_explained "
+                    "FROM film_moral_adjusted WHERE scorer=? AND variant=? "
+                    "AND bank_version=?", [scorer, variant, bank_version]):
+                out[(row["film_id"], row["dim_id"])] = row["score"]
+                explained[row["dim_id"]] = row["taste_explained"]
+    except Exception:
+        return {}, {}
+    return out, explained
+
+
 def detail(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
     texts: dict[str, str], per_pole: int = 10, per_factor_items: int = 40,
@@ -65,6 +89,10 @@ def detail(
     rows = _verdicts(scorer, bank_version, variant)
     titles = _titles()
     vectors = vectors or {}
+    # Both numbers travel together. The adjusted one is what the atlas plots,
+    # and the raw one has to stay beside it or the page cannot show the reader
+    # what adjusting did — which is most of the argument for adjusting.
+    adjusted, taste_explained = _taste_adjusted(scorer, bank_version, variant)
 
     # THE SAME ARITHMETIC AS EVERYWHERE ELSE. This used to average the RAW
     # verdicts of the propositions filed under a factor: no flip for the ones
@@ -111,12 +139,16 @@ def detail(
             total = sum(w for _v, w in values)
             if total <= 0:
                 continue
-            positions.append({
+            row = {
                 "film_id": film_id,
                 "title": titles.get(film_id, film_id),
                 "score": round(sum(v * w for v, w in values) / total, 3),
                 "items": len(values),
-            })
+            }
+            fixed = adjusted.get((film_id, factor))
+            if fixed is not None:
+                row["score_adjusted"] = round(fixed, 3)
+            positions.append(row)
         positions.sort(key=lambda row: -row["score"])
 
         engaged = [row for item in item_ids for row in (per_item.get(item),) if row]
@@ -124,6 +156,11 @@ def detail(
         denies = sum(row[1] for row in engaged)
 
         out[factor] = {
+            # How much of this axis the taste dimensions accounted for. Stored
+            # per axis because it is wildly uneven — a fifth of the first, a
+            # thirtieth of the second — and a single figure would misdescribe both.
+            "taste_explained": (round(taste_explained[factor], 3)
+                                if factor in taste_explained else None),
             "corpus_score": round((affirms - denies) / (affirms + denies), 3)
             if affirms + denies else 0.0,
             "films_positioned": len(positions),

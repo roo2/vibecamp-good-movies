@@ -536,3 +536,44 @@ def test_a_taste_dimension_carries_the_evidence_that_named_it(isolated_web_datab
     # Ordered by how much variation each accounts for, largest first.
     assert named["variance"] > unnamed["variance"]
     assert body["films"][0]["position"] == {"1": 55.67}
+
+
+def test_the_atlas_opens_on_the_reading_the_product_uses(isolated_web_database):
+    """It used to open on whichever reading had the most verdicts — a fact about
+    how much scoring has been done, not about which answer is in use — so the
+    atlas and the recommender disagreed by default."""
+    from moral_atlas.config import settings
+    from moral_atlas.web.routes import factors
+
+    db = isolated_web_database
+    s = settings()
+    _reading(db, "some-other-bank", scorer=s.product_scorer)
+    _reading(db, s.factor_bank, scorer=s.product_scorer)
+
+    flagged = [m for m in factors.list_models()["models"] if m["product"]]
+    assert [m["bank_version"] for m in flagged] == [s.factor_bank]
+
+
+def test_a_position_carries_its_taste_free_value_beside_the_raw_one(isolated_web_database):
+    """Both travel together. The adjusted number is what the atlas plots, and
+    the raw one has to stay beside it or the page cannot show what adjusting
+    did — which is most of the argument for adjusting."""
+    from moral_atlas.analysis import factor_detail
+
+    db = isolated_web_database
+    with db.connect() as con:
+        con.execute(
+            "INSERT INTO film_moral_adjusted (scorer, variant, bank_version, film_id, "
+            "dim_id, score, taste_explained) VALUES ('m','subs','b','film-0',0,0.472,0.194)")
+
+    adjusted, explained = factor_detail._taste_adjusted("m", "b", "subs")
+    assert adjusted[("film-0", 0)] == 0.472
+    assert explained[0] == 0.194
+
+
+def test_a_reading_with_no_taste_coverage_still_serves(isolated_web_database):
+    """Only some readings have films in the taste corpus. The rest must fall
+    back to their raw positions rather than losing their distributions."""
+    from moral_atlas.analysis import factor_detail
+
+    assert factor_detail._taste_adjusted("nobody", "nothing", "subs") == ({}, {})

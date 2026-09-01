@@ -158,7 +158,10 @@ export function filmPositions(factors) {
   list.forEach((factor, k) => {
     for (const row of factor.distribution || []) {
       const seen = out.get(row.film_id) || []
-      seen[k] = row.score
+      // Taste-adjusted, matching the plane and the axis tables. A set centre
+      // computed from raw positions while the dots were drawn from adjusted
+      // ones would put the crosshair somewhere no film is.
+      seen[k] = row.score_adjusted ?? row.score
       out.set(row.film_id, seen)
     }
   })

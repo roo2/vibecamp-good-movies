@@ -316,9 +316,18 @@ def product_film_axes(film_id: str) -> dict[str, Any]:
     `/{scorer}/...` route on purpose: otherwise "product" is read as the name of
     a model and 404s.
     """
-    return film_on_factors(settings().product_scorer, film_id,
-                           variant=settings().product_variant,
-                           bank=settings().factor_bank)
+    from ...analysis.user_scores import PRODUCT_AXES
+
+    payload = film_on_factors(settings().product_scorer, film_id,
+                              variant=settings().product_variant,
+                              bank=settings().factor_bank)
+    # The atlas route this delegates to returns every named axis, because
+    # auditing the corpus is what that page is for. A person meeting a film in
+    # the app is not auditing anything, and the third axis is one the product
+    # does not read: its propositions barely cohere, no ideological list
+    # separates along it, and a person cannot be placed on it above noise.
+    # Showing it here would put a number beside a film that nothing else uses.
+    return {**payload, "factors": (payload.get("factors") or [])[:PRODUCT_AXES]}
 
 
 @router.get("/{scorer}/films/{film_id}")

@@ -594,3 +594,24 @@ def test_quoted_figures_come_from_the_database_with_their_provenance(isolated_we
     assert found["display"] == "162,265"
     # Provenance travels with the number, or it cannot be checked.
     assert found["source"] and found["measured_at"]
+
+
+def test_a_film_in_the_app_is_shown_on_the_product_axes_only(monkeypatch):
+    """The atlas route this delegates to returns every named axis, because
+    auditing the corpus is what that page is for. A person meeting a film in the
+    app is not auditing anything, and the third axis is one the product does not
+    read — showing it beside a film would put a number there that nothing else
+    on the screen uses."""
+    from moral_atlas.analysis.user_scores import PRODUCT_AXES
+    from moral_atlas.web.routes import factors
+
+    full = {"factors": [{"factor_id": i, "name": f"axis {i}"} for i in range(5)],
+            "film_id": "f", "title": "A film"}
+    monkeypatch.setattr(factors, "film_on_factors", lambda *a, **k: full)
+
+    payload = factors.product_film_axes("f")
+    assert len(payload["factors"]) == PRODUCT_AXES
+    # Ordered by support, so the cap keeps the best-supported axes.
+    assert [f["factor_id"] for f in payload["factors"]] == list(range(PRODUCT_AXES))
+    # Everything else about the film survives the cap.
+    assert payload["title"] == "A film"

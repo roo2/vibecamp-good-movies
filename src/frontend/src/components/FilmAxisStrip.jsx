@@ -79,7 +79,7 @@ function Axis({ factor, open, onToggle }) {
   )
 }
 
-export default function FilmAxisStrip({ filmId, limit = 4 }) {
+export default function FilmAxisStrip({ filmId, limit = 2 }) {
   const [factors, setFactors] = React.useState(null)
   const [openId, setOpenId] = React.useState(null)
 

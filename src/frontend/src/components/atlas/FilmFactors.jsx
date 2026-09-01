@@ -120,7 +120,10 @@ export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
     return <p className="detail-muted">No axis positions for this film yet.</p>
   }
 
-  const factors = state.data.factors || []
+  // Two, matching every other place a FILM is shown. The per-axis breakdown
+  // further down the atlas still lists all of them — that is about the axes,
+  // not about this film.
+  const factors = (state.data.factors || []).slice(0, 2)
   const engaged = factors.filter((factor) => factor.score != null)
 
   return (

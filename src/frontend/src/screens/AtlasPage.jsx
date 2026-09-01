@@ -136,24 +136,12 @@ function AtlasPage({ onBack, access }) {
         <div>
           <h1>What do these films argue?</h1>
           <p className="atlas-note">
-            Films are treated as respondents and moral propositions as items. A model writes
-            propositions from the films&apos; dialogue, every film is scored against them, and the
-            axes are whatever groups of propositions the films answer together. Nothing is
-            imposed — including how many axes there are.
+            Films answer moral propositions written from their own dialogue. An axis is a set of
+            propositions that films answer together. Nobody chose them, or how many there are.
           </p>
           <p className="atlas-note">
-            The model that writes the questions need not be the one that answers them, and the
-            two roles fail differently — so the toggle offers each pairing rather than one button
-            per model. Dolphin writes the sharper questions: 98 of its 218 propositions divide
-            films, against 72 of deepseek&apos;s 297. Deepseek gives the steadier answers,
-            recovering the same six axes from either bank, where dolphin finds one axis in its own
-            questions and fourteen in deepseek&apos;s — most of those resting on a handful of
-            propositions each.
-          </p>
-          <p className="atlas-note">
-            Propositions every film agrees with are set aside before any of this. Most of a bank
-            turns out to be consensus rather than measurement, and a claim nobody argues with
-            cannot tell two films apart.
+            One model writes the questions, another answers them. They fail differently, so every
+            pairing is here to compare.
           </p>
         </div>
       </header>
@@ -179,7 +167,7 @@ function AtlasPage({ onBack, access }) {
           {/* Before the per-axis breakdown, because the shape of the whole
               corpus is the thing a reader most wants and cannot get from three
               separate distributions read one after another. */}
-          {factors?.factors?.length >= 3 && (
+          {factors?.factors?.length >= 2 && (
             <>
               {filmSets.length > 0 && (
                 <div className="set-picker">

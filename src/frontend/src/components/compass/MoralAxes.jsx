@@ -132,6 +132,7 @@ function MoralAxes({ scores, companions = [] }) {
           ))}
         </p>
       )}
+      <h2 className="axis-group-head">What these films argue</h2>
       <ul className="moral-axes">
         {scores.map((axis) => (
           <MoralAxis

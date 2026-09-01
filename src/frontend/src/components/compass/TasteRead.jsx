@@ -18,7 +18,7 @@ export default function TasteRead({ taste }) {
 
   return (
     <section className="taste-read">
-      <h2>And what kind of films they are</h2>
+      <h2 className="axis-group-head">And what kind of films they are</h2>
       <ul className="film-factors">
         {rows.map((row) => {
           // From the middle, like every other scale here. The middle is the
@@ -38,16 +38,12 @@ export default function TasteRead({ taste }) {
                 </span>
                 <em className={high ? 'lit' : ''}>{row.pole_high}</em>
               </span>
-              <span className="film-factor-score">
-                {row.percentile}<em>percentile</em>
-              </span>
             </li>
           )
         })}
       </ul>
       <p className="atlas-note">
-        Discovered from which films the same people enjoy — nothing here is moral. A reading sits
-        nearer the middle than any single film does, because it averages everything you told us.
+        From which films the same people enjoy — nothing here is moral.
       </p>
     </section>
   )

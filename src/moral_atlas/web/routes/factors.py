@@ -123,6 +123,15 @@ def list_models() -> dict[str, Any]:
         # "pooled" would name a bank rather than answer the question.
         entry["wrote"] = POOLED_WRITERS.get(wrote, wrote)
         entry["reading_id"] = f"{row['scorer']}|{row['bank_version']}|{row['variant']}"
+        # The reading the PRODUCT itself reads. The atlas used to open on
+        # whichever reading had the most verdicts, which is a fact about how
+        # much scoring has been done rather than about which answer is in use —
+        # and it meant the page's default disagreed with the recommender.
+        entry["product"] = (
+            row["scorer"] == settings().product_scorer
+            and row["variant"] == settings().product_variant
+            and row["bank_version"] == settings().factor_bank
+        )
         if row["factors"]:
             readings.append(entry)
         else:

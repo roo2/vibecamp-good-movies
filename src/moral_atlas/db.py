@@ -502,6 +502,26 @@ CREATE TABLE IF NOT EXISTS film_taste (
     position REAL NOT NULL,
     PRIMARY KEY (film_id, dim_id)
 );
+
+-- Where a film sits on a moral axis once the part predictable from its taste
+-- position is taken out. This is the number the atlas shows, because the raw
+-- position confounds two things a reader cannot separate by eye: what a film
+-- argues, and what kind of film it is.
+--
+-- Taste accounts for 21% of the leading axis and about 3% of the second, so
+-- adjusting changes the first noticeably and the second barely — which is
+-- itself worth being able to see, and is why `taste_explained` is stored
+-- per axis rather than assumed uniform.
+CREATE TABLE IF NOT EXISTS film_moral_adjusted (
+    scorer          TEXT NOT NULL,
+    variant         TEXT NOT NULL,
+    bank_version    TEXT NOT NULL,
+    film_id         TEXT NOT NULL REFERENCES films(film_id),
+    dim_id          INTEGER NOT NULL,
+    score           REAL NOT NULL,   -- the taste-free remainder
+    taste_explained REAL,            -- held-out R2 for this axis, repeated per row
+    PRIMARY KEY (scorer, variant, bank_version, film_id, dim_id)
+);
 """
 
 

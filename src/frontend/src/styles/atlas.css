@@ -964,7 +964,6 @@
 .taste-read .film-factor-scale > em:first-of-type { grid-area: low; text-align: left; }
 .taste-read .film-factor-scale > em:last-of-type { grid-area: high; text-align: right; }
 .taste-read .film-factor-track { grid-area: track; margin-top: 2px; }
-.taste-read .film-factor-score { white-space: nowrap; }
 
 /* No plot: the search and panel take the full width rather than sitting in a
    column sized for a chart that is not there. */

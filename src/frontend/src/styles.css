@@ -99,16 +99,11 @@ button { cursor: pointer; }
 /* The whole segment is the control, so it carries the padding rather than the
    list item — a tap anywhere on the row, poles or track, opens the axis. */
 .moral-axis-row { display: block; width: 100%; padding: 16px 0 18px; border: 0; background: transparent; text-align: left; }
-.moral-axis-row:hover .moral-axis-poles span { color: #d5ccc1; }
-.moral-axis-row:hover .moral-axis-poles .lit { color: inherit; }
 .moral-axis-title { margin: 0 0 6px; color: #f5efe6; font-size: 13px; font-weight: 600; }
 
 .moral-axis-poles { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 11px; color: #b3aa9e; font-size: 13px; font-weight: 600; letter-spacing: -0.005em; line-height: 1.3; }
 .moral-axis-poles span { flex: 1; }
 .moral-axis-poles span:last-child { text-align: right; }
-.moral-axis-poles .lit { color: #f5efe6; }
-.moral-axis.low .moral-axis-poles .lit { color: #5cc3c0; }
-.moral-axis.high .moral-axis-poles .lit { color: #eda36b; }
 .moral-axis-pole b { display: block; margin-bottom: 2px; color: #7e766c; font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
 .moral-axis-pole.lit b { color: inherit; }
 /* MUST be a block. It is a <span> — a button may only contain phrasing content —
@@ -253,3 +248,19 @@ button { cursor: pointer; }
 /* The way out of the app and into the method behind it. */
 .compass-action .quiet-link, .match-actions .quiet-link { display: block; margin-top: 4px; color: #968c7f; font-size: 12px; text-align: center; text-decoration: none; }
 .compass-action .quiet-link:hover, .match-actions .quiet-link:hover { color: #eda36b; }
+
+/* Each END keeps its own colour, whether or not you lean to it. Colour used to
+   mean "this is the side you came down on", which left a balanced axis entirely
+   grey — the reader could not tell which end was which without reading both
+   labels. Colour now says which pole; weight says where you sit. */
+.moral-axis-poles span:first-child { color: #5cc3c0; opacity: .55; }
+.moral-axis-poles span:last-child { color: #eda36b; opacity: .55; }
+.moral-axis-poles .lit { opacity: 1; }
+.moral-axis-row:hover .moral-axis-poles span { opacity: .8; }
+.moral-axis-row:hover .moral-axis-poles .lit { opacity: 1; }
+
+/* Two groups, named, and nothing else between them. */
+.axis-group-head {
+  margin: 26px 0 12px; font-size: 13px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: #7e766c;
+}

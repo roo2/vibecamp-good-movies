@@ -488,5 +488,13 @@ def film_on_factors(
                 scorer, bank, variant, groups, texts, film_id, factor["factor_id"],
                 loadings=loadings, vectors=every),
         })
+    # `product` on each factor, for the same reason the factor list carries it:
+    # every screen that shows a FILM was cutting to the first two by margin,
+    # which is not the pair the compass reads. The film panel in the atlas was
+    # the last one still doing it, so one film could be described on different
+    # axes depending on which panel you were looking at.
+    product = _product_axis_ids(scorer, variant, bank)
     return {"film_id": film_id, "title": title["title"] if title else film_id,
-            "scorer": scorer, "factors": scored}
+            "scorer": scorer,
+            "factors": [{**f, "product": f.get("factor_id") in product}
+                        for f in scored]}

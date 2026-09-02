@@ -120,10 +120,15 @@ export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
     return <p className="detail-muted">No axis positions for this film yet.</p>
   }
 
-  // Two, matching every other place a FILM is shown. The per-axis breakdown
-  // further down the atlas still lists all of them — that is about the axes,
-  // not about this film.
-  const factors = (state.data.factors || []).slice(0, 2)
+  // The axes the app reads a person on, which the server names rather than
+  // leaving to position. Taking the first two meant taking the MARGIN order,
+  // and that stopped being the product's pair once axis selection also asked
+  // whether an axis can place a person — so this panel described a film on one
+  // axis while the plot beside it used another. Readings the product does not
+  // use carry no flag and still fall back to the first two.
+  const all = state.data.factors || []
+  const flagged = all.filter((factor) => factor.product)
+  const factors = (flagged.length >= 2 ? flagged : all).slice(0, 2)
   const engaged = factors.filter((factor) => factor.score != null)
 
   return (

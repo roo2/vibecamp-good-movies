@@ -96,6 +96,24 @@ def ingest(
         table.add_row(layer, f"[{colour}]{len(have)}/{len(reports)}[/]", str(median))
     console.print(table)
 
+    # Two seed titles resolving to the SAME article means at least one of them
+    # is not a film. Nine "The Arts & Faith Ecumenical Jury — 2014" style list
+    # HEADINGS once entered the corpus this way, each fuzzy-matched onto a real
+    # but unrelated article, and were then scored on that film's dialogue: 459
+    # verdicts attributed to entries that do not exist. Nothing in the ingest
+    # said anything, because each one looked complete on its own.
+    seen: dict[str, list[str]] = {}
+    for report in reports:
+        article = report.get("article")
+        if article:
+            seen.setdefault(article, []).append(report.get("title") or "?")
+    clashes = {a: t for a, t in seen.items() if len(t) > 1}
+    if clashes:
+        console.print("\n[yellow]several seeds matched the same Wikipedia "
+                      "article[/] — at least one of each group is not a film:")
+        for article, titles in list(clashes.items())[:8]:
+            console.print(f"  {article}: {', '.join(titles[:4])}")
+
 
 @app.command("seed-films")
 def seed_films(seeds: str = typer.Option("seeds/phase0.yaml", help="Seed YAML file.")) -> None:

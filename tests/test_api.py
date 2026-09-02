@@ -737,3 +737,18 @@ def test_no_route_is_served_by_a_private_helper():
         assert not name.startswith("_"), (
             f"{route.path} is served by the private helper {name}() — a "
             f"decorator has attached to the wrong function")
+
+
+def test_a_film_payload_says_which_axes_the_product_reads(monkeypatch):
+    """Every screen showing a FILM has to agree with the compass about the axes.
+
+    Three of them cut to the first two by margin — the film route, the scatter
+    plot, and this panel — and margin stopped being the product's order once
+    axis selection also asked whether an axis can place a person. So the payload
+    states it rather than leaving the client to infer it from position.
+    """
+    from moral_atlas.web.routes import factors
+
+    ids = factors._product_axis_ids("nobody", "subs", "nobody-subs")
+    # A reading the product does not use makes no claim about which axes it uses.
+    assert ids == set()

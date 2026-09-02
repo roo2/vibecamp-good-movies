@@ -335,18 +335,29 @@ def product_film_axes(film_id: str) -> dict[str, Any]:
     `/{scorer}/...` route on purpose: otherwise "product" is read as the name of
     a model and 404s.
     """
-    from ...analysis.user_scores import PRODUCT_AXES
+    from ...analysis import user_scores
 
-    payload = film_on_factors(settings().product_scorer, film_id,
-                              variant=settings().product_variant,
-                              bank=settings().factor_bank)
+    s = settings()
+    payload = film_on_factors(s.product_scorer, film_id,
+                              variant=s.product_variant, bank=s.factor_bank)
     # The atlas route this delegates to returns every named axis, because
     # auditing the corpus is what that page is for. A person meeting a film in
-    # the app is not auditing anything, and the third axis is one the product
-    # does not read: its propositions barely cohere, no ideological list
-    # separates along it, and a person cannot be placed on it above noise.
-    # Showing it here would put a number beside a film that nothing else uses.
-    return {**payload, "factors": (payload.get("factors") or [])[:PRODUCT_AXES]}
+    # the app is not auditing anything, so it is cut to the axes the product
+    # reads.
+    #
+    # ASK `factor_axes` WHICH ONES, rather than taking the first PRODUCT_AXES of
+    # this payload. They are not the same set. This payload is ordered by margin
+    # alone; `factor_axes` additionally puts axes that can place a PERSON ahead
+    # of ones that cannot, and the two disagreed the moment that gate was added:
+    # the compass moved to "Authority vs Autonomy" while every film reading and
+    # the scatter plot went on showing "Intrinsic vs Utilitarian", which places
+    # nobody above noise. One screen contradicting another about what the axes
+    # even ARE is worse than either choice.
+    wanted = [a["dim_id"] for a in user_scores.factor_axes(
+        s.product_scorer, s.product_variant, s.factor_bank)]
+    by_id = {f.get("factor_id"): f for f in (payload.get("factors") or [])}
+    factors = [by_id[d] for d in wanted if d in by_id]
+    return {**payload, "factors": factors}
 
 
 @router.get("/{scorer}/films/{film_id}")

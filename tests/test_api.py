@@ -599,22 +599,64 @@ def test_quoted_figures_come_from_the_database_with_their_provenance(isolated_we
 def test_a_film_in_the_app_is_shown_on_the_product_axes_only(monkeypatch):
     """The atlas route this delegates to returns every named axis, because
     auditing the corpus is what that page is for. A person meeting a film in the
-    app is not auditing anything, and the third axis is one the product does not
-    read — showing it beside a film would put a number there that nothing else
-    on the screen uses."""
-    from moral_atlas.analysis.user_scores import PRODUCT_AXES
+    app is not auditing anything, so it is cut to the axes the product reads."""
+    from moral_atlas.analysis import user_scores
     from moral_atlas.web.routes import factors
 
     full = {"factors": [{"factor_id": i, "name": f"axis {i}"} for i in range(5)],
             "film_id": "f", "title": "A film"}
     monkeypatch.setattr(factors, "film_on_factors", lambda *a, **k: full)
+    monkeypatch.setattr(user_scores, "factor_axes",
+                        lambda *a, **k: [{"dim_id": 0}, {"dim_id": 1}])
 
     payload = factors.product_film_axes("f")
-    assert len(payload["factors"]) == PRODUCT_AXES
-    # Ordered by support, so the cap keeps the best-supported axes.
-    assert [f["factor_id"] for f in payload["factors"]] == list(range(PRODUCT_AXES))
-    # Everything else about the film survives the cap.
+    assert [f["factor_id"] for f in payload["factors"]] == [0, 1]
+    # Everything else about the film survives the cut.
     assert payload["title"] == "A film"
+
+
+def test_a_film_is_shown_on_the_same_axes_as_the_compass(monkeypatch):
+    """The film reading must not disagree with the compass about the axes.
+
+    This route used to take the first PRODUCT_AXES of a payload ordered by
+    MARGIN, while the compass asked `factor_axes`, which additionally puts axes
+    that can place a person ahead of ones that cannot. The moment that gate
+    arrived the two disagreed: the compass moved to "Authority vs Autonomy"
+    while every film reading and the scatter plot went on showing "Intrinsic vs
+    Utilitarian" — an axis that places nobody above noise. Nothing failed, and
+    the two screens simply contradicted each other about what the axes are.
+    """
+    from moral_atlas.analysis import user_scores
+    from moral_atlas.web.routes import factors
+
+    # Margin order puts 1 second; the gate demotes it below 2.
+    full = {"factors": [{"factor_id": i, "name": f"axis {i}"} for i in range(4)],
+            "film_id": "f", "title": "A film"}
+    monkeypatch.setattr(factors, "film_on_factors", lambda *a, **k: full)
+    monkeypatch.setattr(user_scores, "factor_axes",
+                        lambda *a, **k: [{"dim_id": 0}, {"dim_id": 2}])
+
+    shown = [f["factor_id"] for f in factors.product_film_axes("f")["factors"]]
+    assert shown == [0, 2], "the film must follow the compass, not raw margin"
+
+
+def test_a_film_reading_survives_axes_missing_from_its_payload(monkeypatch):
+    """A film engaging none of an axis's propositions has no entry for it.
+
+    Selecting by dim_id must skip such an axis rather than raise, or one film
+    with thin coverage takes down the route for every reader.
+    """
+    from moral_atlas.analysis import user_scores
+    from moral_atlas.web.routes import factors
+
+    full = {"factors": [{"factor_id": 0, "name": "axis 0"}], "film_id": "f",
+            "title": "A film"}
+    monkeypatch.setattr(factors, "film_on_factors", lambda *a, **k: full)
+    monkeypatch.setattr(user_scores, "factor_axes",
+                        lambda *a, **k: [{"dim_id": 0}, {"dim_id": 2}])
+
+    assert [f["factor_id"] for f in
+            factors.product_film_axes("f")["factors"]] == [0]
 
 
 def test_a_stale_adjusted_null_test_is_withheld_rather_than_drawn(isolated_web_database):

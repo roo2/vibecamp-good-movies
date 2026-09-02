@@ -84,7 +84,24 @@ def _fingerprint(scorer: str, variant: str, bank: str) -> tuple:
                         "bank_version=? AND variant=?", [scorer, bank, variant]).fetchone()["n"],
             con.execute("SELECT COUNT(*) n FROM latent_factors WHERE scorer=? AND "
                         "variant=? AND bank_version=?", [scorer, variant, bank]).fetchone()["n"],
+            # The placement verdict decides the `product` flag on every factor
+            # below, and it changes WITHOUT any verdict or factor being added —
+            # `atlas axis-placement` rewrites one row. Left out, a running
+            # server would go on serving the old flags until something else
+            # happened to move a count, and the plot would keep drawing an axis
+            # the compass had already stopped using.
+            _placement_stamp(con, scorer, variant, bank),
         )
+
+
+def _placement_stamp(con, scorer: str, variant: str, bank: str) -> str:
+    try:
+        row = con.execute(
+            "SELECT computed_at FROM axis_placement WHERE scorer=? AND variant=? "
+            "AND bank_version=?", [scorer, variant, bank]).fetchone()
+    except Exception:
+        return ""
+    return (row["computed_at"] or "") if row else ""
 
 
 @router.get("")
@@ -315,7 +332,15 @@ def get_factors(
         "factors": [
             # A sample of each factor's propositions, so a reader can judge the
             # name against the items rather than taking it on trust.
+            #
+            # `product` says whether the app reads a person on this axis. The
+            # scatter plot used to take the first two by position, which is the
+            # margin order and NOT the set the product uses — so the plot drew
+            # an axis nobody is ever read on while the compass drew a different
+            # one, and neither screen said so. Ordering alone cannot carry that
+            # distinction, so it is stated.
             {**factor,
+             "product": factor["factor_id"] in _product_axis_ids(scorer, variant, bank),
              "examples": members.get(factor["factor_id"], [])[:6],
              **detail.get(factor["factor_id"], {})}
             for factor in factors
@@ -326,6 +351,22 @@ def get_factors(
 
 
 @router.get("/product/films/{film_id}")
+
+def _product_axis_ids(scorer: str, variant: str, bank: str) -> set[int]:
+    """Which of this reading's axes the app actually reads a person on.
+
+    Empty for any reading that is not the product's — the atlas can show a
+    model whose axes the product has never used, and flagging two of those as
+    "product" would be a claim about nothing.
+    """
+    from ...analysis import user_scores
+
+    s = settings()
+    if (scorer, variant, bank) != (s.product_scorer, s.product_variant, s.factor_bank):
+        return set()
+    return {a["dim_id"] for a in user_scores.factor_axes(scorer, variant, bank)}
+
+
 def product_film_axes(film_id: str) -> dict[str, Any]:
     """One film on the axes the PRODUCT reads, without naming the model.
 

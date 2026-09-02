@@ -205,7 +205,16 @@ export function planePoints(factors, taste, space = 'moral') {
     }
   }
 
-  const list = (factors?.factors || []).slice(0, 2)
+  // The axes the app reads a person on, when the server says which they are.
+  // Taking the first two by position instead means taking the MARGIN order,
+  // which stopped matching the product the moment axis selection also asked
+  // whether an axis can place a person: the plot drew "Intrinsic vs
+  // Utilitarian", which places nobody above noise, while the compass beside it
+  // drew a different axis and nothing on either said why. Readings the product
+  // does not use carry no flag, and those still fall back to the first two.
+  const all = factors?.factors || []
+  const flagged = all.filter((f) => f.product)
+  const list = (flagged.length >= 2 ? flagged : all).slice(0, 2)
   if (list.length < 2) return null
   const byFilm = new Map()
   list.forEach((factor, k) => {

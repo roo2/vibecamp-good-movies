@@ -52,6 +52,16 @@ function AtlasPage({ onBack, access }) {
   const chosen = React.useMemo(
     () => filmSets.filter((s) => activeSets.has(s.set_id)), [filmSets, activeSets])
 
+  // The axes the plot draws — the ones the server flags as the product's, with
+  // the first two by margin as the fallback for readings the product does not
+  // use. Kept beside the plot's own selection so a label cannot name one pair
+  // while the plot draws another.
+  const plotAxes = React.useMemo(() => {
+    const all = factors?.factors || []
+    const flagged = all.filter((f) => f.product)
+    return (flagged.length >= 2 ? flagged : all).slice(0, 2)
+  }, [factors])
+
   // Where each chosen set sits on average, in the axes' own units — computed
   // once here so the marker on the cloud and the numbers underneath it come
   // from the same arithmetic.
@@ -217,13 +227,18 @@ function AtlasPage({ onBack, access }) {
                         : s.source}.
                     </em>{' '}
                     {s.n} of its films are in the corpus.
-                    {c && (
+                    {/* Only in the moral space, because that is what this
+                        number IS — a mean of moral positions. Printed under the
+                        taste plot it reads as the set's centre in taste, which
+                        it is not. Axis names come from the same product-flagged
+                        pair the plot draws, not from the first two by margin. */}
+                    {c && space === 'moral' && (
                       <span className="set-centre">
                         Centre:{' '}
                         {c.mean.map((m, k) => (
                           <b key={k}>{m >= 0 ? '+' : '−'}{Math.abs(m).toFixed(3)}</b>
                         )).reduce((a, b) => [a, ' / ', b])}
-                        {' '}on {factors.factors.slice(0, 2).map((f) => f.name).join(', ')}.
+                        {' '}on {plotAxes.map((f) => f.name).join(', ')}.
                       </span>
                     )}
                   </p>

@@ -118,8 +118,14 @@ export default function FilmExplorer({
           </p>
         )}
 
+        {/* Sets on BOTH spaces. Where a published list sits in taste is a
+            question the project asks directly — several of these lists turned
+            out to be held together more by the kind of film they are than by
+            what those films argue — and the plot is where that is legible.
+            The viewer marker stays moral-only: it is a position on the moral
+            axes, and there is nothing to place on the taste ones. */}
         {plane && <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
-                   sets={space === 'moral' ? sets : []}
+                   sets={sets}
                    viewer={space === 'moral' ? viewer : null}
                    selectedId={selectedId} matchIds={matchIds}
                    onSelect={choose} />}

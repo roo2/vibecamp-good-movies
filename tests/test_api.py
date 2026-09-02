@@ -693,3 +693,47 @@ def test_the_fingerprint_moves_when_the_taste_placements_do(isolated_web_databas
     with db.connect() as con:
         con.execute("INSERT INTO film_taste VALUES ('film-0', 1, 0.5)")
     assert taste_null.fingerprint("m", "subs", "b") != before
+
+
+def test_product_film_route_takes_only_a_film_id(isolated_web_database):
+    """The route must be reachable with nothing but the film in the path.
+
+    A helper was once inserted between `@router.get("/product/films/{film_id}")`
+    and the function it decorates, so the decorator bound to the HELPER and
+    FastAPI registered its (scorer, variant, bank) signature as the endpoint.
+    Every request became 422 Unprocessable Entity, in production, and the whole
+    suite still passed — because these tests called the function directly, where
+    the decorator does not exist.
+
+    So this one goes through the app: it asserts the CONTRACT, that the URL
+    needs no query parameters. What comes back may be a 404 for an unknown film;
+    it may not be a complaint about missing query fields.
+    """
+    response = client.get("/api/factors/product/films/does-not-exist")
+    assert response.status_code != 422, response.text
+    if response.status_code == 200:
+        assert "factors" in response.json()
+
+
+def test_no_route_is_served_by_a_private_helper():
+    """No route may be served by a function whose name begins with an underscore.
+
+    The binding bug above was invisible for exactly one reason: nothing checked
+    which callable a path resolves to. This walks the router's own table, so a
+    decorator that slides onto the wrong function is caught wherever it happens
+    rather than only where someone thought to look.
+
+    Reads `factors.router` rather than `app.routes`: the app nests included
+    routers, and every endpoint reachable from the top level reports its module
+    as the app itself — a first attempt at this test filtered on that module,
+    matched nothing at all, and passed while the broken binding was live.
+    """
+    from moral_atlas.web.routes import factors
+
+    routes = list(factors.router.routes)
+    assert routes, "the router should expose its routes, or this proves nothing"
+    for route in routes:
+        name = route.endpoint.__name__
+        assert not name.startswith("_"), (
+            f"{route.path} is served by the private helper {name}() — a "
+            f"decorator has attached to the wrong function")

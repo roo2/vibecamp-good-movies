@@ -253,6 +253,21 @@ def get_taste_dimensions() -> dict[str, Any]:
     }
 
 
+def _product_axis_ids(scorer: str, variant: str, bank: str) -> set[int]:
+    """Which of this reading's axes the app actually reads a person on.
+
+    Empty for any reading that is not the product's — the atlas can show a
+    model whose axes the product has never used, and flagging two of those as
+    "product" would be a claim about nothing.
+    """
+    from ...analysis import user_scores
+
+    s = settings()
+    if (scorer, variant, bank) != (s.product_scorer, s.product_variant, s.factor_bank):
+        return set()
+    return {a["dim_id"] for a in user_scores.factor_axes(scorer, variant, bank)}
+
+
 @router.get("/{scorer}")
 def get_factors(
     scorer: str, variant: str = "subs", bank: str = "", n_iter: int = 200,
@@ -351,22 +366,6 @@ def get_factors(
 
 
 @router.get("/product/films/{film_id}")
-
-def _product_axis_ids(scorer: str, variant: str, bank: str) -> set[int]:
-    """Which of this reading's axes the app actually reads a person on.
-
-    Empty for any reading that is not the product's — the atlas can show a
-    model whose axes the product has never used, and flagging two of those as
-    "product" would be a claim about nothing.
-    """
-    from ...analysis import user_scores
-
-    s = settings()
-    if (scorer, variant, bank) != (s.product_scorer, s.product_variant, s.factor_bank):
-        return set()
-    return {a["dim_id"] for a in user_scores.factor_axes(scorer, variant, bank)}
-
-
 def product_film_axes(film_id: str) -> dict[str, Any]:
     """One film on the axes the PRODUCT reads, without naming the model.
 

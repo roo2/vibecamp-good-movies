@@ -74,6 +74,41 @@ atlas dimensions-split-half        # derive twice from disjoint halves of the co
 atlas profile                      # where each film sits
 ```
 
+## Taste, and the recommender
+
+The steps above read what a film ARGUES, from its own dialogue. A second half of
+the pipeline reads something different — who likes these films TOGETHER — from
+an outside ratings corpus, and it is what actually drives recommendations: over
+162,000 outside raters, co-preference orders a film someone liked above one they
+disliked 83% of the time, against the moral axes' 57%.
+
+```bash
+atlas taste-build                  # neighbours, taste dimensions, adjusted morals
+atlas taste-null                   # the permutation test with taste removed
+atlas dataset                      # publish it
+```
+
+It needs the MovieLens ml-25m extract in `data/movielens/ml-25m` (or
+`MOVIELENS_DIR`). That data is licensed for non-commercial research and may not
+be redistributed, so it is not vendored here; download it from
+[GroupLens](https://grouplens.org/datasets/movielens/25m/). Nothing derived from
+it that reaches the database or the corpus export contains ratings — only
+aggregates over our own films.
+
+**Run `atlas taste-build` after ingesting films.** `atlas model-scan` gives a new
+film a moral position and nothing else: no taste position and no neighbours, so
+it can be looked up but never recommended, and it drops out of every
+taste-adjusted figure. Nothing errors when this is skipped.
+
+One hazard is worth knowing about, because it has been shipped twice. The taste
+dimensions come out of an SVD, and an SVD component's sign is arbitrary — so
+re-deriving the axes over a larger corpus flips about half of them, and the pole
+labels, which are fixed text in `seeds/taste-dimensions.yaml`, then describe the
+wrong ends with nothing failing. Every named dimension therefore carries an
+`anchor`: a tag from the MovieLens genome that belongs at its `pole_high` end.
+`taste-build` checks each component against its anchor and turns it the right way
+up, reporting any it had to flip.
+
 ## Showing it to someone
 
 The dataset explorer is a page in the interface, at `#/atlas`. It reads one

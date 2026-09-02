@@ -1,0 +1,87 @@
+# Names for the dimensions of taste, and the evidence that earned them.
+#
+# The dimensions themselves are DISCOVERED, not written here: they come out of
+# factoring 162,000 MovieLens raters' co-preference. This file only supplies the
+# human labels, and it is curated data rather than code for the same reason
+# film-sets.yaml is — a name is a claim, and claims belong somewhere a person can
+# read and revise them.
+#
+# Three rules learned the hard way:
+#
+# ANCHOR IS NOT OPTIONAL for a named dimension. An SVD component's sign is
+# arbitrary. Re-deriving the axes over a larger corpus flips roughly half of
+# them, and labels keyed by dim_id then describe the wrong ends with nothing
+# failing. On the rebuild that added the 2026-09 films, five of eight named
+# dimensions inverted — putting The Godfather and Fight Club under "Enjoyable
+# trash" and Ace Ventura and Armageddon under "Acclaimed craft". The anchor is a
+# tag genome entry that belongs at the pole_high end, so orientation is checked
+# against data rather than assumed.
+#
+# UNNAMED IS A VALID ANSWER. Three dimensions replicate but 1,128 human tags
+# cannot characterise them. Inventing a label for a structure nobody can describe
+# is how the moral side of this project went wrong twice.
+#
+# FRANCHISE IS A CONFESSION. A dimension whose defining tags are "new zealand"
+# and "tolkien" describes one film series, not a dimension of taste, and would
+# dissolve on a different corpus. Marked so it is never read as a finding.
+#
+# status: named | franchise | unnamed
+dimensions:
+  - dim_id: 1
+    pole_high: "Acclaimed craft"
+    pole_low: "Enjoyable trash"
+    status: named
+    anchor: "masterpiece"
+  - dim_id: 2
+    pole_high: "Ironic darkness"
+    pole_low: "Earnest epic grandeur"
+    status: named
+    anchor: "black comedy"
+  - dim_id: 3
+    pole_high: "Underrated find"
+    pole_low: "Consensus dud"
+    status: named
+    anchor: "underrated"
+  - dim_id: 4
+    pole_high: "Modern PG-13"
+    pole_low: "1980s practical genre"
+    status: named
+    anchor: "pg-13"
+  - dim_id: 5
+    pole_high: "Spielberg crowd-pleaser"
+    pole_low: "Tolkien fantasy"
+    status: franchise
+  - dim_id: 6
+    pole_high: "Canonical earnest classic"
+    pole_low: "Slacker comedy"
+    status: named
+    anchor: "oscar (best picture)"
+  - dim_id: 7
+    pole_high: "Hard action"
+    pole_low: "Emotional warmth"
+    status: named
+    anchor: "lone hero"
+  - dim_id: 8
+    pole_high: "Adult brutality"
+    pole_low: "Childlike whimsy"
+    status: named
+    anchor: "brutality"
+  - dim_id: 9
+    pole_high: "Crude comedy"
+    pole_low: "Surreal imagination"
+    status: named
+    anchor: "crude humor"
+  - dim_id: 10
+    pole_high: "Family franchise"
+    pole_low: "Romantic weepie"
+    status: franchise
+  - dim_id: 11
+    pole_high: "Hacker thriller"
+    pole_low: "Lecter and school"
+    status: franchise
+  - dim_id: 14
+    status: unnamed
+  - dim_id: 15
+    status: unnamed
+  - dim_id: 23
+    status: unnamed

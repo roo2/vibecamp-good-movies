@@ -1,0 +1,69 @@
+# Films from Christian Spotlight on the Movies (ChristianAnswers.Net) rated
+# "Excellent" for moral content, restricted to those with a real cinema release.
+#
+# The full list runs to 139 entries and exactly ONE of them — Ben-Hur — was
+# already in this corpus. That is the interesting part: the rest are direct-to-
+# video evangelical productions, apologetics and creationist documentaries,
+# VeggieTales and Left Behind sequels. It is a parallel cinema, and a corpus
+# built from what people generally watch does not touch it.
+#
+# So these are the entries that played in cinemas and therefore stand a chance
+# of having a dialogue track to score. Everything else on the list is left out
+# because it cannot be measured, not because it does not count.
+#
+# WHAT THE RATING MEANS, which matters when reading any result from this set:
+# "Excellent" means the film "has little to no objectionable content". It is an
+# absence-of-objectionable-material rating, not a judgement that a film is
+# morally admirable — and the site states outright that "inclusion on this list
+# does not constitute a Christian Spotlight recommendation or endorsement".
+# That is a different claim from the Gospel Coalition's "50 Edifying Films",
+# which recommends. So this is its OWN set rather than an extension of the
+# Christian one: merging them would average a content rating and a
+# recommendation into a single position and call it what Christians think.
+# Kept apart, the two can be compared, which is the more interesting question.
+films:
+  - title: Sergeant York
+    year: 1941
+    note: christian-answers
+  - title: Swiss Family Robinson
+    year: 1960
+    note: christian-answers
+  - title: The Hiding Place
+    year: 1975
+    note: christian-answers
+  - title: Jesus
+    year: 1979
+    note: christian-answers
+  - title: Luther
+    year: 2003
+    note: christian-answers
+  - title: Facing the Giants
+    year: 2006
+    note: christian-answers
+  - title: One Night with the King
+    year: 2006
+    note: christian-answers
+  - title: Fireproof
+    year: 2008
+    note: christian-answers
+  - title: Letters to God
+    year: 2010
+    note: christian-answers
+  - title: October Baby
+    year: 2011
+    note: christian-answers
+  - title: Courageous
+    year: 2011
+    note: christian-answers
+  - title: The Christmas Candle
+    year: 2013
+    note: christian-answers
+  - title: Woodlawn
+    year: 2015
+    note: christian-answers
+  - title: War Room
+    year: 2015
+    note: christian-answers
+  - title: Do You Believe?
+    year: 2015
+    note: christian-answers

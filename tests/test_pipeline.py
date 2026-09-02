@@ -506,3 +506,41 @@ def test_rebuilding_a_bank_discards_what_was_measured_against_the_old_one(tmp_pa
     assert bank_module._write_items(
         "v2", [{"item_id": "I001", "text": "fresh", "cluster_id": 0, "support": 2,
                 "active": True, "note": ""}]) == {}
+
+
+def test_ingest_reports_every_layer_in_the_same_unit(monkeypatch):
+    """Layer sizes in the ingest report must all be counted in words.
+
+    A regression test for a real misreading, not a hypothetical one. The
+    subtitles layer used to report len(cues) while every other layer reported
+    words, under a CLI column headed "median words". A film showing 3,285 there
+    in fact held 25,470 words, and a whole seed list was judged too sparse to
+    score — and cut — on numbers an order of magnitude out.
+
+    Nothing caught it because the suite checked that a number came back, never
+    what the number counted. So this pins the unit by comparing the two layers
+    against each other: subtitles carrying FEWER cues but MORE words than the
+    plot layer must still report the larger number.
+    """
+    from moral_atlas.sources import ingest as ingest_mod
+    from moral_atlas.sources.subtitles import Cue
+
+    plot = " ".join(f"w{i}" for i in range(30))
+    cues = [Cue(start_ms=i * 1000, text=" ".join(f"t{j}" for j in range(20)))
+            for i in range(5)]
+
+    monkeypatch.setattr(ingest_mod.wiki_mod, "fetch",
+                        lambda *a, **k: {"article": "A", "url": "u", "plot": plot})
+    monkeypatch.setattr(ingest_mod.subs_mod, "acquire", lambda *a, **k: (cues, {}))
+    monkeypatch.setattr(ingest_mod.db, "upsert_film", lambda *a, **k: None)
+    monkeypatch.setattr(ingest_mod.db, "upsert_evidence", lambda *a, **k: None)
+
+    layers = ingest_mod.ingest_one({"title": "T", "year": 2000})["layers"]
+
+    # 100 spoken words plus the one timestamp token cues_to_text prepends to
+    # each cue — whatever the model is actually given to read.
+    expected = len(ingest_mod.subs_mod.cues_to_text(cues).split())
+    assert expected == 105
+    assert layers["plot"] == 30
+    assert layers["subtitles"] == expected, "subtitles must be words, not the 5 cues"
+    assert layers["subtitles"] > layers["plot"] > len(cues)

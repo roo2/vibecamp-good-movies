@@ -99,12 +99,18 @@ def ingest_one(seed: dict[str, Any], progress: Callable[[str], None] | None = No
             runtime=row.get("runtime"),
         )
         if cues:
+            text = subs_mod.cues_to_text(cues)
             db.upsert_evidence(
-                film_id, "subtitles", subs_mod.cues_to_text(cues), None,
+                film_id, "subtitles", text, None,
                 {**meta, "n_cues": len(cues),
                  "final_lines": subs_mod.final_lines(cues)},
             )
-            report["layers"]["subtitles"] = len(cues)
+            # Words, like every other layer here. This used to report len(cues),
+            # under a column the CLI heads "median words" — so a film reading
+            # 3,285 actually held 25,470, and a whole seed list got judged too
+            # thin to score on numbers that were an order of magnitude out. The
+            # cue count is still kept, in meta, where it is labelled n_cues.
+            report["layers"]["subtitles"] = len(text.split())
         else:
             report["layers"]["subtitles"] = 0
             report["subtitles_note"] = meta.get("reason", "unavailable")

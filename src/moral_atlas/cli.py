@@ -738,6 +738,14 @@ def model_scan(
                       + (f", [red]{lost} slices lost[/]" if lost else "")
                       + (f", [yellow]{missed} propositions never answered[/]" if missed else "")
                       + f"  {json.dumps(stats['usage'])}")
+        empty = stats.get("empty") or []
+        if empty:
+            console.print(
+                f"  [yellow]{len(empty)} films engaged no propositions[/] and wrote nothing, "
+                f"though they counted as scored: {', '.join(empty[:6])}"
+                + (" …" if len(empty) > 6 else "")
+                + "\n  Re-run those with --films. It is usually transient, and a film left "
+                  "like this is in the corpus with no position on any axis.")
         if lost:
             console.print(f"  [red]{lost} slices were dropped[/] — this run is INCOMPLETE, "
                           f"and the films above are missing propositions they were never "

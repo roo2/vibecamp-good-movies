@@ -371,3 +371,68 @@ def test_api_serves_the_same_document(scored_store):
     body = TestClient(app).get("/api/atlas").json()
     assert body["totals"]["films"] == 2
     assert [f["title"] for f in body["films"]] == ["Film A", "Film B"]
+
+
+def test_a_films_plotted_position_is_the_one_the_product_scores(monkeypatch):
+    """The plot and the compass must not compute a film's position twice.
+
+    They did, and the two disagreed about which SIDE of an axis a film was on
+    for 434 of 662 films. The route hands `factor_detail` the loadings from a
+    factor solution re-derived for that request, and an eigen-solution's
+    component signs are arbitrary — so the fresh axis can point the other way
+    from the stored one that the compass, the film panel and the pole labels all
+    read. Life Is Beautiful plotted at +0.505 toward determinism while its own
+    bar read -0.615 toward redemption, which is how it was noticed.
+
+    The stored stance wins. Here the local arithmetic would produce a POSITIVE
+    score and the stored stance is negative, so only deferring to the stance
+    passes.
+    """
+    from moral_atlas.analysis import factor_detail
+
+    monkeypatch.setattr(factor_detail, "_verdicts", lambda *a: [
+        {"item_id": "I1", "film_id": "f1", "value": 2},
+        {"item_id": "I2", "film_id": "f1", "value": 2},
+        {"item_id": "I3", "film_id": "f1", "value": 2},
+    ])
+    monkeypatch.setattr(factor_detail, "_titles", lambda: {"f1": "A film"})
+    monkeypatch.setattr(factor_detail, "_taste_adjusted", lambda *a: ({}, {}))
+    monkeypatch.setattr(factor_detail, "_stored_stances",
+                        lambda *a: {"f1": {0: [-0.6, -0.6]}})
+
+    out = factor_detail.detail(
+        "deepseek", "b", "subs", {"I1": 0, "I2": 0, "I3": 0},
+        {"I1": "a", "I2": "b", "I3": "c"},
+        loadings={"I1": 1.0, "I2": 1.0, "I3": 1.0},
+        vectors={"I1": [1.0], "I2": [1.0], "I3": [1.0]})
+
+    score = out[0]["distribution"][0]["score"]
+    assert score == -0.6, (
+        f"plotted {score}, but the product scores this film -0.6 — the two "
+        f"must not disagree about which side of the axis a film is on")
+
+
+def test_a_reading_with_no_stored_solution_still_plots(monkeypatch):
+    """The atlas can be pointed at a model the product never stored.
+
+    Falling back to the local arithmetic is worse than the stance and much
+    better than a 500 or an empty plot.
+    """
+    from moral_atlas.analysis import factor_detail
+
+    monkeypatch.setattr(factor_detail, "_verdicts", lambda *a: [
+        {"item_id": "I1", "film_id": "f1", "value": 2},
+        {"item_id": "I2", "film_id": "f1", "value": 2},
+        {"item_id": "I3", "film_id": "f1", "value": 2},
+    ])
+    monkeypatch.setattr(factor_detail, "_titles", lambda: {"f1": "A film"})
+    monkeypatch.setattr(factor_detail, "_taste_adjusted", lambda *a: ({}, {}))
+    monkeypatch.setattr(factor_detail, "_stored_stances", lambda *a: {})
+
+    out = factor_detail.detail(
+        "nobody", "b", "subs", {"I1": 0, "I2": 0, "I3": 0},
+        {"I1": "a", "I2": "b", "I3": "c"},
+        loadings={"I1": 1.0, "I2": 1.0, "I3": 1.0},
+        vectors={"I1": [1.0], "I2": [1.0], "I3": [1.0]})
+
+    assert out[0]["distribution"], "a reading without stored stances must still plot"

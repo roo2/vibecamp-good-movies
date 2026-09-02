@@ -79,6 +79,22 @@ def _taste_adjusted(scorer: str, bank_version: str, variant: str):
     return out, explained
 
 
+
+def _stored_stances(scorer: str, variant: str, bank_version: str):
+    """Film positions as the PRODUCT computes them, or {} if it cannot.
+
+    Isolated and forgiving on purpose: the atlas can be pointed at a reading
+    that was never stored, and a page that 500s because one model's solution is
+    missing is worse than one that falls back to its own arithmetic.
+    """
+    try:
+        from . import user_scores
+
+        return user_scores.factor_stances(scorer, variant, bank_version)
+    except Exception:
+        return {}
+
+
 def detail(
     scorer: str, bank_version: str, variant: str, groups: dict[str, int],
     texts: dict[str, str], per_pole: int = 10, per_factor_items: int = 40,
@@ -131,6 +147,24 @@ def detail(
         items_by_factor[factor].append(item_id)
 
     out: dict[int, dict[str, Any]] = {}
+    # THE STORED SOLUTION DECIDES A FILM'S POSITION, not the one re-derived for
+    # this request.
+    #
+    # `vectors` arrives from the live report the route just computed. An
+    # eigen-solution's component SIGNS are arbitrary, so a fresh derivation can
+    # return the same axis pointing the other way — and then this page disagreed
+    # with the compass, the film panel, the pole labels and every stored
+    # analysis, all of which read `latent_factor_items`. Measured on the 2026-09
+    # corpus: 434 of 662 films sat on the OPPOSITE side of the leading axis in
+    # the plot from where the product put them. Life Is Beautiful plotted at
+    # +0.505 toward determinism while its own bar read -0.615 toward redemption.
+    #
+    # So the position comes from `factor_stances`, the one implementation the
+    # product itself scores people with. The local arithmetic above still backs
+    # the per-item evidence, and still stands in when a reading has no stored
+    # solution to read.
+    stances = _stored_stances(scorer, variant, bank_version)
+
     for factor, item_ids in items_by_factor.items():
         positions = []
         for (film_id, cell_factor), values in by_film.items():
@@ -139,10 +173,13 @@ def detail(
             total = sum(w for _v, w in values)
             if total <= 0:
                 continue
+            stance = (stances.get(film_id) or {}).get(factor)
+            score = (sum(stance) / len(stance)) if stance else (
+                sum(v * w for v, w in values) / total)
             row = {
                 "film_id": film_id,
                 "title": titles.get(film_id, film_id),
-                "score": round(sum(v * w for v, w in values) / total, 3),
+                "score": round(score, 3),
                 "items": len(values),
             }
             fixed = adjusted.get((film_id, factor))

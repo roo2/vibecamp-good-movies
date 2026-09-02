@@ -1578,3 +1578,53 @@ def taste_build(
     console.print("\n[green]done[/] — now run [bold]atlas taste-null[/] and "
                   "[bold]atlas dataset[/] to refresh the stored null test and "
                   "the interface data.")
+
+
+@app.command("axis-placement")
+def axis_placement_cmd(
+    scorer: str = typer.Option("", help="Defaults to the product scorer."),
+    variant: str = typer.Option("", help="Defaults to the product variant."),
+    bank: str = typer.Option("", help="Defaults to the product bank."),
+) -> None:
+    """Measure whether each moral axis can place a PERSON, and store the verdict.
+
+    Margin asks whether an axis is in the FILMS. This asks the question the
+    compass actually turns on: shown someone's choices, can we say where they
+    sit? An axis can be solidly present in the corpus and unable to tell one
+    person from another, and it then produces a confident-looking marker placed
+    by noise.
+
+    RUN THIS WHERE THE RATERS ARE. The corpus export drops user tables, so a
+    checkout has every film and no way to compute this; the verdict is stored so
+    it can travel with the data and gate the ordering elsewhere. Re-run it after
+    re-deriving the axes — the stored row names the corpus it came from and is
+    ignored once that no longer matches.
+    """
+    from .analysis import axis_placement
+
+    s = settings()
+    scorer = scorer or s.product_scorer
+    variant = variant or s.product_variant
+    bank = bank or s.factor_bank
+
+    console.print(f"[bold]{scorer} · {variant} · {bank}[/]")
+    result = axis_placement.compute(scorer, variant, bank, progress=console.print)
+    if not result:
+        console.print("[yellow]nothing measurable[/] — no axes, or too few raters "
+                      "with enough ratings. Nothing stored.")
+        raise typer.Exit(1)
+
+    console.print(f"\n  positive control (the rater's own loved-rate): "
+                  f"{result['control']:.3f}")
+    if result["control"] < 0.05:
+        # The control failing means the estimator is not working on this data,
+        # and every number above it is unreadable rather than merely bad.
+        console.print("  [red]the control is at zero[/] — raters plainly differ in "
+                      "how much they love films, so an estimator that cannot see "
+                      "THAT cannot be trusted about the axes. Not stored.")
+        raise typer.Exit(1)
+
+    axis_placement.store(scorer, variant, bank, result)
+    passing = [a for a in result["axes"] if a["places_people"]]
+    console.print(f"\n[green]stored[/] {len(passing)} of {len(result['axes'])} axes "
+                  f"place people, from {result['raters']} raters")

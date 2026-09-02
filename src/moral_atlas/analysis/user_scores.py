@@ -59,7 +59,7 @@ from typing import Any, Iterable
 
 from .. import db
 from ..llm.schemas import MAX_STRENGTH
-from . import factor_names
+from . import axis_placement, factor_names
 
 class Stance(list):
     """A film's verdicts on one axis, plus how much evidence they amount to.
@@ -481,7 +481,42 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
              "pole_high_label": r["pole_high_label"] or r["name"],
              "pole_low_label": r["pole_low_label"] or r["name"]}
             for r in rows]
+    if limit:
+        axes = _placeable_first(scorer, variant, bank_version, axes)
     return axes[:limit] if limit else axes
+
+
+def _placeable_first(scorer: str, variant: str, bank_version: str,
+                     axes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Axes that can place a PERSON, ahead of ones that only order films.
+
+    Margin says an axis is really there in the corpus. It says nothing about
+    whether a person's position on it can be told from their film choices, and
+    the compass needs the second thing — a marker placed by noise looks exactly
+    like a marker placed by conviction.
+
+    The two questions came apart on the 2026-09 corpus. "Intrinsic vs
+    Utilitarian" took the second slot by clearing the null 22% to 20%, a
+    two-point gap that is a tie, and it places people at 0.142 against its own
+    noise ceiling of 0.210 — it cannot place them at all. It is the same axis
+    dropped the round before for the same failure, readmitted by two points of
+    margin. The axis it displaced places people better than any other (0.604).
+
+    So the gate is applied only to the ORDER, never to the membership: axes that
+    place people rise, the rest keep their relative order behind them, and
+    nothing is deleted. An axis with no verdict is treated as passing, so a
+    corpus that has never been measured this way behaves exactly as before.
+
+    Deliberately NOT ideological separation, though that would also promote the
+    right axis here. This project reports that its axes separate ideological
+    lists; selecting them for doing so would turn that finding into a
+    restatement of the selection rule.
+    """
+    verdicts = axis_placement.load(scorer, variant, bank_version)
+    if not verdicts:
+        return axes
+    # Stable: `sorted` keeps by_support order within each group.
+    return sorted(axes, key=lambda a: not verdicts.get(a["dim_id"], True))
 
 
 def factor_stances(

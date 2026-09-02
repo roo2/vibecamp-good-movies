@@ -28,7 +28,11 @@ class Settings:
     root: Path = ROOT
     data_dir: Path = ROOT / "data"
     cache_dir: Path = ROOT / "data" / "cache"
-    db_path: Path = ROOT / "data" / "atlas.sqlite"
+    # ATLAS_DB points every reader at another store. infra/export-corpus.sh
+    # already used that name for the same idea; the Python side did not honour
+    # it, so analysing a pulled production snapshot meant copying it over the
+    # working database and hoping to remember which one was which.
+    db_path: Path = Path(os.environ.get("ATLAS_DB", str(ROOT / "data" / "atlas.sqlite")))
     # Where the MovieLens ml-25m extract sits, and where the arrays derived from
     # it are cached. Both live under data/, which is git-ignored whole: ml-25m is
     # licensed for non-commercial research and may NOT be redistributed, so

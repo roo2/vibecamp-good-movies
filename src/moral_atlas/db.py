@@ -541,6 +541,21 @@ CREATE TABLE IF NOT EXISTS findings (
 -- taste position, and a chart comparing 565 films against 543 would show a drop
 -- that is partly just the smaller corpus. The control — the same films with
 -- taste left in — is stored alongside so the comparison is like for like.
+CREATE TABLE IF NOT EXISTS axis_placement (
+    scorer          TEXT NOT NULL,
+    variant         TEXT NOT NULL,
+    bank_version    TEXT NOT NULL,
+    raters          INTEGER,
+    control         REAL,   -- the positive control; near zero means unreadable
+    axes            TEXT,   -- JSON: dim_id, reliability, noise_ceiling, verdict
+    -- Computed where the RATERS are and read where they are not. The corpus
+    -- export drops user tables, so a checkout can hold every film and no way to
+    -- recompute this; the stored verdict is how the gate travels with the data.
+    source_fingerprint TEXT,
+    computed_at     TEXT,
+    PRIMARY KEY (scorer, variant, bank_version)
+);
+
 CREATE TABLE IF NOT EXISTS null_test_adjusted (
     scorer          TEXT NOT NULL,
     variant         TEXT NOT NULL,

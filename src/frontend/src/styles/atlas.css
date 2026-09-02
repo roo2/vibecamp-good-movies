@@ -822,15 +822,39 @@
 .set-chip.on { background: #241e19; }
 .set-chip.on i { opacity: 1; }
 .set-chip:focus-visible { outline: 2px solid #eda36b; outline-offset: 2px; }
-.set-source {
-  margin: 8px 0 0; color: #7e766c; font-size: 11.5px; line-height: 1.5; max-inline-size: 70ch;
+/* A set's provenance, attached to its chip instead of set out as prose under
+   the plot. A set is somebody's claim and the attribution has to stay with it,
+   but eleven of these stacked below the explorer pushed the plot off screen.
+   Hidden until the chip is hovered or focused — `focus-within` so it opens on
+   keyboard too, and the chip keeps `title` so the source is reachable with no
+   pointer and no focus at all. */
+.set-chip-wrap { position: relative; display: inline-flex; }
+.set-tip {
+  position: absolute; inset-block-start: calc(100% + 7px); inset-inline-start: 0;
+  z-index: 30; inline-size: max-content; max-inline-size: min(38ch, 80vw);
+  display: none; flex-direction: column; gap: 5px;
+  padding: 10px 12px; border: 1px solid #3a312a; border-radius: 7px;
+  background: #14100e; box-shadow: 0 10px 28px rgba(0, 0, 0, .5);
+  color: #b3aa9e; font-size: 11.5px; line-height: 1.5; text-align: start;
+  pointer-events: none;
 }
-.set-source em { color: #6a6158; font-style: normal; }
-
-.set-source a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
-.set-source a:hover { color: #f5efe6; }
-.set-centre { display: block; margin-block-start: 2px; color: #6a6158; }
-.set-centre b { color: #b3aa9e; font-variant-numeric: tabular-nums; font-weight: 500; }
+.set-chip-wrap:hover .set-tip,
+.set-chip-wrap:focus-within .set-tip { display: flex; }
+.set-tip b { font-size: 12px; font-weight: 600; }
+.set-tip-desc { color: #968c7f; }
+.set-tip-src { color: #6a6158; }
+.set-tip-src a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.set-tip-n { color: #6a6158; font-variant-numeric: tabular-nums; }
+/* Near the end of the row the card would run off the edge, so the last few
+   open to the left instead. */
+.set-picker .set-chip-wrap:nth-last-child(-n+3) .set-tip {
+  inset-inline-start: auto; inset-inline-end: 0;
+}
+@media (hover: none) {
+  /* No hover to open it with, and a card that appeared on tap would fight the
+     tap that toggles the set. The chip's own title is the fallback. */
+  .set-tip { display: none !important; }
+}
 
 /* --- the film plane, and the taste section ------------------------------- */
 

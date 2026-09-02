@@ -79,6 +79,17 @@ export default function FilmExplorer({
                     onClick={() => onSpaceChange('taste')}>
               What people choose by
             </button>
+            {/* The moral position with the part taste predicts taken out. Its
+                own view rather than the default, because it is a DIFFERENT
+                quantity from the moral one — not how redemptive a film is, but
+                how much more redemptive than its taste predicts — and drawing
+                it under the plain pole names put Forrest Gump at the far
+                determinism end while its own panel read redemption. */}
+            <button type="button" role="tab" aria-selected={space === 'adjusted'}
+                    className={space === 'adjusted' ? 'on' : undefined}
+                    onClick={() => onSpaceChange('adjusted')}>
+              What they argue, taste removed
+            </button>
           </div>
         )}
 
@@ -124,7 +135,7 @@ export default function FilmExplorer({
             what those films argue — and the plot is where that is legible.
             The viewer marker stays moral-only: it is a position on the moral
             axes, and there is nothing to place on the taste ones. */}
-        {plane && <FilmPlane points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
+        {plane && <FilmPlane space={space} points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
                    sets={sets}
                    viewer={space === 'moral' ? viewer : null}
                    selectedId={selectedId} matchIds={matchIds}

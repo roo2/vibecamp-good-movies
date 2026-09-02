@@ -8,10 +8,13 @@ import React from 'react'
 // only the moral position invites a reader to attribute to morality whatever
 // they can see about the film.
 //
-// It borrows the moral scale's markup deliberately — same grid, same track,
-// same bar growing from the centre — because these two things were built a week
-// apart and looked it: different row heights, different markers, different type.
-// A reader should not have to learn two instruments to read one film.
+// It borrows the COMPASS's markup — the same rows a person sees for their own
+// taste in their profile — rather than the film panel's moral rows. Those put
+// both pole labels and the track in one three-column grid, which works while
+// the labels are short and collapses when they are not: "Enjoyable trash" and
+// "Acclaimed craft" ran into each other and the track shrank to a stub. The
+// compass row gives the labels a line of their own and the track the full
+// width, and it is what a reader has already learnt on their own profile.
 //
 // What stays different is the colour. The moral axes carry the two colours the
 // plot uses for them; taste is deliberately neutral, because it is not a moral
@@ -22,6 +25,13 @@ import React from 'react'
 // "-3.3" are not comparable and printing them side by side would mislead.
 
 const SHOWN = 5
+
+// 73th, 21th, 3th. The suffix depends on the last two digits, not the last one.
+function ordinal(n) {
+  const tens = n % 100
+  if (tens >= 11 && tens <= 13) return `${n}th`
+  return `${n}${{ 1: 'st', 2: 'nd', 3: 'rd' }[n % 10] || 'th'}`
+}
 
 export default function FilmTaste({ taste, filmId }) {
   const rows = React.useMemo(() => {
@@ -50,36 +60,26 @@ export default function FilmTaste({ taste, filmId }) {
         Discovered from which films the same people enjoy, not from anything this film says.
         Nothing here is moral — which is the point of showing it apart.
       </p>
-      <ul className="film-factors">
-        {rows.map(({ dim, pct }) => {
-          // Drawn from the middle, like the moral bars, so the two scales read
-          // as one instrument. The middle is the median film, and the bar is
-          // how far from typical this one is.
-          const magnitude = Math.abs(pct - 50)
-          const high = pct >= 50
-          return (
-            <li key={dim.dim_id} className="film-factor taste">
-              <span className="film-factor-scale">
-                <em className={!high ? 'lit' : ''}>{dim.pole_low}</em>
-                <span className="film-factor-track">
-                  <u className="film-factor-mid" />
-                  <i className="film-factor-bar taste"
-                     style={high
-                       ? { insetInlineStart: '50%', inlineSize: `${magnitude}%` }
-                       : { insetInlineEnd: '50%', inlineSize: `${magnitude}%` }} />
-                </span>
-                <em className={high ? 'lit' : ''}>{dim.pole_high}</em>
+      <ul className="moral-axes taste-axes">
+        {rows.map(({ dim, pct }) => (
+          <li key={dim.dim_id} className="moral-axis taste">
+            <span className="moral-axis-row">
+              <span className="moral-axis-poles">
+                <span className={pct < 50 ? 'lit' : ''}>{dim.pole_low}</span>
+                <span className={pct >= 50 ? 'lit' : ''}>{dim.pole_high}</span>
               </span>
-              <span className="film-factor-score">
-                {pct}<em>percentile</em>
+              <span className="moral-axis-track" aria-hidden="true">
+                <i className="moral-axis-mid" />
+                <b className="moral-axis-marker" style={{ left: `${pct}%` }} />
               </span>
-            </li>
-          )
-        })}
+              <span className="moral-axis-evidence">{ordinal(pct)} percentile</span>
+            </span>
+          </li>
+        ))}
       </ul>
-      <p className="atlas-note">
-        Read as a percentile: the share of films this one sits above. The middle of each bar is
-        the typical film.
+      <p className="taste-axes-note">
+        Read as a percentile: the share of films this one sits above. The middle of each
+        track is the typical film.
       </p>
     </div>
   )

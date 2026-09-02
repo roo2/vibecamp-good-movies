@@ -49,8 +49,17 @@ function extent(values) {
   return [lo - pad, hi + pad]
 }
 
+
+// What each space actually plots, in the caption's own words.
+const CAPTION = {
+  moral: 'placed by what their dialogue argues.',
+  taste: 'placed by which films the same people enjoy.',
+  adjusted: 'placed by what their dialogue argues once the part taste predicts '
+    + 'is removed — so a film sits where it is MORE than its taste explains.',
+}
+
 export default function FilmPlane({
-  points, xAxis, yAxis, sets, viewer, onSelect, selectedId, matchIds,
+  points, xAxis, yAxis, sets, viewer, onSelect, selectedId, matchIds, space = 'moral',
 }) {
   const [hover, setHover] = React.useState(null)
   const box = React.useRef(null)
@@ -164,10 +173,14 @@ export default function FilmPlane({
               x={PAD - 8} y={SIZE / 2 - 7} textAnchor="start">{xAxis.low}</text>
       </svg>
 
+      {/* The caption has to name the quantity actually drawn. It said "with
+          taste held constant" in every space, which described the residual —
+          and once the default became the plain moral position it was telling
+          the reader the opposite of what was on screen. */}
       <figcaption>
         {hover
           ? <b>{hover.title}</b>
-          : <>{placed.length} films, positioned with taste held constant. Rings mark the centre
+          : <>{placed.length} films, {CAPTION[space] || CAPTION.moral} Rings mark the centre
               of a highlighted list.</>}
       </figcaption>
     </figure>

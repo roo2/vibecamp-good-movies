@@ -151,17 +151,35 @@ export function filterFilms(atlas, { query = '', filter = 'all' } = {}) {
 
 // Where every film sits on all three axes, joined from the per-axis
 // distributions the factors payload already carries.
-export function filmPositions(factors) {
-  const list = (factors || []).slice(0, 2)
+// The two axes every view of this reading uses: the ones the server flags as
+// the product's, falling back to the first two by margin for readings the
+// product does not use.
+//
+// Exported because three things need the SAME answer — the plane, the set
+// centroids, and the labels the page prints beside them. They each had their
+// own `.slice(0, 2)`, which is the margin order, and the moment axis selection
+// started asking whether an axis can place a person those stopped agreeing
+// with the compass and with each other.
+export function plotAxes(factors) {
+  const all = (factors?.factors || factors || [])
+  const flagged = all.filter((f) => f && f.product)
+  return (flagged.length >= 2 ? flagged : all).slice(0, 2)
+}
+
+export function filmPositions(factors, space = 'moral') {
+  const list = plotAxes(factors)
   const out = new Map()
   if (list.length < 2) return out
   list.forEach((factor, k) => {
     for (const row of factor.distribution || []) {
       const seen = out.get(row.film_id) || []
-      // Taste-adjusted, matching the plane and the axis tables. A set centre
-      // computed from raw positions while the dots were drawn from adjusted
-      // ones would put the crosshair somewhere no film is.
-      seen[k] = row.score_adjusted ?? row.score
+      // The SAME quantity the plane draws in this space. The rule used to be
+      // `score_adjusted ?? score` unconditionally, which is what the plane did
+      // too — so when the plane moved to the raw position the centres would
+      // have gone on being computed from residuals, and a set's crosshair would
+      // sit where none of its dots are. Its own comment warned about exactly
+      // that; the two just have to be told the same thing.
+      seen[k] = space === 'adjusted' ? row.score_adjusted : row.score
       out.set(row.film_id, seen)
     }
   })
@@ -177,7 +195,11 @@ export function filmPositions(factors) {
 export function setCentroid(positions, filmIds) {
   const found = (filmIds || []).map((id) => positions.get(id)).filter(Boolean)
   if (!found.length) return null
-  const mean = [0, 1, 2].map((k) => found.reduce((a, v) => a + v[k], 0) / found.length)
+  // Over the axes actually present, not a hard-coded three. Two are plotted, so
+  // the third index was undefined for every set and printed as "−NaN".
+  const width = Math.min(...found.map((v) => v.length))
+  const mean = Array.from({ length: width },
+    (_, k) => found.reduce((a, v) => a + v[k], 0) / found.length)
   return { mean, n: found.length }
 }
 
@@ -212,9 +234,7 @@ export function planePoints(factors, taste, space = 'moral') {
   // Utilitarian", which places nobody above noise, while the compass beside it
   // drew a different axis and nothing on either said why. Readings the product
   // does not use carry no flag, and those still fall back to the first two.
-  const all = factors?.factors || []
-  const flagged = all.filter((f) => f.product)
-  const list = (flagged.length >= 2 ? flagged : all).slice(0, 2)
+  const list = plotAxes(factors)
   if (list.length < 2) return null
   const byFilm = new Map()
   list.forEach((factor, k) => {
@@ -235,14 +255,19 @@ export function planePoints(factors, taste, space = 'moral') {
       //
       // Nothing on either screen said one was adjusted. Showing the adjustment
       // is worth doing, but it needs its own labels rather than borrowing these.
-      seen.v[k] = row.score
+      // In the adjusted space, the residual — and the labels below say so.
+      seen.v[k] = space === 'adjusted' ? row.score_adjusted : row.score
       byFilm.set(row.film_id, seen)
     }
   })
   const points = [...byFilm.entries()]
     .filter(([, f]) => f.v.length === 2 && f.v.every((n) => typeof n === 'number'))
     .map(([id, f]) => ({ id, title: f.title, x: f.v[0], y: f.v[1] }))
-  const label = (f, end) => f?.[`pole_${end}_label`] || f?.name || ''
+  // A residual is not a position, so it must not wear a position's label. The
+  // ends are "further toward this pole than taste predicts", which is what the
+  // qualifier says in the space where that is what is drawn.
+  const qualify = (text) => (space === 'adjusted' && text ? `${text}, beyond taste` : text)
+  const label = (f, end) => qualify(f?.[`pole_${end}_label`] || f?.name || '')
   return {
     points,
     xAxis: { high: label(list[0], 'high'), low: label(list[0], 'low') },

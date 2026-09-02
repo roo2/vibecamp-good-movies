@@ -4,7 +4,7 @@ import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
 import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
-import { filmPositions, loadAtlas, setCentroid } from '../services/atlasService.js'
+import { filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
@@ -49,28 +49,39 @@ function AtlasPage({ onBack, access }) {
     return () => { live = false }
   }, [])
 
-  const chosen = React.useMemo(
-    () => filmSets.filter((s) => activeSets.has(s.set_id)), [filmSets, activeSets])
+  // Grouped rather than alphabetical or by size: the religious lists, then the
+  // political ones, then the eras. Reading them in that order is reading the
+  // question the project asks — do communities that state opposed commitments
+  // sit apart — and the era sets are a control rather than a worldview, so they
+  // come last. Anything unlisted keeps its server order behind these.
+  const SET_ORDER = ['catholic', 'christian-edifying', 'conservative',
+                     'socialist', 'feminist', 'red-pilled',
+                     'old-hollywood', 'new-hollywood', 'blockbuster-hollywood',
+                     'franchise-hollywood', 'mcu']
+  const orderedSets = React.useMemo(() => {
+    const rank = (s) => {
+      const at = SET_ORDER.indexOf(s.set_id)
+      return at === -1 ? SET_ORDER.length : at
+    }
+    return [...filmSets].sort((a, b) => rank(a) - rank(b))
+  }, [filmSets])
 
-  // The axes the plot draws — the ones the server flags as the product's, with
-  // the first two by margin as the fallback for readings the product does not
-  // use. Kept beside the plot's own selection so a label cannot name one pair
-  // while the plot draws another.
-  const plotAxes = React.useMemo(() => {
-    const all = factors?.factors || []
-    const flagged = all.filter((f) => f.product)
-    return (flagged.length >= 2 ? flagged : all).slice(0, 2)
-  }, [factors])
+  const chosen = React.useMemo(
+    () => orderedSets.filter((s) => activeSets.has(s.set_id)), [orderedSets, activeSets])
+
+  // The axes the plot draws, from the one selector the plane and the centroids
+  // also use, so a label cannot name one pair while the plot draws another.
+  const shownAxes = React.useMemo(() => plotAxes(factors), [factors])
 
   // Where each chosen set sits on average, in the axes' own units — computed
   // once here so the marker on the cloud and the numbers underneath it come
   // from the same arithmetic.
   const centres = React.useMemo(() => {
-    const positions = filmPositions(factors?.factors)
+    const positions = filmPositions(factors, space)
     const out = {}
     for (const s of chosen) out[s.set_id] = setCentroid(positions, s.films)
     return out
-  }, [factors, chosen])
+  }, [factors, chosen, space])
 
   // The two axes the plane draws, in whichever space is selected. Built here so
   // the toggle changes one value and everything downstream follows.
@@ -166,14 +177,20 @@ function AtlasPage({ onBack, access }) {
         </section>
       ) : (
         <>
-          <ModelPicker models={models} withdrawn={withdrawn}
-                       selected={selected?.reading_id} onSelect={setSelected} />
           {/* Before the axes, not after. The moral axes are weak predictors of
               what anyone enjoys, and a reader who meets them first is being
               shown the answer without the thing it has to survive. */}
           <TasteDimensions taste={taste} />
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
+          {/* Down here, next to the controls it belongs with rather than at the
+              top of the page: which model produced a reading is a thing you
+              change while looking at the plot, not a preamble to it.
+              Deliberately OUTSIDE the `>= 2 factors` gate below — a reading
+              with too few factors draws no plot, and a picker that disappeared
+              with it would leave no way to switch off the broken one. */}
+          <ModelPicker models={models} withdrawn={withdrawn}
+                       selected={selected?.reading_id} onSelect={setSelected} />
           {/* Before the per-axis breakdown, because the shape of the whole
               corpus is the thing a reader most wants and cannot get from three
               separate distributions read one after another. */}
@@ -182,23 +199,50 @@ function AtlasPage({ onBack, access }) {
               {filmSets.length > 0 && (
                 <div className="set-picker">
                   <span className="set-picker-label">highlight a set</span>
-                  {filmSets.map((s) => (
-                    <button
-                      key={s.set_id} type="button"
-                      className={`set-chip${activeSets.has(s.set_id) ? ' on' : ''}`}
-                      style={activeSets.has(s.set_id)
-                        ? { borderColor: s.colour, color: s.colour }
-                        : undefined}
-                      aria-pressed={activeSets.has(s.set_id)}
-                      title={s.source || undefined}
-                      onClick={() => setActiveSets((prev) => {
-                        const next = new Set(prev)
-                        next.has(s.set_id) ? next.delete(s.set_id) : next.add(s.set_id)
-                        return next
-                      })}>
-                      <i style={{ background: s.colour }} />{s.name}
-                      <small>{s.n}</small>
-                    </button>
+                  {/* The provenance rides WITH the chip rather than as prose
+                      under the plot. A set is somebody's claim and the claim
+                      has to stay attached to it, but eleven paragraphs of
+                      sources pushed the plot off the screen. Hover or focus
+                      opens it; the chip still carries the source in `title` so
+                      it survives with no pointer at all. */}
+                  {orderedSets.map((s) => (
+                    <span key={s.set_id} className="set-chip-wrap">
+                      <button
+                        type="button"
+                        className={`set-chip${activeSets.has(s.set_id) ? ' on' : ''}`}
+                        style={activeSets.has(s.set_id)
+                          ? { borderColor: s.colour, color: s.colour }
+                          : undefined}
+                        aria-pressed={activeSets.has(s.set_id)}
+                        aria-describedby={`set-tip-${s.set_id}`}
+                        title={s.source || undefined}
+                        onClick={() => setActiveSets((prev) => {
+                          const next = new Set(prev)
+                          next.has(s.set_id) ? next.delete(s.set_id) : next.add(s.set_id)
+                          return next
+                        })}>
+                        <i style={{ background: s.colour }} />{s.name}
+                        <small>{s.n}</small>
+                      </button>
+                      <span className="set-tip" id={`set-tip-${s.set_id}`} role="tooltip">
+                        <b style={{ color: s.colour }}>{s.name}</b>
+                        <span className="set-tip-desc">{s.description}</span>
+                        <span className="set-tip-src">
+                          {s.url
+                            ? <a href={s.url} target="_blank" rel="noreferrer noopener">{s.source}</a>
+                            : s.source}
+                        </span>
+                        <span className="set-tip-n">
+                          {s.n} of its films are in the corpus.
+                          {centres[s.set_id] && space !== 'taste' && (
+                            <>{' '}Centre {centres[s.set_id].mean
+                              .slice(0, shownAxes.length)
+                              .map((m) => `${m >= 0 ? '+' : '−'}${Math.abs(m).toFixed(3)}`)
+                              .join(' / ')} on {shownAxes.map((f) => f.name).join(', ')}.</>
+                          )}
+                        </span>
+                      </span>
+                    </span>
                   ))}
                 </div>
               )}
@@ -215,35 +259,6 @@ function AtlasPage({ onBack, access }) {
                         + 'Switch the reading above to see yourself.'}
                 </p>
               )}
-              {[...activeSets].map((id) => {
-                const s = filmSets.find((x) => x.set_id === id)
-                const c = centres[id]
-                return s ? (
-                  <p key={id} className="set-source">
-                    <b style={{ color: s.colour }}>{s.name}</b> — {s.description}{' '}
-                    <em>
-                      Source: {s.url
-                        ? <a href={s.url} target="_blank" rel="noreferrer noopener">{s.source}</a>
-                        : s.source}.
-                    </em>{' '}
-                    {s.n} of its films are in the corpus.
-                    {/* Only in the moral space, because that is what this
-                        number IS — a mean of moral positions. Printed under the
-                        taste plot it reads as the set's centre in taste, which
-                        it is not. Axis names come from the same product-flagged
-                        pair the plot draws, not from the first two by margin. */}
-                    {c && space === 'moral' && (
-                      <span className="set-centre">
-                        Centre:{' '}
-                        {c.mean.map((m, k) => (
-                          <b key={k}>{m >= 0 ? '+' : '−'}{Math.abs(m).toFixed(3)}</b>
-                        )).reduce((a, b) => [a, ' / ', b])}
-                        {' '}on {plotAxes.map((f) => f.name).join(', ')}.
-                      </span>
-                    )}
-                  </p>
-                ) : null
-              })}
             </>
           )}
           <AxisAdjustment data={factors} taste={taste} />

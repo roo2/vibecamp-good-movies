@@ -220,9 +220,22 @@ export function planePoints(factors, taste, space = 'moral') {
   list.forEach((factor, k) => {
     for (const row of factor.distribution || []) {
       const seen = byFilm.get(row.film_id) || { title: row.title, v: [] }
-      // Taste-adjusted where it exists. A raw position confounds what a film
-      // argues with what kind of film it is.
-      seen.v[k] = row.score_adjusted ?? row.score
+      // THE RAW POSITION, which is what the axis labels name and what every
+      // other screen reports for the same film.
+      //
+      // This drew `score_adjusted` — the residual after removing the part of a
+      // film's moral position that its taste position predicts. That is a real
+      // and useful quantity, but it answers a different question: not "how
+      // deterministic is this film" but "how much more deterministic than its
+      // taste predicts". Plotted under poles reading Redemption and
+      // Determinism it was read as the first, and it disagreed with the film's
+      // own panel for 19% of films on the leading axis and 32% on the second.
+      // Forrest Gump sat at the far Determinism end of the plot at +1.11 while
+      // its panel said -0.45, Redemption; The Godfather flipped the other way.
+      //
+      // Nothing on either screen said one was adjusted. Showing the adjustment
+      // is worth doing, but it needs its own labels rather than borrowing these.
+      seen.v[k] = row.score
       byFilm.set(row.film_id, seen)
     }
   })

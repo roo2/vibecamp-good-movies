@@ -107,3 +107,63 @@ def test_load_returns_nothing_when_no_axis_passes(monkeypatch):
 
     monkeypatch.setattr(axis_placement.db, "connect", lambda **k: Con())
     assert axis_placement.load("s", "v", "b") is None
+
+
+def test_fingerprint_does_not_depend_on_user_tables(monkeypatch):
+    """The verdict has to stay valid where the raters are not.
+
+    It is computed where the user records live and read where they do not: the
+    corpus export DROPS user tables, and the demo box swaps derived tables in
+    while keeping its own real ones. A fingerprint counting `movie_ratings`
+    therefore never matches on any machine that reads it — the gate falls
+    silently inert in exactly the place it exists for. This was shipped into an
+    export once and caught by loading that export back.
+    """
+    seen = {}
+
+    class Con:
+        def execute(self, sql, params=None):
+            seen["sql"] = sql
+            return self
+
+        def fetchall(self):
+            return [{"factor_id": 0, "n_items": 30}, {"factor_id": 1, "n_items": 17}]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(axis_placement.db, "connect", lambda **k: Con())
+    out = axis_placement.fingerprint("s", "v", "b")
+
+    assert "movie_ratings" not in seen["sql"], "must not key on a droppable table"
+    assert "users" not in seen["sql"]
+    assert out == "0:30|1:17"
+
+
+def test_fingerprint_changes_when_the_axes_are_re_derived(monkeypatch):
+    """Re-derived axes DO invalidate the verdict — that is what it is about."""
+    rows = [[{"factor_id": 0, "n_items": 30}], [{"factor_id": 0, "n_items": 41}]]
+
+    class Con:
+        def __init__(self, r):
+            self.r = r
+
+        def execute(self, *a, **k):
+            return self
+
+        def fetchall(self):
+            return self.r
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    monkeypatch.setattr(axis_placement.db, "connect", lambda **k: Con(rows[0]))
+    first = axis_placement.fingerprint("s", "v", "b")
+    monkeypatch.setattr(axis_placement.db, "connect", lambda **k: Con(rows[1]))
+    assert axis_placement.fingerprint("s", "v", "b") != first

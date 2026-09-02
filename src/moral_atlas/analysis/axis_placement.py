@@ -59,15 +59,25 @@ PROFILE_FILMS = 20
 
 
 def fingerprint(scorer: str, variant: str, bank_version: str) -> str:
-    """What the stored verdict was computed from."""
+    """What the stored verdict is a claim ABOUT: this set of axes.
+
+    Deliberately NOT the rater count, though the first version used it. The
+    verdict travels inside the corpus export, which drops user tables — so on a
+    collaborator's checkout `movie_ratings` does not exist, and on the demo box
+    `load-corpus.sh` swaps the derived tables in while KEEPING the real user
+    records. Either way the rater count on the reading machine differs from the
+    one on the computing machine, the fingerprint would never match, and the
+    gate would fall silently inert in exactly the place it is needed.
+
+    A grown rater pool makes this verdict worth recomputing; it does not make it
+    wrong. Re-derived axes do, and that is what this tracks.
+    """
     with db.connect(read_only=True) as con:
-        ratings = con.execute("SELECT COUNT(*) n FROM movie_ratings").fetchone()["n"]
-        raters = con.execute(
-            "SELECT COUNT(DISTINCT user_id) n FROM movie_ratings").fetchone()["n"]
-        axes = con.execute(
-            "SELECT COUNT(*) n FROM latent_factors WHERE scorer=? AND variant=? "
-            "AND bank_version=?", [scorer, variant, bank_version]).fetchone()["n"]
-    return f"r{ratings}:u{raters}:a{axes}"
+        rows = con.execute(
+            "SELECT factor_id, n_items FROM latent_factors WHERE scorer=? AND "
+            "variant=? AND bank_version=? ORDER BY factor_id",
+            [scorer, variant, bank_version]).fetchall()
+    return "|".join(f"{r['factor_id']}:{r['n_items']}" for r in rows) or "none"
 
 
 def _icc(groups: list[list[float]]) -> tuple[float, float]:

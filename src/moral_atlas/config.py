@@ -94,7 +94,20 @@ class Settings:
     # ONE setting because ONE solution is stored. Serving components on one
     # screen and factors on another is the shape of every silently-wrong screen
     # this project has shipped.
-    extraction: str = os.environ.get("ATLAS_EXTRACTION", "composite")
+    extraction: str = os.environ.get("ATLAS_EXTRACTION", "fa")
+
+    # The most axes any reading is derived at. A CAP, not a count: the
+    # permutation null still decides how many a bank supports, and that number
+    # is recorded, but the readings are cut to a common ceiling so they can be
+    # compared side by side. Without it the same corpus reads as 3 axes through
+    # one bank and 8 through another, and a reader has no way to tell whether
+    # that is a fact about the models or about how many propositions each bank
+    # happens to hold.
+    #
+    # Supplying a number is the practice this project exists to replace, so the
+    # distinction matters: nothing here invents a factor where the null found
+    # fewer, and `n_supported` on every report says what the null actually said.
+    max_axes: int = int(os.environ.get("ATLAS_MAX_AXES", "3"))
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 

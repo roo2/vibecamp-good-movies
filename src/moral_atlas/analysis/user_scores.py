@@ -396,24 +396,26 @@ def score_preferences(
 # factor's items.
 
 
-# How many axes a person is shown. Not a presentation choice — a claim about how
-# many the data supports.
+# How many axes a person is shown.
 #
-# Two, and it has meant different things. It was two under principal components
-# because the third of three failed three validity tests of four. It went to
-# three under common factors, where all three placed a person above their own
-# noise ceiling. It is two again now for a third reason: the extraction rotates
-# those three into orthogonal composites, and two of them carry 87% of the
-# variance the three held.
+# Three, and the number has moved twice for reasons worth keeping. It was two
+# under principal components because the third of three failed three validity
+# tests of four. It went to three under common factors, where all three placed a
+# person above their own noise ceiling. It went back to two when those three
+# were rotated into orthogonal composites — and that is what was undone.
 #
-# That reduction is not free and the cost is recorded rather than argued away.
-# Separating the three lists that ought to be distinct — the content-rated
-# Christian list, the red-pilled list and the feminist list — falls from 0.911
-# to 0.906, which is inside the noise of samples this size. What is lost that is
-# NOT inside the noise is a column of its own for the axis on which the feminist
-# list parts company with the devotional ones; that contrast now lives inside a
-# composite rather than having an axis to itself.
-PRODUCT_AXES = 2
+# The composites were tidier and measured less. They cost little on separating
+# the lists that ought to be distinct (0.911 to 0.906, inside the noise) and a
+# great deal on reading a PERSON: the axis that placed somebody best of the
+# three, at 0.616 against a 0.248 ceiling, became a composite that managed 0.192
+# against 0.178. Half the compass went marginal to buy a squarer plane. They
+# also took away the only axis on which the feminist list parts company with the
+# devotional ones, which was the largest single separation in the corpus.
+#
+# `settings().max_axes` caps every reading at this same number so the models can
+# be compared; the null still decides what each bank supports and `n_supported`
+# records it.
+PRODUCT_AXES = 3
 
 # A factor needs items before it is a factor. Three of the twenty axes the last
 # rebuild produced were built from a SINGLE proposition, and one of those was

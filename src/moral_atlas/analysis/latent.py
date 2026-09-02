@@ -890,6 +890,12 @@ def analyse(
     # those into fewer, so the count reported has to be the number actually
     # returned or every consumer disagrees with the groups it is handed.
     composites = method == "composite" and horn["n_clear_factors"] >= 2
+    # What the null actually said, before any cap. Kept because the cap is a
+    # presentation decision and this is the measurement.
+    supported = horn["n_clear_factors"]
+    cap = settings().max_axes
+    if cap and horn["n_clear_factors"] > cap:
+        horn = {**horn, "n_clear_factors": cap, "margins": horn["margins"][:cap]}
     cut = {"fa": common_factor_groups,
            "composite": composite_groups}.get(method, item_groups)
     groups, distance, loading, dominant, all_loadings = cut(
@@ -932,6 +938,8 @@ def analyse(
         # at all. Above MAX_ZEROED_PAIRS the factor counts above are forced to
         # zero: the matrix is mostly structural holes and so is its null.
         "zeroed_pairs": round(sparse_share, 4),
+        # How many the null supported, which may exceed how many were kept.
+        "n_supported": supported,
         # How the axes relate to each other. Empty under an orthogonal rotation
         # by construction; under promax it is the evidence for a second-order
         # factor and the reason the rotation changed.

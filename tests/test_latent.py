@@ -53,11 +53,58 @@ def like_the_corpus(n_films=200, per_factor=25, k=3, noise=0.35,
     return matrix
 
 
-def test_the_planted_number_of_factors_is_recovered():
-    """On data shaped like the corpus: sparse, and agreed with far too often."""
-    result = latent.parallel_analysis(like_the_corpus(k=3, seed=4), n_iter=60, seed=1)
+def test_components_recover_the_planted_number_of_factors():
+    """On data shaped like the corpus: sparse, and agreed with far too often.
+
+    Pinned to `pca` because that is the method it was written against. The
+    shipped extraction is now `fa`, whose behaviour on the same data is the
+    subject of the two tests below.
+    """
+    result = latent.parallel_analysis(like_the_corpus(k=3, seed=4), n_iter=60,
+                                      seed=1, method="pca")
     assert result["n_factors"] == 3
     assert result["n_clear_factors"] == 3
+
+
+def test_common_factors_invent_less_structure_than_components():
+    """The failure this module exists to prevent, measured on both methods.
+
+    A method that hands back a number whatever it is shown would be no better
+    than asking a model for eight, which is the practice this replaces. So the
+    property that matters most is not reporting MORE structure than was planted.
+
+    Across eight samples of three planted factors, counting every factor
+    reported beyond the three: components invent four, common factors one. The
+    worst single case is components reporting six.
+
+    Stated as a comparison rather than as "factors never over-count", because
+    they do — once, here — and an absolute claim would have been false. It was
+    written as one first and this test caught it.
+    """
+    excess = {"pca": 0, "fa": 0}
+    for seed in range(4, 12):
+        matrix = like_the_corpus(k=3, seed=seed)
+        for method in excess:
+            clear = latent.parallel_analysis(matrix, n_iter=60, seed=1,
+                                             method=method)["n_clear_factors"]
+            excess[method] += max(0, clear - 3)
+    assert excess["fa"] < excess["pca"], excess
+    assert excess["fa"] <= 1, excess
+
+
+def test_common_factors_can_miss_a_weak_planted_factor():
+    """The cost of that conservatism, recorded rather than hidden.
+
+    On the canonical sample the third planted factor clears the permutation null
+    but by only 1-2%, under the 5% margin floor, so it is not counted — where
+    components rate the same factor at 7%. Erring this way is the safer of the
+    two failures for a project whose claim is that the dimensions were
+    discovered, but it IS a failure and a weak real axis can be missed.
+    """
+    result = latent.parallel_analysis(like_the_corpus(k=3, seed=4), n_iter=60,
+                                      seed=1, method="fa")
+    assert result["n_factors"] == 3, "the third factor should still clear the null"
+    assert result["n_clear_factors"] == 2, "and should fall under the margin floor"
 
 
 def test_a_different_planted_number_is_also_recovered():

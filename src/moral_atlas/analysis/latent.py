@@ -268,9 +268,158 @@ def _agreement_eigenvalues(matrix) -> Any:
     return np.sort(np.linalg.eigvalsh(_pairwise_correlation(_film_centred(matrix))))[::-1]
 
 
+# ---------------------------------------------------------------------------
+# COMMON FACTORS, the default. The block above computes principal components:
+# the correlation matrix keeps 1.0 on its diagonal, so every proposition's
+# unique and error variance is inside the solution. Factor analysis replaces
+# that diagonal with communalities and models only what the propositions SHARE,
+# which is the literal form of this project's question — that latent moral
+# dimensions cause films to answer propositions together.
+#
+# It was adopted on measurement grounds, and the deciding evidence was that the
+# one thing components did better turned out not to be about morality. On 4,000
+# held-out MovieLens users components ordered a liked film above a disliked one
+# 57.6% of the time against the common factors' 56.4% — five standard errors
+# apart. With taste residualised out of both, the gap fell to 0.21 +/- 0.25 and
+# both sat within a point of chance. Four fifths of the advantage was taste: the
+# marginal variance components keep and factors discard is largely what KIND of
+# film something is.
+#
+# What the factors do better: their own propositions agree far more (0.89 and
+# 0.63 on the first two axes, against 0.66 and 0.40), they separate the
+# reference lists slightly better on one dimension fewer, and their third axis
+# puts the devotional canon and the sigma canon at the same end — both affirming
+# an order that precedes individual choice — which the components' extra
+# dimension dissolves.
+
+
+def _communalities(r) -> Any:
+    """Starting communalities: squared multiple correlations, or the row's max.
+
+    SMC needs an invertible matrix. This one is estimated pairwise on different
+    subsets of films and can be singular, so the fallback is load-bearing rather
+    than decorative.
+    """
+    import numpy as np
+
+    try:
+        inverse = np.linalg.pinv(r)
+        smc = 1.0 - 1.0 / np.diag(inverse)
+        if np.all(np.isfinite(smc)):
+            return np.clip(smc, 0.05, 0.95)
+    except np.linalg.LinAlgError:
+        pass
+    off = r - np.diag(np.diag(r))
+    return np.clip(np.abs(off).max(axis=1), 0.05, 0.95)
+
+
+def _common_eigenvalues(matrix) -> Any:
+    """The FA analogue of `_agreement_eigenvalues`: the REDUCED matrix.
+
+    Same estimator, same centring, same exclusion of silence. Only the diagonal
+    differs, which is the whole difference between the two methods.
+    """
+    import numpy as np
+
+    r = _pairwise_correlation(_film_centred(matrix))
+    reduced = r.copy()
+    np.fill_diagonal(reduced, _communalities(r))
+    return np.sort(np.linalg.eigvalsh(reduced))[::-1]
+
+
+def _principal_axis(r, k: int, iters: int = 60, tol: float = 1e-5):
+    """Principal axis factoring, iterated to stable communalities.
+
+    Not maximum likelihood: ML requires a positive semi-definite matrix and this
+    one is not, by construction — `_pairwise_correlation` records why.
+    """
+    import numpy as np
+
+    h2 = _communalities(r)
+    loadings = None
+    for _ in range(iters):
+        reduced = r.copy()
+        np.fill_diagonal(reduced, h2)
+        values, vectors = np.linalg.eigh(reduced)
+        order = np.argsort(values)[::-1][:k]
+        loadings = vectors[:, order] * np.sqrt(np.clip(values[order], 0, None))
+        updated = np.clip((loadings ** 2).sum(axis=1), 0.0, 0.998)
+        done = np.max(np.abs(updated - h2)) < tol
+        h2 = updated
+        if done:
+            break
+    return loadings, h2
+
+
+def _varimax(loadings, iters: int = 100, tol: float = 1e-6):
+    """Orthogonal rotation.
+
+    Needed here in a way it is not on the component side. That path clusters
+    loading MAGNITUDES, and rotation preserves the distances k-means reads, so
+    it is inert there. Factor analysis assigns each item to the factor it loads
+    highest on, and that reading is not rotation-invariant.
+    """
+    import numpy as np
+
+    p, k = loadings.shape
+    if k < 2:
+        return loadings
+    rotation = np.eye(k)
+    last = 0.0
+    for _ in range(iters):
+        z = loadings @ rotation
+        u, sv, vt = np.linalg.svd(
+            loadings.T @ (z ** 3 - z @ np.diag((z ** 2).sum(axis=0)) / p))
+        rotation = u @ vt
+        if sv.sum() < last * (1 + tol):
+            break
+        last = sv.sum()
+    return loadings @ rotation
+
+
+def common_factor_groups(matrix, items: list[str], k: int, seed: int = 11):
+    """The FA counterpart of `item_groups`, returning the same five things.
+
+    Simpler than the component path in one respect that has caused real bugs
+    there: a factor IS a group here, so there is no k-means label to confuse
+    with an eigenvector index and `dominant` is the identity.
+    """
+    import numpy as np
+
+    if k < 1:
+        return {}, {}, {}, {}, {}
+
+    r = _pairwise_correlation(_film_centred(matrix))
+    loadings, _h2 = _principal_axis(r, k)
+    loadings = _varimax(loadings)
+    home = np.argmax(np.abs(loadings), axis=1)
+
+    # Orient each factor so the majority of its own items load positive, which
+    # is the convention the component path uses and the direction the namer is
+    # shown. A factor's sign is arbitrary and this project has shipped three
+    # separate screens that were silently inverted by forgetting it.
+    for j in range(k):
+        mine = np.where(home == j)[0]
+        if len(mine) and float(np.sign(loadings[mine, j]).sum()) < 0:
+            loadings[:, j] = -loadings[:, j]
+
+    strongest = np.abs(loadings[np.arange(len(items)), home])
+    ceiling = strongest.max() or 1.0
+    return (
+        {items[i]: int(home[i]) for i in range(len(items))},
+        # Distance from the factor, in the same sense the component path means
+        # it: 0 is the item the axis is about, 1 is an item that had to go
+        # somewhere.
+        {items[i]: float(1.0 - strongest[i] / ceiling) for i in range(len(items))},
+        {items[i]: float(loadings[i, home[i]]) for i in range(len(items))},
+        {j: j for j in range(k)},
+        {items[i]: [float(x) for x in loadings[i]] for i in range(len(items))},
+    )
+
+
 def parallel_analysis(
     matrix, n_iter: int = 200, percentile: float = 95.0, seed: int = 11,
-    margin_floor: float = 0.05,
+    margin_floor: float = 0.05, method: str = "fa",
 ) -> dict[str, Any]:
     """Horn's test: how many factors beat the structure the margins give free?
 
@@ -281,14 +430,15 @@ def parallel_analysis(
     """
     import numpy as np
 
-    observed = _agreement_eigenvalues(matrix)
+    spectrum = _common_eigenvalues if method == "fa" else _agreement_eigenvalues
+    observed = spectrum(matrix)
     rng = np.random.default_rng(seed)
     null = np.empty((n_iter, len(observed)))
     for i in range(n_iter):
         shuffled = matrix.copy()
         for column in range(shuffled.shape[1]):
             rng.shuffle(shuffled[:, column])
-        null[i] = _agreement_eigenvalues(shuffled)
+        null[i] = spectrum(shuffled)
 
     threshold = np.percentile(null, percentile, axis=0)
     above = observed > threshold
@@ -571,12 +721,23 @@ def item_groups(matrix, items: list[str], k: int,
 def analyse(
     scorer: str | None = None, bank_version: str = "b1",
     n_iter: int = 200, min_films: int = MIN_FILMS_PER_ITEM, seed: int = 11,
-    variant: str | None = None,
+    variant: str | None = None, method: str | None = None,
 ) -> dict[str, Any]:
-    """The whole thing for one scorer: how many dimensions, and which items."""
+    """The whole thing for one scorer: how many dimensions, and which items.
+
+    `method` is "fa" (common factors, the default) or "pca" (components, what
+    this project shipped until 2026-09). ONE solution is ever stored: the
+    alternative exists so the comparison can be re-run, not so two readings can
+    be served side by side. Three separate screens have already been silently
+    wrong from two places computing the same quantity from different solves.
+    """
+    from ..config import settings
+
+    method = method or settings().extraction
     data = response_matrix(scorer, bank_version, min_films, variant)
-    horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed)
-    groups, distance, loading, dominant, all_loadings = item_groups(
+    horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed, method=method)
+    cut = common_factor_groups if method == "fa" else item_groups
+    groups, distance, loading, dominant, all_loadings = cut(
         data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
     sizes: dict[int, int] = {}
     for label in groups.values():
@@ -584,6 +745,7 @@ def analyse(
     return {
         "scorer": scorer or "opus",
         "variant": variant,
+        "method": method,
         "films": len(data["films"]),
         "items": len(data["items"]),
         "dropped_items": data["dropped_items"],

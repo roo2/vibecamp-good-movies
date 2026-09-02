@@ -396,27 +396,32 @@ def score_preferences(
 # factor's items.
 
 
-# How many axes a person is shown. Not a presentation choice any more — a claim
-# about how many the data supports, and the honest answer is: few.
+# How many axes a person is shown. Not a presentation choice — a claim about how
+# many the data supports.
 #
-# Split-half replication says it plainly. Split the films in two, run the
-# analysis on each half and ask whether the halves describe the same variation:
-# the first factor comes back at 0.59 against a chance floor of 0.003, the
-# second at 0.35, the third at 0.29, and by the fifth it is 0.21 and falling
-# into the floor. Clearing a permutation null and surviving a change of sample
-# are different tests, and most of the twenty pass only the first.
+# This was two for most of the project's life, and the reason was specific: the
+# solution then in use found three axes and the third failed three tests of
+# four. Its propositions cohered at 0.51, no ideological list separated along it
+# (F = 1.8 against a null of 2.0), and a person's position on it could not be
+# told from noise (0.13 against a floor of 0.27).
 #
-# So three by that test — and then the third failed three later ones. Its own
-# propositions agree only weakly (0.51); no ideological list separates along it
-# (F = 1.8, where shuffling the films produces 2.0, so it does not clear what
-# chance produces); and a person's position on it cannot be told from noise
-# (0.13 against a floor of 0.27). It also buys nothing: the leading axis alone
-# predicts as well as all three together.
+# That reason no longer applies, because it was a fact about principal
+# components and the extraction is now common factors. On the same corpus the
+# factor solution finds three axes clearing the null by 289%, 23% and 15%, and
+# ALL THREE place a person above their own noise ceiling:
 #
-# A real grouping of propositions with no demonstrated validity is not a moral
-# dimension. So two, and the atlas still shows the rest with its evidence
-# beside it — auditing the corpus is what that page is for.
-PRODUCT_AXES = 2
+#     Determinism vs Redemption   0.516  ceiling 0.260
+#     Intrinsic vs Utilitarian    0.483  ceiling 0.304
+#     Autonomy vs Destiny         0.635  ceiling 0.230
+#
+# The third is the best of the three at placing somebody, and the second — the
+# axis that sat at noise under components, at 0.070 — works here. Holding the
+# cap at two would now be hiding a measured axis rather than declining to
+# publish an unmeasured one.
+#
+# The plane still draws two, because a plane has two dimensions. That is a
+# separate limit and lives in the client.
+PRODUCT_AXES = 3
 
 # A factor needs items before it is a factor. Three of the twenty axes the last
 # rebuild produced were built from a SINGLE proposition, and one of those was

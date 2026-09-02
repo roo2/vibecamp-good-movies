@@ -126,9 +126,13 @@ export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
   // whether an axis can place a person — so this panel described a film on one
   // axis while the plot beside it used another. Readings the product does not
   // use carry no flag and still fall back to the first two.
+  // EVERY axis the product reads, not the first two. The plane draws two
+  // because a plane has two dimensions; a film's reading has no such limit, and
+  // slicing it here would describe a film on fewer axes than the compass reads
+  // the person sitting next to it.
   const all = state.data.factors || []
   const flagged = all.filter((factor) => factor.product)
-  const factors = (flagged.length >= 2 ? flagged : all).slice(0, 2)
+  const factors = flagged.length ? flagged : all.slice(0, 2)
   const engaged = factors.filter((factor) => factor.score != null)
 
   return (

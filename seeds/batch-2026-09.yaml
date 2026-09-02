@@ -1,0 +1,288 @@
+# One ingest batch, capped at 100 films.
+#
+# The socialist entries came from three lists the project owner supplied: an
+# r/socialism_101 thread, the Freedom Socialist Party's picks, and a Letterboxd
+# 'communist canon'.
+#
+# An earlier version of this file claimed that canon was too sparse in dialogue
+# to score. That was wrong, and worth recording because of how it happened: the
+# ingest report's subtitle column counts CUES, not words, and reading it as
+# words made every film on the list look ten times thinner than it is. Reds
+# reads 3,285 there and holds 25,470 words. Of the 29 films now in the set only
+# three fall under 3,000 words, and all three are silent films — which is what
+# silent film does, not a property of the politics.
+films:
+- title: La Haine
+  year: 1995
+  note: socialist
+- title: Malcolm X
+  year: 1992
+  note: socialist
+- title: Matewan
+  year: 1987
+  note: socialist
+- title: Pride
+  year: 2014
+  note: socialist
+- title: 13th
+  year: 2016
+  note: socialist
+- title: I Am Not Your Negro
+  year: 2016
+  note: socialist
+- title: The Old Oak
+  year: 2023
+  note: socialist
+- title: Z
+  year: 1969
+  note: socialist
+- title: The Conformist
+  year: 1970
+  note: socialist
+- title: Harlan County U.S.A.
+  year: 1976
+  note: socialist
+- title: The Discreet Charm of the Bourgeoisie
+  year: 1972
+  note: socialist
+- title: Mondays in the Sun
+  year: 2002
+  note: socialist
+- title: Carlos
+  year: 2010
+  note: socialist
+- title: Drive
+  year: 2011
+  note: red-pilled
+- title: Nightcrawler
+  year: 2014
+  note: red-pilled
+- title: John Wick
+  year: 2014
+  note: red-pilled
+- title: The White Tiger
+  year: 2021
+  note: red-pilled
+- title: Wall Street
+  year: 1987
+  note: red-pilled
+- title: Falling Down
+  year: 1993
+  note: red-pilled
+- title: Warrior
+  year: 2011
+  note: red-pilled
+- title: Se7en
+  year: 1995
+  note: red-pilled
+- title: The Night of the Hunter
+  year: 1955
+  note: satanist+arts-and-faith
+- title: Wings of Desire
+  year: 1987
+  note: humanist+arts-and-faith
+- title: The Passion of Joan of Arc
+  year: 1928
+  note: feminist+arts-and-faith
+- title: The Last Days of Disco
+  note: arts-and-faith+conservative
+- title: The Incredibles
+  year: 2004
+  note: conservative
+- title: Drive
+  year: 2011
+  note: red-pilled
+- title: The Cabinet of Dr. Caligari
+  year: 1920
+  note: satanist
+- title: Certain Women
+  year: 2016
+  note: humanist+feminist
+- title: Jeanne Dielman, 23, quai du Commerce, 1080 Bruxelles
+  year: 1975
+  note: feminist
+- title: Witness
+  note: arts-and-faith+conservative
+- title: Metropolitan
+  year: 1990
+  note: conservative
+- title: Nightcrawler
+  year: 2014
+  note: red-pilled
+- title: The Great Gabbo
+  year: 1929
+  note: satanist
+- title: Orlando
+  year: 1992
+  note: humanist+feminist
+- title: His Girl Friday
+  year: 1940
+  note: feminist
+- title: How to Participate
+  note: arts-and-faith
+- title: Forrest Gump
+  year: 1994
+  note: conservative
+- title: Prisoners
+  year: 2013
+  note: red-pilled
+- title: Dr. Jekyll and Mr. Hyde
+  year: 1931
+  note: satanist
+- title: One Sings, the Other Doesn't
+  year: 1977
+  note: humanist+feminist
+- title: The Piano
+  year: 1993
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2023
+  note: arts-and-faith
+- title: Juno
+  year: 2007
+  note: conservative
+- title: Good Time
+  year: 2017
+  note: red-pilled
+- title: M
+  year: 1931
+  note: satanist
+- title: Mustang
+  year: 2015
+  note: humanist+feminist
+- title: Cléo from 5 to 7
+  year: 1962
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2022
+  note: arts-and-faith
+- title: Blast from the Past
+  year: 1999
+  note: conservative
+- title: Primal Fear
+  year: 1996
+  note: red-pilled
+- title: Svengali
+  year: 1931
+  note: satanist
+- title: Happy-Go-Lucky
+  year: 2008
+  note: humanist
+- title: A Woman Under the Influence
+  year: 1974
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2021
+  note: arts-and-faith
+- title: A Simple Plan
+  year: 1998
+  note: conservative
+- title: Nobody
+  year: 2021
+  note: red-pilled
+- title: Freaks
+  year: 1932
+  note: satanist
+- title: The Incredibly True Adventure of Two Girls in Love
+  year: 1995
+  note: humanist
+- title: Daughters of the Dust
+  year: 1991
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2020
+  note: arts-and-faith
+- title: Red Dawn
+  year: 1984
+  note: conservative
+- title: I Am a Fugitive from a Chain Gang
+  year: 1932
+  note: satanist
+- title: Lady Bird
+  year: 2017
+  note: humanist
+- title: 4 Months, 3 Weeks and 2 Days
+  year: 2007
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2018
+  note: arts-and-faith
+- title: The Edge
+  year: 1997
+  note: conservative
+- title: Island of Lost Souls
+  year: 1932
+  note: satanist
+- title: Short Term 12
+  year: 2013
+  note: humanist
+- title: Ladies and Gentlemen, the Fabulous Stains
+  year: 1982
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2017
+  note: arts-and-faith
+- title: We Were Soldiers
+  year: 2002
+  note: conservative
+- title: The Most Dangerous Game
+  year: 1932
+  note: satanist
+- title: Portrait of a Lady on Fire
+  year: 2019
+  note: humanist
+- title: Desperately Seeking Susan
+  year: 1985
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2016
+  note: arts-and-faith
+- title: Gattaca
+  year: 1997
+  note: conservative
+- title: Roman Scandals
+  year: 1933
+  note: satanist
+- title: Roma
+  year: 2018
+  note: humanist
+- title: Diary of a Lost Girl
+  year: 1929
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2015
+  note: arts-and-faith
+- title: Heartbreak Ridge
+  year: 1986
+  note: conservative
+- title: The Bitter Tea of General Yen
+  year: 1932
+  note: satanist
+- title: The Last Black Man in San Francisco
+  year: 2019
+  note: humanist
+- title: Rosetta
+  year: 1999
+  note: feminist
+- title: The Arts & Faith Ecumenical Jury — 2014
+  note: arts-and-faith
+- title: Brazil
+  year: 1985
+  note: conservative
+- title: The Invisible Man
+  year: 1933
+  note: satanist
+- title: Never Rarely Sometimes Always
+  year: 2020
+  note: humanist
+- title: Persona
+  year: 1966
+  note: feminist
+- title: The Addiction
+  note: arts-and-faith
+- title: United 93
+  year: 2006
+  note: conservative
+- title: The Testament of Dr. Mabuse
+  year: 1933
+  note: satanist
+- title: Columbus
+  year: 2017
+  note: humanist
+- title: Foxy Brown
+  year: 1974
+  note: feminist
+- title: Andrei Rublev
+  note: arts-and-faith

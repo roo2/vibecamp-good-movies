@@ -2,6 +2,10 @@
 __pycache__/
 *.pyc
 .env
+# ...and its backups. A .env.bak sitting beside it is the same secrets
+# under a name the single-file pattern did not match.
+.env.*
+!.env.example
 # data/ is ignored whole, not file by file. Two reasons, and the second is the
 # one that bites: the store is a large binary that changes wholesale on every
 # write and holds the user records, and on the runner `data/` is a *symlink* to

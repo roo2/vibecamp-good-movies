@@ -738,6 +738,14 @@ def model_scan(
                       + (f", [red]{lost} slices lost[/]" if lost else "")
                       + (f", [yellow]{missed} propositions never answered[/]" if missed else "")
                       + f"  {json.dumps(stats['usage'])}")
+        empty = stats.get("empty") or []
+        if empty:
+            console.print(
+                f"  [yellow]{len(empty)} films engaged no propositions[/] and wrote nothing, "
+                f"though they counted as scored: {', '.join(empty[:6])}"
+                + (" …" if len(empty) > 6 else "")
+                + "\n  Re-run those with --films. It is usually transient, and a film left "
+                  "like this is in the corpus with no position on any axis.")
         if lost:
             console.print(f"  [red]{lost} slices were dropped[/] — this run is INCOMPLETE, "
                           f"and the films above are missing propositions they were never "
@@ -1503,3 +1511,70 @@ def taste_null_cmd(
             console.print(
                 f"  {result['films']} films · taste in {result['control_n_factors']} factors"
                 f" · taste out {result['n_factors']} factors")
+
+
+@app.command("taste-build")
+def taste_build(
+    step: str = typer.Option(
+        "all", help="all | join | neighbours | taste | adjust. `all` runs them in "
+                    "order, which is the normal use; the individual steps are for "
+                    "re-running one after an edit."),
+    rebuild_join: bool = typer.Option(
+        False, help="Rescan ratings.csv even if the cached join still matches the "
+                    "corpus. Only needed if the MovieLens files themselves change."),
+) -> None:
+    """Rebuild the taste dimensions and the co-preference recommender.
+
+    This is the half of the pipeline that reads OUTSIDE ratings rather than the
+    films' own dialogue, and it is what makes the product's recommendations work:
+    on 162,000 outside raters, co-preference orders a liked film above a disliked
+    one 83% of the time against the moral axes' 57%.
+
+    RUN IT AFTER INGESTING FILMS. `atlas model-scan` gives a new film a moral
+    position and nothing else — no taste position, no neighbours, so it can be
+    looked up but never recommended, and it silently drops out of every
+    taste-adjusted figure. Nothing errors when this is skipped, which is exactly
+    why it needs saying.
+
+    Order matters. The taste step re-derives an SVD whose component signs are
+    arbitrary, so `adjust` must follow it rather than run against positions from
+    an earlier build. Afterwards, `atlas taste-null` and `atlas dataset` pick up
+    the new numbers.
+    """
+    from .analysis import moral_adjust, movielens, neighbour_build, taste
+
+    steps = ("join", "neighbours", "taste", "adjust")
+    if step != "all" and step not in steps:
+        console.print(f"[red]unknown step {step!r}[/] — pick one of {', '.join(steps)}")
+        raise typer.Exit(1)
+    wanted = steps if step == "all" else (step,)
+
+    try:
+        ratings = movielens.load(progress=console.print, rebuild=rebuild_join)
+    except movielens.MovieLensMissing as e:
+        console.print(f"[red]{e}[/]")
+        raise typer.Exit(1)
+
+    if "neighbours" in wanted:
+        console.print("\n[bold]co-preference neighbours[/]")
+        neighbour_build.build(ratings, progress=console.print)
+
+    if "taste" in wanted:
+        console.print("\n[bold]taste dimensions[/]")
+        axes = taste.extract(ratings, progress=console.print)
+        result = taste.store(axes, ratings, progress=console.print)
+        # A flip is normal and is meant to be seen: it means the solver handed
+        # back the axis upside down and the anchor tag turned it the right way
+        # up. Silence here would be the bug.
+        if result["flipped"]:
+            console.print(f"  [yellow]{len(result['flipped'])} dimensions were "
+                          f"re-oriented[/] against their anchor tags: "
+                          f"{', '.join(str(d) for d in result['flipped'])}")
+
+    if "adjust" in wanted:
+        console.print("\n[bold]moral positions with taste removed[/]")
+        moral_adjust.store(progress=console.print)
+
+    console.print("\n[green]done[/] — now run [bold]atlas taste-null[/] and "
+                  "[bold]atlas dataset[/] to refresh the stored null test and "
+                  "the interface data.")

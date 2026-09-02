@@ -29,6 +29,16 @@ class Settings:
     data_dir: Path = ROOT / "data"
     cache_dir: Path = ROOT / "data" / "cache"
     db_path: Path = ROOT / "data" / "atlas.sqlite"
+    # Where the MovieLens ml-25m extract sits, and where the arrays derived from
+    # it are cached. Both live under data/, which is git-ignored whole: ml-25m is
+    # licensed for non-commercial research and may NOT be redistributed, so
+    # neither the ratings nor anything holding them verbatim can enter the repo
+    # or the corpus export. What ships is only aggregate — a similarity matrix
+    # over our own films, and film positions on the derived dimensions.
+    movielens_dir: Path = Path(
+        os.environ.get("MOVIELENS_DIR", str(ROOT / "data" / "movielens" / "ml-25m")))
+    derived_dir: Path = Path(
+        os.environ.get("ATLAS_DERIVED_DIR", str(ROOT / "data" / "derived")))
 
     anthropic_api_key: str | None = _clean("ANTHROPIC_API_KEY")
     # Alternative scorers, for auditing whose morals the scores encode. Each is
@@ -90,6 +100,17 @@ class Settings:
         return self.product_bank or f"{self.product_scorer}-{self.product_variant}"
 
     @property
+    def has_movielens(self) -> bool:
+        """Whether the ratings the taste and CF layers are built from are here.
+
+        Checked rather than assumed: the download is 250MB and not in the repo,
+        so a fresh checkout has everything EXCEPT this, and the failure without
+        the check is a stack trace deep inside a CSV read.
+        """
+        return (self.movielens_dir / "ratings.csv").exists() and \
+               (self.movielens_dir / "links.csv").exists()
+
+    @property
     def has_tmdb(self) -> bool:
         return bool(self.tmdb_read_token or self.tmdb_api_key)
 
@@ -112,6 +133,7 @@ class Settings:
     def ensure_dirs(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.derived_dir.mkdir(parents=True, exist_ok=True)
 
 
 @lru_cache(maxsize=1)

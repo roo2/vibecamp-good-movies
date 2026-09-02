@@ -106,7 +106,14 @@ def scan(
              "films": len(packets), "scored": 0, "refused": 0, "failed": 0,
              # Propositions that were asked about twice and answered neither
              # time. Reported rather than absorbed: unanswered is not silence.
-             "unanswered": 0, "lost_slices": 0}
+             "unanswered": 0, "lost_slices": 0,
+             # Films the call succeeded for that produced NO verdicts at all.
+             # These counted as "scored" and wrote nothing, so a run could
+             # report "scored 25, refused 0, failed 0" while four films silently
+             # entered the corpus unmeasured. Zero engagement is occasionally
+             # real, but it is far more often transient — all four seen doing it
+             # scored normally on a retry — so it is surfaced, not absorbed.
+             "empty": [] }
 
     batched = bool(batch_size) and len(items) > batch_size
 
@@ -202,6 +209,8 @@ def scan(
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows,
             )
         stats["scored"] += 1
+        if not rows:
+            stats["empty"].append(p.film_id)
         if progress:
             progress(f"{alias:<12} {p.film_id:<28} {len(rows):>3}/{len(items)} engaged")
 

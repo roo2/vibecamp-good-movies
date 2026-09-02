@@ -4,7 +4,7 @@ import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
 import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
-import { filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
+import { axisPair, filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
@@ -41,6 +41,8 @@ function AtlasPage({ onBack, access }) {
   // Which pair of axes the plane draws. Moral by default — this is an atlas of
   // what films argue, and taste is the comparison rather than the subject.
   const [space, setSpace] = React.useState('moral')
+  // Which two axes the plane draws. Null means the support order's first two.
+  const [pair, setPair] = React.useState(null)
 
   React.useEffect(() => {
     let live = true
@@ -69,19 +71,21 @@ function AtlasPage({ onBack, access }) {
   const chosen = React.useMemo(
     () => orderedSets.filter((s) => activeSets.has(s.set_id)), [orderedSets, activeSets])
 
-  // The axes the plot draws, from the one selector the plane and the centroids
-  // also use, so a label cannot name one pair while the plot draws another.
-  const shownAxes = React.useMemo(() => plotAxes(factors), [factors])
+  // Every axis the product reads, and the two currently drawn. Both come from
+  // the same selectors the plane uses, so a label cannot name one pair while
+  // the plot draws another.
+  const productAxes = React.useMemo(() => plotAxes(factors), [factors])
+  const shownAxes = React.useMemo(() => axisPair(productAxes, pair), [productAxes, pair])
 
   // Where each chosen set sits on average, in the axes' own units — computed
   // once here so the marker on the cloud and the numbers underneath it come
   // from the same arithmetic.
   const centres = React.useMemo(() => {
-    const positions = filmPositions(factors, space)
+    const positions = filmPositions(factors, space, pair)
     const out = {}
     for (const s of chosen) out[s.set_id] = setCentroid(positions, s.films)
     return out
-  }, [factors, chosen, space])
+  }, [factors, chosen, space, pair])
 
   // The two axes the plane draws, in whichever space is selected. Built here so
   // the toggle changes one value and everything downstream follows.
@@ -249,7 +253,8 @@ function AtlasPage({ onBack, access }) {
               <FilmExplorer films={corpus?.films || []} factors={factors} taste={taste}
                             reading={selected} selectedId={selectedId}
                             onSelect={setSelectedId} sets={chosen} viewer={viewerHere}
-                            space={space} onSpaceChange={setSpace} />
+                            space={space} onSpaceChange={setSpace}
+                            pair={pair} onPairChange={setPair} axes={productAxes} />
               {wantsMe && !viewerHere && (
                 <p className="atlas-note">
                   {!access ? 'Take the survey first and this will show where you sit.'

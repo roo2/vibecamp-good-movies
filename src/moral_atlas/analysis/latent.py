@@ -190,6 +190,23 @@ def response_matrix(
 # anything, and one wild value would enter the matrix as a strong association.
 MIN_PAIR_OVERLAP = 8
 
+# Above this share of proposition pairs having too few shared films to correlate,
+# a reading reports NO factors, whatever its eigenvalues say.
+#
+# The estimator zeroes any pair under MIN_PAIR_OVERLAP, so a reading can arrive
+# at the eigendecomposition with a correlation matrix that is mostly structural
+# zeros — and a null built by permuting the same matrix inherits the same
+# emptiness, so the comparison stops meaning anything and factors clear it on
+# almost no comparisons. Measured across the readings here, the gap is wide
+# enough to be a line rather than a judgement call: the three usable ones zero
+# 1%, 10% and 20% of their pairs; the four unusable ones 57%, 85%, 96% and 98%.
+#
+# Common factors need this more than components did. Grok zeroes 96% of its
+# matrix — its median pair shares ONE film — and components honestly reported
+# nothing; factors reported four nameable axes off the same emptiness. A method
+# willing to model a near-empty matrix needs to be told when not to.
+MAX_ZEROED_PAIRS = 0.5
+
 
 def _pairwise_correlation(matrix) -> Any:
     """Correlate items over the films that took a position on BOTH of them.
@@ -718,6 +735,18 @@ def item_groups(matrix, items: list[str], k: int,
             signed, dominant, all_loadings)
 
 
+def _zeroed_share(matrix) -> float:
+    """Share of proposition pairs the estimator could not measure at all."""
+    import numpy as np
+
+    r = _pairwise_correlation(_film_centred(matrix))
+    if r.shape[0] < 2:
+        return 1.0
+    upper = np.triu_indices(r.shape[0], 1)
+    return float((r[upper] == 0).mean())
+
+
+
 def analyse(
     scorer: str | None = None, bank_version: str = "b1",
     n_iter: int = 200, min_films: int = MIN_FILMS_PER_ITEM, seed: int = 11,
@@ -735,7 +764,10 @@ def analyse(
 
     method = method or settings().extraction
     data = response_matrix(scorer, bank_version, min_films, variant)
+    sparse_share = _zeroed_share(data["matrix"])
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed, method=method)
+    if sparse_share > MAX_ZEROED_PAIRS:
+        horn = {**horn, "n_factors": 0, "n_clear_factors": 0, "margins": []}
     cut = common_factor_groups if method == "fa" else item_groups
     groups, distance, loading, dominant, all_loadings = cut(
         data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
@@ -767,6 +799,11 @@ def analyse(
         "eigenvalues": horn["observed"],
         "null_threshold": horn["null_threshold"],
         "group_sizes": dict(sorted(sizes.items())),
+        # What share of proposition pairs had too few shared films to correlate
+        # at all. Above MAX_ZEROED_PAIRS the factor counts above are forced to
+        # zero: the matrix is mostly structural holes and so is its null.
+        "zeroed_pairs": round(sparse_share, 4),
+        "too_sparse": sparse_share > MAX_ZEROED_PAIRS,
         "groups": groups,
         # How far each item sits from the centre of its group. Small means the
         # item is what the factor is about; large means it landed there because

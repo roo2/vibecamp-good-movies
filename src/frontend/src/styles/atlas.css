@@ -988,3 +988,18 @@
 .film-plane.narrow .plane-mark.chosen path { stroke-width: 3.2; }
 .film-plane.narrow .plane-rule { stroke-width: 2.4; }
 .film-plane.narrow figcaption { font-size: 13px; }
+
+/* Which two axes the plane draws. Sits under the space tabs because it is the
+   same kind of control — what am I looking at — and only appears when the
+   reading has more than two axes to choose between. */
+.plane-pair { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 0; }
+.plane-pair label { display: inline-flex; align-items: center; gap: 6px; }
+.plane-pair span {
+  color: #7e766c; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+}
+.plane-pair select {
+  max-inline-size: 22ch; padding: 3px 6px; color: #b3aa9e; font-size: 11.5px;
+  background: #1d1815; border: 1px solid #3a312a; border-radius: 5px;
+}
+.plane-pair select:hover { border-color: #574f47; color: #f5efe6; }
+.plane-pair select:focus-visible { outline: 2px solid #eda36b; outline-offset: 2px; }

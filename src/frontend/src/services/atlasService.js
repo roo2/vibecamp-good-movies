@@ -163,11 +163,29 @@ export function filterFilms(atlas, { query = '', filter = 'all' } = {}) {
 export function plotAxes(factors) {
   const all = (factors?.factors || factors || [])
   const flagged = all.filter((f) => f && f.product)
-  return (flagged.length >= 2 ? flagged : all).slice(0, 2)
+  return flagged.length >= 2 ? flagged : all
 }
 
-export function filmPositions(factors, space = 'moral') {
-  const list = plotAxes(factors)
+// Which TWO of them a plane draws. Separate from the ordering above because
+// they answer different questions: `plotAxes` says which axes the product
+// reads, this says which pair the reader is currently looking at.
+//
+// The default is the first two, which is the support order — margin over the
+// null first. Deliberately NOT the two that separate ideological lists best:
+// this project reports that those lists separate, and picking the axes for
+// doing so would make the finding a consequence of the choice.
+export function axisPair(axes, pair) {
+  const list = axes || []
+  if (list.length < 2) return list
+  if (!pair) return list.slice(0, 2)
+  const find = (id) => list.find((f) => f.factor_id === id)
+  const x = find(pair[0]) || list[0]
+  const y = find(pair[1]) || list.find((f) => f !== x) || list[1]
+  return x === y ? list.slice(0, 2) : [x, y]
+}
+
+export function filmPositions(factors, space = 'moral', pair = null) {
+  const list = axisPair(plotAxes(factors), pair)
   const out = new Map()
   if (list.length < 2) return out
   list.forEach((factor, k) => {
@@ -209,7 +227,7 @@ export function setCentroid(positions, filmIds) {
 // and the atlas already drifted apart once — one defaulted to the reading with
 // the most verdicts and the other to the reading the product uses, so the same
 // film showed different numbers depending on which page you opened.
-export function planePoints(factors, taste, space = 'moral') {
+export function planePoints(factors, taste, space = 'moral', pair = null) {
   if (space === 'taste') {
     const dims = (taste?.dimensions || []).filter((d) => d.status === 'named').slice(0, 2)
     if (dims.length < 2) return null
@@ -234,7 +252,7 @@ export function planePoints(factors, taste, space = 'moral') {
   // Utilitarian", which places nobody above noise, while the compass beside it
   // drew a different axis and nothing on either said why. Readings the product
   // does not use carry no flag, and those still fall back to the first two.
-  const list = plotAxes(factors)
+  const list = axisPair(plotAxes(factors), pair)
   if (list.length < 2) return null
   const byFilm = new Map()
   list.forEach((factor, k) => {

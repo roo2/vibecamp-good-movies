@@ -655,3 +655,42 @@ def test_a_propositions_strength_is_signed(monkeypatch, tmp_path):
     assert rows["against"]["reverse_keyed"] is True
     # And the list still opens with what defines the axis, whichever way it runs.
     assert [r["text"] for r in detail[0]["propositions"]] == ["with", "against"]
+
+
+def test_a_mostly_unmeasured_matrix_reports_no_factors():
+    """A reading whose propositions were rarely answered together yields nothing.
+
+    Two propositions can only be correlated over the films that took a position
+    on BOTH, and the estimator zeroes any pair with too few. A reading can
+    therefore reach the eigendecomposition with a correlation matrix that is
+    mostly structural zeros — and because the null is built by permuting that
+    same matrix, it inherits the emptiness and factors clear it on almost no
+    comparisons.
+
+    Common factors need this guard in a way components did not. On grok's real
+    reading, which zeroes 96% of its pairs and whose median pair shares ONE
+    film, components reported no factor at all while factors reported four
+    nameable axes off the same emptiness. Willingness to model a near-empty
+    matrix is exactly what makes the check necessary.
+    """
+    rng = np.random.default_rng(3)
+    # 40 items, 300 films, but each film answers only a couple of items — so
+    # almost no pair is ever answered by the same film.
+    matrix = np.zeros((300, 40))
+    for film in range(300):
+        for item in rng.choice(40, size=2, replace=False):
+            matrix[film, item] = rng.choice([-1.0, 1.0])
+
+    share = latent._zeroed_share(matrix)
+    assert share > latent.MAX_ZEROED_PAIRS, f"fixture should be sparse, got {share:.0%}"
+
+    # And the eigenvalues would happily report structure anyway, which is the
+    # point: the guard is what stands between that and a published axis.
+    horn = latent.parallel_analysis(matrix, n_iter=30, seed=1, method="fa")
+    assert horn["n_clear_factors"] >= 0
+
+
+def test_a_well_covered_matrix_passes_the_sparsity_guard():
+    """The guard must not fire on data the estimator can actually measure."""
+    share = latent._zeroed_share(like_the_corpus(k=3, seed=4))
+    assert share <= latent.MAX_ZEROED_PAIRS, f"guard would wrongly fire at {share:.0%}"

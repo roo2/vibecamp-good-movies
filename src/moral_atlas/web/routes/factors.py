@@ -53,7 +53,18 @@ WITHDRAWN = {
     # propositions can only be compared over the films that answered both, and
     # its median pair shares one film — so nothing it produced can clear a
     # significance test, however many films are added.
-    "grok": "answers too few propositions per film for any axis to reach significance",
+    # Reworded because the old text made a claim that turned out to be false.
+    # It said nothing grok produced "can clear a significance test"; under
+    # common factors four axes cleared it comfortably. What is actually wrong is
+    # the input: 96% of its proposition pairs share too few films to correlate
+    # at all, and a null built by permuting that same matrix inherits the holes,
+    # so clearing it means very little. `latent.MAX_ZEROED_PAIRS` now enforces
+    # this for every reading instead of naming models here from memory.
+    "grok": "answers so few propositions per film that 96% of its proposition "
+            "pairs were never judged by the same film — there is almost nothing "
+            "to correlate",
+    "dolphin": "refuses most films, and 57-85% of its proposition pairs share "
+               "too few films to correlate",
 }
 
 # Banks whose propositions were written by more than one model. The writer is

@@ -1,7 +1,7 @@
 import React from 'react'
 import FilmDetail from './FilmDetail.jsx'
 import FilmPlane from './FilmPlane.jsx'
-import { planePoints } from '../../services/atlasService.js'
+import { axisPair, planePoints } from '../../services/atlasService.js'
 
 // The plot and the film panel, side by side, driven by one selection.
 //
@@ -21,9 +21,10 @@ import { planePoints } from '../../services/atlasService.js'
 
 export default function FilmExplorer({
   films, factors, taste, reading, selectedId, onSelect,
-  sets, viewer, space = 'moral', onSpaceChange,
+  sets, viewer, space = 'moral', onSpaceChange, pair = null, onPairChange, axes = [],
 }) {
   const [query, setQuery] = React.useState('')
+  const shown = React.useMemo(() => axisPair(axes, pair), [axes, pair])
   const panel = React.useRef(null)
 
   // Choosing a film has to LOOK like it did something. The matches list used to
@@ -43,7 +44,7 @@ export default function FilmExplorer({
     })
   }, [onSelect])
   const plane = React.useMemo(
-    () => planePoints(factors, taste, space), [factors, taste, space])
+    () => planePoints(factors, taste, space, pair), [factors, taste, space, pair])
 
   const all = films || []
   const matches = React.useMemo(() => {
@@ -90,6 +91,42 @@ export default function FilmExplorer({
                     onClick={() => onSpaceChange('adjusted')}>
               What they argue, taste removed
             </button>
+          </div>
+        )}
+
+        {/* WHICH two of the axes. The plane draws two because a plane has two
+            dimensions, and until now which two was decided entirely by the
+            support order — so a third axis the product reads was never
+            visible. The default is unchanged; this only lets a reader look at
+            another pair. Hidden when there is no choice to make. */}
+        {onPairChange && space !== 'taste' && axes.length > 2 && (
+          <div className="plane-pair">
+            <label>
+              <span>across</span>
+              <select value={shown[0]?.factor_id ?? ''}
+                      onChange={(e) => onPairChange([Number(e.target.value),
+                                                     shown[1]?.factor_id])}>
+                {axes.map((a) => (
+                  <option key={a.factor_id} value={a.factor_id}
+                          disabled={a.factor_id === shown[1]?.factor_id}>
+                    {a.pole_low_label} – {a.pole_high_label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>up</span>
+              <select value={shown[1]?.factor_id ?? ''}
+                      onChange={(e) => onPairChange([shown[0]?.factor_id,
+                                                     Number(e.target.value)])}>
+                {axes.map((a) => (
+                  <option key={a.factor_id} value={a.factor_id}
+                          disabled={a.factor_id === shown[0]?.factor_id}>
+                    {a.pole_low_label} – {a.pole_high_label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
 

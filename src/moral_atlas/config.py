@@ -83,8 +83,10 @@ class Settings:
     # call site used to assume.
     product_bank: str = os.environ.get("ATLAS_PRODUCT_BANK", "dolphin-subs")
 
-    # How the moral axes are extracted: "fa" (common factors) or "pca"
-    # (principal components, what shipped until 2026-09). Changed on measurement
+    # How the moral axes are extracted: "composite" (the shipped default —
+    # common factors rotated into orthogonal composites), "fa" (the common
+    # factors themselves), or "pca" (principal components, what shipped until
+    # 2026-09). Changed on measurement
     # evidence — components' better prediction turned out to be taste, not moral
     # signal: with taste residualised out of both the gap fell from 1.19 points
     # to 0.21, and both landed within a point of chance. See analysis/latent.py.
@@ -92,7 +94,7 @@ class Settings:
     # ONE setting because ONE solution is stored. Serving components on one
     # screen and factors on another is the shape of every silently-wrong screen
     # this project has shipped.
-    extraction: str = os.environ.get("ATLAS_EXTRACTION", "fa")
+    extraction: str = os.environ.get("ATLAS_EXTRACTION", "composite")
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 

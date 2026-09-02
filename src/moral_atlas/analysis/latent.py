@@ -394,6 +394,73 @@ def _varimax(loadings, iters: int = 100, tol: float = 1e-6):
     return loadings @ rotation
 
 
+# The number of composites kept when `extraction` is "composite". Two, because
+# the three first-order axes carry 87% of their variance in two components and
+# a plane draws two — but it is a real reduction and it costs something, which
+# `MAX_ZEROED_PAIRS` above does not: separating the three lists that ought to be
+# distinct falls from 0.911 to 0.906, and the axis where the feminist list parts
+# company with the devotional ones stops having a column of its own.
+COMPOSITES = 2
+
+
+def composite_groups(matrix, items: list[str], k: int, seed: int = 11):
+    """Rotate the first-order factors into orthogonal composites, and induce
+    each proposition's loading on them.
+
+    The first-order axes correlate — 0.21 on this corpus — so they are not
+    independent readings of a film, and a rotation of their FILM SCORES gives
+    uncorrelated ones. That much is arithmetic. The part that makes them
+    nameable is the induction: a composite's weights times each axis's pattern
+    loadings gives its loading on every proposition, so it is named from the
+    same sentences a first-order axis is named from rather than from the axis
+    labels. Naming a composite out of names would prove nothing.
+
+    Returns the same five things `common_factor_groups` does, so everything
+    downstream — scoring, naming, storage — is unchanged.
+    """
+    import numpy as np
+
+    if k < 2:
+        return common_factor_groups(matrix, items, k, seed=seed)
+    n = min(COMPOSITES, k)
+
+    r = _pairwise_correlation(_film_centred(matrix))
+    first, _h2 = _principal_axis(r, k)
+    pattern, _phi = _promax(first)
+
+    # Each first-order factor's film scores, by the same rule the product uses:
+    # every proposition counts on every axis in proportion to how much it loads
+    # there, signed by the loading.
+    engaged = (matrix != 0).astype(float)
+    weight = np.abs(pattern)
+    scores = np.divide(matrix @ (np.sign(pattern) * weight),
+                       np.where(engaged @ weight == 0, 1.0, engaged @ weight))
+    usable = (engaged @ weight > 0).all(axis=1)
+    z = scores[usable]
+    z = (z - z.mean(0)) / np.where(z.std(0) == 0, 1.0, z.std(0))
+
+    values, vectors = np.linalg.eigh(np.corrcoef(z.T))
+    order = np.argsort(values)[::-1][:n]
+    loadings = pattern @ vectors[:, order]
+
+    home = np.argmax(np.abs(loadings), axis=1)
+    for j in range(n):
+        mine = np.where(home == j)[0]
+        if len(mine) and float(np.sign(loadings[mine, j]).sum()) < 0:
+            loadings[:, j] = -loadings[:, j]
+
+    strongest = np.abs(loadings[np.arange(len(items)), home])
+    ceiling = strongest.max() or 1.0
+    return (
+        {items[i]: int(home[i]) for i in range(len(items))},
+        {items[i]: float(1.0 - strongest[i] / ceiling) for i in range(len(items))},
+        {items[i]: float(loadings[i, home[i]]) for i in range(len(items))},
+        {j: j for j in range(n)},
+        {items[i]: [float(x) for x in loadings[i]] for i in range(len(items))},
+    )
+
+
+
 def _promax(loadings, power: int = 4):
     """Oblique rotation. Returns the pattern matrix and the factor correlations.
 
@@ -819,11 +886,20 @@ def analyse(
     horn = parallel_analysis(data["matrix"], n_iter=n_iter, seed=seed, method=method)
     if sparse_share > MAX_ZEROED_PAIRS:
         horn = {**horn, "n_factors": 0, "n_clear_factors": 0, "margins": []}
-    cut = common_factor_groups if method == "fa" else item_groups
+    # The null counts FIRST-ORDER factors; the composites are a rotation of
+    # those into fewer, so the count reported has to be the number actually
+    # returned or every consumer disagrees with the groups it is handed.
+    composites = method == "composite" and horn["n_clear_factors"] >= 2
+    cut = {"fa": common_factor_groups,
+           "composite": composite_groups}.get(method, item_groups)
     groups, distance, loading, dominant, all_loadings = cut(
         data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
     correlations = factor_correlations(data["matrix"], horn["n_clear_factors"]) \
-        if method == "fa" else None
+        if method in ("fa", "composite") else None
+    if composites:
+        kept = min(COMPOSITES, horn["n_clear_factors"])
+        horn = {**horn, "n_clear_factors": kept,
+                "margins": horn["margins"][:kept]}
     sizes: dict[int, int] = {}
     for label in groups.values():
         sizes[label] = sizes.get(label, 0) + 1

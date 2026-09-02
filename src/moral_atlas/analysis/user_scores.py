@@ -399,29 +399,21 @@ def score_preferences(
 # How many axes a person is shown. Not a presentation choice — a claim about how
 # many the data supports.
 #
-# This was two for most of the project's life, and the reason was specific: the
-# solution then in use found three axes and the third failed three tests of
-# four. Its propositions cohered at 0.51, no ideological list separated along it
-# (F = 1.8 against a null of 2.0), and a person's position on it could not be
-# told from noise (0.13 against a floor of 0.27).
+# Two, and it has meant different things. It was two under principal components
+# because the third of three failed three validity tests of four. It went to
+# three under common factors, where all three placed a person above their own
+# noise ceiling. It is two again now for a third reason: the extraction rotates
+# those three into orthogonal composites, and two of them carry 87% of the
+# variance the three held.
 #
-# That reason no longer applies, because it was a fact about principal
-# components and the extraction is now common factors. On the same corpus the
-# factor solution finds three axes clearing the null by 289%, 23% and 15%, and
-# ALL THREE place a person above their own noise ceiling:
-#
-#     Determinism vs Redemption   0.516  ceiling 0.260
-#     Intrinsic vs Utilitarian    0.483  ceiling 0.304
-#     Autonomy vs Destiny         0.635  ceiling 0.230
-#
-# The third is the best of the three at placing somebody, and the second — the
-# axis that sat at noise under components, at 0.070 — works here. Holding the
-# cap at two would now be hiding a measured axis rather than declining to
-# publish an unmeasured one.
-#
-# The plane still draws two, because a plane has two dimensions. That is a
-# separate limit and lives in the client.
-PRODUCT_AXES = 3
+# That reduction is not free and the cost is recorded rather than argued away.
+# Separating the three lists that ought to be distinct — the content-rated
+# Christian list, the red-pilled list and the feminist list — falls from 0.911
+# to 0.906, which is inside the noise of samples this size. What is lost that is
+# NOT inside the noise is a column of its own for the axis on which the feminist
+# list parts company with the devotional ones; that contrast now lives inside a
+# composite rather than having an axis to itself.
+PRODUCT_AXES = 2
 
 # A factor needs items before it is a factor. Three of the twenty axes the last
 # rebuild produced were built from a SINGLE proposition, and one of those was

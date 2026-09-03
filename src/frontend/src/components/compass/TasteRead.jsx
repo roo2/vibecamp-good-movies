@@ -1,19 +1,21 @@
 import React from 'react'
 
-// What KIND of film someone is drawn to, beside what those films argue.
+// What KIND of film someone is drawn to.
 //
-// It belongs here because it is the more useful half. Measured on outside
-// raters, which films a person enjoys is predicted far better by what other
-// people enjoyed alongside them than by any moral axis — so a compass showing
-// only morals was showing the weaker reading as the whole answer.
+// This is now the whole reading, and that is a finding rather than a
+// simplification. Measured on 162,000 outside raters, which films a person
+// enjoys is predicted at 83% by what other people enjoyed alongside them and at
+// 57% by any moral axis — so a compass leading with morals was leading with the
+// weaker half. The moral axes are still derived, still published on the atlas,
+// and still what the film pages are read on; they are just not a claim worth
+// making about a PERSON from a dozen ratings.
 //
-// Built from the compass's own axis markup rather than the atlas film scales it
-// used to borrow. Two groups on one screen drawn by two different systems read
-// as two instruments, and nothing tells a reader they are meant to be compared.
-//
-// One thing stays deliberately different: no colour on the poles. The moral
-// axes carry the two colours the atlas plot uses for them, and taste is not a
-// moral claim — it should not borrow the authority of looking like one.
+// Colour arrived with that change. These rows used to be deliberately grey,
+// because the moral axes above them carried the atlas plot's two colours and
+// taste borrowing them would have looked like a moral claim. With the moral
+// axes gone there is nothing to be mistaken for, and five unlabelled grey rows
+// were hard to tell apart at a glance — so each dimension now owns a hue and
+// keeps it.
 
 // Five, and the five are chosen rather than the largest. Sixteen dimensions
 // replicate and six can be named, but a profile is READ, not audited, so the
@@ -27,30 +29,79 @@ import React from 'react'
 // of noise — which is the only kind of row worth cutting.
 const SHOWN = 5
 
-export default function TasteRead({ taste }) {
+// One hue per row, in the order the server sends them, so a dimension keeps its
+// colour between somebody's own profile and the film pages. Chosen for
+// separation on the dark ground rather than for prettiness: amber, teal,
+// violet, rose and green stay distinguishable to a red-green colourblind reader
+// because they differ in lightness as well as hue.
+const HUES = ['#eda36b', '#5cc3c0', '#b58ce0', '#e0899a', '#93c56b']
+
+// "78th percentile" is precise and unreadable. What a person wants to know is
+// which end they are at and how far, which is three words.
+function lean(percentile) {
+  const distance = Math.abs(percentile - 50)
+  if (distance < 8) return 'right in the middle'
+  if (distance < 20) return 'leans'
+  if (distance < 35) return 'clearly'
+  return 'strongly'
+}
+
+export default function TasteRead({ taste, companions = [] }) {
   const rows = (taste || []).slice(0, SHOWN)
   if (!rows.length) return null
 
   return (
-    <>
-      <h2 className="axis-group-head taste">Taste</h2>
-      <ul className="moral-axes taste-axes">
-        {rows.map((row) => (
-          <li key={row.dim_id} className="moral-axis taste">
-            <span className="moral-axis-row">
-              <span className="moral-axis-poles">
-                <span className={row.percentile < 50 ? 'lit' : ''}>{row.pole_low}</span>
-                <span className={row.percentile >= 50 ? 'lit' : ''}>{row.pole_high}</span>
+    <section className="taste-read">
+      <h2 className="taste-read-head">What you are drawn to</h2>
+      <ul className="taste-axes">
+        {rows.map((row, index) => {
+          const high = row.percentile >= 50
+          const label = high ? row.pole_high : row.pole_low
+          const strength = lean(row.percentile)
+          // Every companion who has been read on this same dimension.
+          const others = companions
+            .map((c) => ({
+              name: c.name,
+              row: (c.profile?.taste || []).find((t) => t.dim_id === row.dim_id),
+            }))
+            .filter((c) => c.row)
+          return (
+            <li key={row.dim_id} className="taste-axis" style={{ '--hue': HUES[index % HUES.length] }}>
+              <p className="taste-axis-read">
+                {strength === 'right in the middle'
+                  ? <>You sit <b>between {row.pole_low.toLowerCase()} and {row.pole_high.toLowerCase()}</b>.</>
+                  : <>You {strength === 'leans' ? 'lean toward' : ''}{strength === 'clearly' ? 'clearly prefer' : ''}{strength === 'strongly' ? 'strongly prefer' : ''} <b>{label.toLowerCase()}</b>.</>}
+              </p>
+              <span className="taste-axis-poles">
+                <span className={high ? '' : 'lit'}>{row.pole_low}</span>
+                <span className={high ? 'lit' : ''}>{row.pole_high}</span>
               </span>
-              <span className="moral-axis-track" aria-hidden="true">
-                <i className="moral-axis-mid" />
-                <b className="moral-axis-marker" style={{ left: `${row.percentile}%` }} />
+              <span className="taste-axis-track">
+                <i className="taste-axis-mid" />
+                <i
+                  className="taste-axis-band"
+                  style={high
+                    ? { left: '50%', width: `${row.percentile - 50}%` }
+                    : { left: `${row.percentile}%`, width: `${50 - row.percentile}%` }}
+                />
+                {others.map((other) => (
+                  <b
+                    key={other.name || other.row.dim_id}
+                    className="taste-axis-marker companion"
+                    style={{ left: `${other.row.percentile}%` }}
+                    title={`${other.name || 'They'}: ${other.row.percentile}`}
+                  />
+                ))}
+                <b className="taste-axis-marker" style={{ left: `${row.percentile}%` }} />
               </span>
-            </span>
-          </li>
-        ))}
+            </li>
+          )
+        })}
       </ul>
-      <p className="taste-axes-note">Which films the same people enjoy. Nothing moral here.</p>
-    </>
+      <p className="taste-axes-note">
+        Built from which films the same people enjoy, across 162,000 outside raters.
+        {companions.length > 0 && ' Hollow markers are the others in your session.'}
+      </p>
+    </section>
   )
 }

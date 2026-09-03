@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react'
-import MoralAxes from '../components/compass/MoralAxes.jsx'
 import TasteRead from '../components/compass/TasteRead.jsx'
 import { loadMoralProfile, loadSessionMoralProfiles } from '../services/profileService.js'
 
@@ -47,8 +46,8 @@ function CompassScreen({ access, shareToken, onContinue }) {
           <span className="compass-view-label">{profile.evidence.films_used} films read</span>
         </header>
 
-        <h1>Where the films put you.</h1>
-        <p className="compass-lede">Implied by the films you chose.</p>
+        <h1>What you are drawn to.</h1>
+        <p className="compass-lede">Read from the films you know, against 162,000 other raters.</p>
 
         {profile.is_provisional && (
           <p className="compass-provisional">
@@ -56,14 +55,14 @@ function CompassScreen({ access, shareToken, onContinue }) {
           </p>
         )}
 
-        <MoralAxes scores={profile.scores} companions={companions} />
-        <p className="compass-hint">
-          {companions.length
-            ? 'Tap a value to see the question, and where each of you landed.'
-            : 'Tap a value to see the question behind it.'}
-        </p>
-
-        <TasteRead taste={profile.taste} />
+        {/* The moral axes are no longer read back to a person here. They are
+            derived, published and tested on the atlas, and every film is still
+            placed on them — but a dozen ratings is not enough to tell somebody
+            what they believe, and the same 162,000 raters that make the taste
+            read work put moral prediction at 57% against taste's 83%. Saying
+            less, and meaning it, beats a confident sentence about somebody's
+            morals drawn from twelve films they have seen. */}
+        <TasteRead taste={profile.taste} companions={companions} />
 
         <div className="compass-action">
           <button className="peach-button" type="button" onClick={onContinue}>

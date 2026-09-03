@@ -296,3 +296,71 @@ button { cursor: pointer; }
 .taste-axes-note { margin-top: 6px; }
 
 .compass-hint { margin: 8px 0 0; color: #7e766c; font-size: 12px; }
+
+
+/* --- what you are drawn to -----------------------------------------------
+ *
+ * These rows carried the moral axes' grey until the moral axes left the
+ * profile. Grey was right while the two sat together — taste is not a moral
+ * claim and should not have looked like one — and wrong the moment it was on
+ * its own, because five identical grey rows are five things a reader has to
+ * decode one at a time. Each dimension now owns a hue and holds it.
+ *
+ * Every colour is set from --hue, one custom property per row, so a dimension
+ * cannot end up with its band one colour and its marker another.
+ */
+.taste-read { margin: 26px 0 0; }
+.taste-read-head {
+  margin: 0 0 4px; color: #f5efe6; font-size: 15px; font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.taste-axes { margin: 14px 0 0; padding: 0; list-style: none; }
+.taste-axis {
+  --hue: #eda36b;
+  padding: 15px 0 17px; border-top: 1px solid #241e19;
+}
+.taste-axis:first-child { border-top: 0; padding-top: 4px; }
+
+/* The sentence first, because it is the answer. The scale under it is the
+   evidence, and a reader who wants only the answer should not have to
+   interpret a track to get it. */
+.taste-axis-read {
+  margin: 0 0 10px; color: #b3aa9e; font-size: 14px; line-height: 1.45;
+}
+.taste-axis-read b { color: var(--hue); font-weight: 650; }
+
+.taste-axis-poles {
+  display: flex; justify-content: space-between; gap: 14px; margin-bottom: 9px;
+  color: #6f675e; font-size: 11.5px; font-weight: 600; line-height: 1.3;
+}
+.taste-axis-poles span { flex: 1; }
+.taste-axis-poles span:last-child { text-align: right; }
+.taste-axis-poles .lit { color: var(--hue); }
+
+.taste-axis-track { display: block; position: relative; height: 12px; }
+.taste-axis-track::before {
+  position: absolute; top: 4.5px; right: 0; left: 0; height: 3px;
+  border-radius: 2px; background: #241e19; content: '';
+}
+.taste-axis-mid {
+  position: absolute; top: 0; left: 50%; width: 1px; height: 12px;
+  background: #3a312a;
+}
+/* Drawn from the centre to the marker, so the direction and the distance are
+   one shape rather than a dot a reader has to measure against a midline. */
+.taste-axis-band {
+  position: absolute; top: 4.5px; height: 3px; border-radius: 2px;
+  background: var(--hue); opacity: .45;
+}
+.taste-axis-marker {
+  position: absolute; top: 0; width: 12px; height: 12px; margin-left: -6px;
+  border-radius: 50%; background: var(--hue);
+  box-shadow: 0 0 0 3px rgba(28, 23, 19, .9);
+}
+.taste-axis-marker.companion {
+  background: transparent; border: 2px solid var(--hue); opacity: .7;
+  box-shadow: none;
+}
+.taste-axes-note {
+  margin: 14px 0 0; color: #574f47; font-size: 11.5px; line-height: 1.45;
+}

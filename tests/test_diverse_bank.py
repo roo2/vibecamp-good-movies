@@ -759,8 +759,16 @@ def test_naming_keeps_the_answer_the_namer_would_give_again():
     assert _consensus([]) == []
 
 
-def test_a_failed_naming_run_does_not_lose_the_ones_that_worked():
-    """Three calls mean three chances to hit a provider error."""
+def test_a_failed_naming_run_is_retried_rather_than_lost():
+    """Three runs mean three chances to hit a provider error, and three samples.
+
+    Skipping a failed run silently shrinks the consensus, which is the whole
+    reason for running more than once. That went wrong for real: a two-word cap
+    added to the schema rejected three samples of five, and the vote between the
+    two survivors chose an axis labelled against its own propositions. So a run
+    that fails is re-asked, and `runs` means the number of SAMPLES kept rather
+    than the number of attempts made.
+    """
     import pytest
 
     from moral_atlas.analysis import factor_names
@@ -782,7 +790,9 @@ def test_a_failed_naming_run_does_not_lose_the_ones_that_worked():
               "dominant": {0: 0}, "eigenvalues": [9.0], "margins": [1.0]}
     named = factor_names.name_factors(
         report, {"I1": "one", "I2": "two"}, client=Flaky(), alias="stub", runs=3)
-    assert calls["n"] == 3, "a failure must not abort the remaining runs"
+    # Four calls for three runs: the second one failed and was re-asked. The
+    # count is the point — three would mean the failed sample was dropped.
+    assert calls["n"] == 4, "a failed run must be retried, not skipped"
     assert [f["name"] for f in named] == ["B vs A"]
 
     # But if every run fails, that is an error and not an empty axis set.
@@ -831,7 +841,7 @@ def test_an_axis_with_an_unnamed_end_is_not_offered_as_a_reading():
     class Stub:
         def parse(self, system, user, output_model, max_tokens=None):
             return FactorNames(factors=[FactorName(
-                factor_id=0, first_label="None", second_label="Revenge as justice",
+                factor_id=0, first_label="None", second_label="Vengeance",
                 first="a", second="b", question="q?", coherent=True)])
 
     report = {"scorer": "s", "groups": {"I1": 0, "I2": 0},

@@ -35,7 +35,7 @@ import json
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .. import db
 from ..config import PROMPT_VERSION
@@ -76,14 +76,41 @@ class FactorName(BaseModel):
     # factor where one end was unobserved and the model had to reason about a
     # side it could not see. The names below are anchored to the two LISTS,
     # which the model can see, and the code maps lists to poles.
+    # Two words is the cap, and it is enforced rather than requested. The
+    # instruction has always been in the prompt; five naming runs still produced
+    # "Intrinsic value of life", and the run that picks the most representative
+    # answer chose it, because that picker measures agreement between runs and
+    # knows nothing about the rule. A constraint the selector cannot see is a
+    # suggestion.
     first_label: str = Field(
-        description="ONE word naming the position the FIRST list of propositions "
-                    "asserts, or two if one truly will not do. A stance somebody "
-                    "would own, never the negation of the other end.")
+        description="ONE OR TWO WORDS naming the position the FIRST list of "
+                    "propositions asserts. Two is not a failure — take the "
+                    "second word when it names the thing more truly. Three or "
+                    "more will be rejected. A stance somebody would own, never "
+                    "the negation of the other end.")
     second_label: str = Field(
-        description="The same for the SECOND list — or, if that list is empty, "
-                    "for the position a work would hold that denied every "
-                    "proposition in the first.")
+        description="The same for the SECOND list, one or two words — or, if "
+                    "that list is empty, for the position a work would hold "
+                    "that denied every proposition in the first.")
+
+    @field_validator("first_label", "second_label")
+    @classmethod
+    def _at_most_two_words(cls, value: str) -> str:
+        """Reject a third word rather than quietly shipping it.
+
+        Raising here is the point: the client re-asks on a validation failure,
+        so the model gets told what it did and tries again, which is a better
+        outcome than truncating a label to its first two words and inventing a
+        name nobody chose.
+        """
+        words = value.strip().split()
+        if not words:
+            raise ValueError("a label cannot be empty")
+        if len(words) > 2:
+            raise ValueError(
+                f"{value!r} is {len(words)} words; a pole label is one or two. "
+                "Name the position, not a description of it.")
+        return value.strip()
     first: str = Field(description="One sentence: what a work at the first end claims.")
     second: str = Field(description="One sentence: what a work at the second end claims. "
                                     "Say here if that end was inferred rather than observed.")
@@ -131,38 +158,67 @@ reader can see what it runs BETWEEN, because they will be shown their own place
 on it as a point on a line, and a line has to be labelled at both ends.
 
   - `first_label` names the position the FIRST list asserts; `second_label` the
-    SECOND. ONE WORD EACH. Two only where one genuinely cannot carry it, and a
-    two-word label is a failure to find the one word, not a richer answer.
-    These are read at a glance off the ends of a short line by someone deciding
-    what to watch tonight. Give up accuracy for brevity — the sentence below
-    each label is where precision belongs. The rule, stated without giving you
-    the words: if your label is a qualifier plus a noun, drop the qualifier and
-    keep the noun, unless the qualifier IS the disagreement. If it is a
-    hyphenated compound, find the single word underneath it. Do not reach for a
-    narrower or more loaded word than the propositions support just because it
-    is shorter — a shorter label that says something the films do not is worse
-    than a long one. Each must still be a position in its own
-    right, never the absence or negation of the other: "Self-preservation", not
-    "Not self-sacrificing"; "Absolutes", not "Non-relativist". If you cannot
-    name one of them as something a person would own, you have probably named
-    the other as a topic rather than a stance — reword both.
+    SECOND. ONE OR TWO WORDS. Two is not a failure — take the second word
+    whenever it names the thing more truly than one word can, and prefer the
+    truer label over the shorter one. Three is too many: these are read at a
+    glance off the ends of a short line by someone deciding what to watch
+    tonight, and at three words a label stops being a name and starts being a
+    description. The sentence below each label is where the description belongs.
+    Never pad to reach two — if one word is exactly right, one word is the
+    answer. What a second word must NOT do is qualify the first into something
+    narrower ("Personal sacrifice" where "Sacrifice" was already the axis); what
+    it MAY do is reach a concept one word cannot hold on its own ("Divine
+    order", "Moral law", "Common good"). Each label must be a position in its
+    own right, never the absence or negation of the other:
+    "Self-preservation", not "Not self-sacrificing"; "Absolutes", not
+    "Non-relativist". If you cannot name one of them as something a person would
+    own, you have probably named the other as a topic rather than a stance —
+    reword both.
   - `first` and `second` say, in a sentence each, what a work at that end
     claims. Phrase both so someone holding that view would accept the wording
     as fair. Keep each sentence with its own label: the commonest failure here
     is describing one end and captioning it with the other's name.
   - `question` is the axis as a question with two defensible sides, not a topic.
 
-DO NOT AVOID RELIGIOUS VOCABULARY. Films argue about providence, grace,
-judgement, sin, sacrifice, redemption and divine order directly and at length,
-and where a group is about one of those the religious word is usually the
-plainest and most accurate name for it, not the least neutral. "Divine order"
-is a better label than "Traditional structure" for propositions about a right
-order that precedes human choice, because it is what the propositions are
-about. Reach for a secular paraphrase only when it genuinely fits the
-propositions better, never to soften or to sound impartial.
+REACH FOR THE LARGE WORD, NOT THE MECHANICAL ONE. These axes are the oldest
+arguments there are, and they already have names — the ones moral and religious
+traditions gave them after centuries of arguing about exactly this. Providence,
+grace, judgement, sin, sacrifice, redemption, divine order, fate, mercy, duty,
+the common good, moral law, the sacred. Where a group is about one of those,
+that word is the plainest and most accurate name for it, not the least neutral
+one, and a reader recognises it instantly because they have met the idea before.
 
-This is not licence to import religion where it is absent. A group about
-utility and sacrifice in wartime is not about martyrdom. Name what is there.
+The failure to avoid is the mechanical noun: a flat, procedural, managerial word
+that describes the machinery of a moral position instead of naming the position.
+"Rule adherence" for obedience to a moral law. "Outcome optimisation" for the
+greater good. "Social cohesion" for solidarity. "Norm enforcement" for judgement.
+"Resource allocation" for justice. Each of those is defensible, and each is
+deadening: it turns a thing people have died for into an administrative
+category, and it tells a reader nothing they can feel. When you have a candidate
+label, ask whether it sounds like something a person could believe or like
+something written on a form. If it is the form, the word underneath it is the
+one you want.
+
+A particular trap: naming the axis after the OPERATION rather than the position.
+"Weighing value", "Balancing claims", "Assessing outcomes" all describe what
+somebody at that end does with a moral question, not what they hold — and nobody
+has ever described themselves that way. A gerund in a label is nearly always
+this mistake. Ask what the weighing is FOR, and name that; the thing being
+served is the position, and it has a name older than the procedure does.
+
+Prefer the word that ENCOMPASSES over the word that specifies. An axis is a
+whole moral world at each end, not one behaviour: "Redemption" holds more than
+"Second chances", "Providence" more than "Predestination", "Sanctity" more than
+"Purity rules". Where the propositions genuinely support the larger word, take
+it — a capacious name lets a reader put their own films under it, and a narrow
+one makes them wonder why their film is not there.
+
+None of this is licence to import religion where it is absent, or to inflate a
+narrow group into a cosmology. A group about utility and sacrifice in wartime is
+not about martyrdom. If the propositions only support the smaller word, the
+smaller word is the honest answer, and a grand label over a narrow group is the
+worse failure of the two. Name what is there — but name it in the register the
+films are arguing in, which is rarely the register of a policy document.
 
 Keep labels in sentence case: "Divine order", not "Divine Order".
 
@@ -331,6 +387,13 @@ def _consensus(runs: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
                     key=lambda i: (-_placeholders(live[i]), scores[i]))]
 
 
+# How many times to re-ask when a sample comes back malformed. A schema
+# violation is the model getting it wrong, not the service failing, and asking
+# again usually fixes it — whereas dropping the sample quietly weakens the vote
+# that the names are chosen by.
+RUN_RETRIES = 2
+
+
 def name_factors(
     report: dict[str, Any], texts: dict[str, str], client=None,
     alias: str | None = None, sample: int = SAMPLE, progress=None,
@@ -384,13 +447,23 @@ def name_factors(
     user = "\n\n".join(blocks)
     candidates = []
     for attempt in range(max(1, runs)):
-        try:
-            answer = client.parse(system=SYSTEM, user=user,
-                                  output_model=FactorNames, max_tokens=16000)
-        except Exception as error:
-            # One failed sample must not lose the naming when others succeeded.
-            if progress:
-                progress(f"  naming run {attempt + 1} failed: {type(error).__name__}")
+        # Retried rather than skipped. A dropped run silently shrinks the
+        # consensus, and the consensus is the whole reason for running more than
+        # once — when a two-word cap was added to the schema it rejected three
+        # samples of five, and the vote between the two survivors picked an axis
+        # labelled against its own propositions. `runs` has to mean runs.
+        answer = None
+        for retry in range(RUN_RETRIES + 1):
+            try:
+                answer = client.parse(system=SYSTEM, user=user,
+                                      output_model=FactorNames, max_tokens=16000)
+                break
+            except Exception as error:
+                if progress:
+                    progress(f"  naming run {attempt + 1}"
+                             + (f" attempt {retry + 1}" if retry else "")
+                             + f" failed: {type(error).__name__}")
+        if answer is None:
             continue
         candidates.append(_shape(answer, grouped, report))
         if progress and runs > 1:

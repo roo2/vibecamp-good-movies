@@ -65,7 +65,7 @@ function AtlasPage({ onBack, access }) {
   // end with the era sets, which put the single best-separating ideological list
   // in the corpus below Marvel.
   const SET_ORDER = ['christian-answers', 'catholic', 'christian-edifying',
-                     'conservative', 'red-pilled',
+                     'conservative', 'red-pilled', 'church-of-satan',
                      'progressive-canon', 'feminist', 'glaad-lgbtq',
                      'naacp-antiracist', 'socialist',
                      'old-hollywood', 'new-hollywood', 'blockbuster-hollywood',

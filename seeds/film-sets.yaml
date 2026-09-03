@@ -140,7 +140,7 @@ sets:
     colour: "#e3c84a"
     source: "A self-described 'sigma movies' list compiled on Letterboxd by SavPaz, extended with the sigma-male canon ranked on Ranker by david-de-la-riva — the canon as named by the audience that claims it, not as imagined for them"
     url: "https://letterboxd.com/savpaz/list/sigma-movies/"
-    description: "Films the online manosphere claims as its own. Its centre is the furthest from the corpus of any set here, and its members are unusually unalike."
+    description: "Films the online manosphere claims as its own. Its centre is the furthest from the corpus of any set here, and its members are unusually unalike. The 'doomer' canon is not a separate list from this one — Drive, Taxi Driver, Falling Down, Joker, Fight Club, American Psycho and Nightcrawler are the doomer canon and are already here, so the two subcultures describe themselves differently and claim the same films."
     titles:
       - "American History X"
       - "American Psycho"
@@ -461,3 +461,44 @@ sets:
       - "V for Vendetta"
       - "Wicked"
       - "Wonder Woman"
+
+  # LaVey's own list, and it lands beside the manosphere canon rather than
+  # anywhere near the religious ones. Cosine 0.82 with red-pilled and 0.79 SD
+  # away; against the Christian content-rated list it is not opposite but
+  # ORTHOGONAL, at 0.04 — the two are answering different questions rather than
+  # disagreeing about one.
+  #
+  # Whether it is a position of its own or part of the manosphere one was tested
+  # the same way the progressive canon was: pooling it with red-pilled RAISED the
+  # separation, 80.3 to 89.6 with the calendar removed, while the displacement
+  # stayed where red-pilled already was (1.39 -> 1.27). Two different positions
+  # pooled would have pulled each other toward the corpus centre. It is kept as
+  # its own set because its films are its own — fifteen here, sharing exactly one
+  # with red-pilled.
+  #
+  # It is also the clearest evidence so far that this axis is not a religious
+  # one. A Satanic canon reading +0.71 toward divine order is only strange if
+  # you expect Satanism to be nihilism; LaVey's is a philosophy of hierarchy and
+  # natural law, and the number says so.
+  - id: church-of-satan
+    name: "Church of Satan"
+    colour: "#b5651d"
+    source: "The Church of Satan recommended film list, compiled for Blanche Barton's 'The Church of Satan' and approved by Anton LaVey"
+    url: "https://churchofsatan.com/sources-film-list/"
+    description: "Ninety-five films LaVey named as exemplifying Satanism; fifteen are in this corpus. It separates on thirteen placed films (F = 7.6 with the calendar regressed out, against a null of 4.9) — and the calendar matters here, because most of these predate 1960, but the old-Hollywood set itself sits at chance, so age alone does not produce this. It denies redemption like the manosphere canon does and affirms an order that precedes choice more strongly than anything here except the Christian list."
+    titles:
+      - "The Bitter Tea of General Yen"
+      - "Blade Runner"
+      - "Blue Velvet"
+      - "The Cabinet of Dr. Caligari"
+      - "Citizen Kane"
+      - "Freaks"
+      - "The Great Gabbo"
+      - "I Am a Fugitive from a Chain Gang"
+      - "Island of Lost Souls"
+      - "M"
+      - "Metropolis"
+      - "The Most Dangerous Game"
+      - "The Night of the Hunter"
+      - "Nosferatu"
+      - "Svengali"

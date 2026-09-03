@@ -105,6 +105,32 @@ def _fingerprint(scorer: str, variant: str, bank: str) -> tuple:
         )
 
 
+def _placement_verdicts(scorer: str, variant: str, bank: str) -> list[dict[str, Any]]:
+    """What the placement test says about each axis, live.
+
+    The audit page used to carry these as constants typed in beside the table,
+    and they went stale in the worst possible direction: they marked the third
+    axis "measured, not plotted" on a placement of 0.13 against a floor of 0.27,
+    while this test — which recomputes every build and is what the product
+    actually reads — puts it at 0.62, the highest of the three, and the plot
+    duly draws it. A page whose whole job is showing the evidence cannot be the
+    last thing to hear that the evidence changed.
+    """
+    try:
+        with db.connect(read_only=True) as con:
+            row = con.execute(
+                "SELECT axes FROM axis_placement WHERE scorer=? AND variant=? "
+                "AND bank_version=?", [scorer, variant, bank]).fetchone()
+    except Exception:
+        return []
+    if not row:
+        return []
+    try:
+        return json.loads(row["axes"]) or []
+    except (TypeError, ValueError):
+        return []
+
+
 def _placement_stamp(con, scorer: str, variant: str, bank: str) -> str:
     try:
         row = con.execute(
@@ -325,6 +351,7 @@ def get_factors(
                                   loadings=report.get("loading"),
                                   vectors=report.get("loadings"))
 
+    placed = _placement_verdicts(scorer, variant, bank)
     payload = {
         "scorer": scorer,
         "variant": variant,
@@ -369,8 +396,15 @@ def get_factors(
             {**factor,
              "product": factor["factor_id"] in _product_axis_ids(scorer, variant, bank),
              "examples": members.get(factor["factor_id"], [])[:6],
+             # Position in `placed` rather than factor_id: the placement test
+             # stores its axes in the product's own order, which is the order
+             # these are already in.
+             **({"places_people": placed[position]["places_people"],
+                 "person_reliability": round(placed[position]["reliability"], 3),
+                 "person_ceiling": round(placed[position]["noise_ceiling"], 3)}
+                if position < len(placed) else {}),
              **detail.get(factor["factor_id"], {})}
-            for factor in factors
+            for position, factor in enumerate(factors)
         ],
     }
     _cache[key] = {"fingerprint": fingerprint, "payload": payload}

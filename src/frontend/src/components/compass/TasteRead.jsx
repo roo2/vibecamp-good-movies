@@ -15,14 +15,17 @@ import React from 'react'
 // axes carry the two colours the atlas plot uses for them, and taste is not a
 // moral claim — it should not borrow the authority of looking like one.
 
-// Four, not five, and the four are chosen rather than the largest. Sixteen
-// dimensions replicate and six can be named, but a profile is READ, not audited:
-// past about four rows a reader stops comparing them and starts skimming. The
+// Five, and the five are chosen rather than the largest. Sixteen dimensions
+// replicate and six can be named, but a profile is READ, not audited, so the
 // server hands them over ordered by how reliably each places a person from the
-// dozen or so films they rated, so the four here are the four that actually say
-// something about them — the fifth and sixth are measured at roughly half the
-// reliability of the first, and would dilute the read rather than deepen it.
-const SHOWN = 4
+// dozen or so films they actually rated.
+//
+// Five rather than some other number because that is where the measurement puts
+// the break, not because it looked balanced: the top five place a person at
+// 0.51, 0.44, 0.43, 0.42 and 0.41, and the sixth falls off a cliff to 0.25.
+// People barely differ on that one, so a row for it would be a confident reading
+// of noise — which is the only kind of row worth cutting.
+const SHOWN = 5
 
 export default function TasteRead({ taste }) {
   const rows = (taste || []).slice(0, SHOWN)

@@ -167,3 +167,62 @@ def test_fingerprint_changes_when_the_axes_are_re_derived(monkeypatch):
     first = axis_placement.fingerprint("s", "v", "b")
     monkeypatch.setattr(axis_placement.db, "connect", lambda **k: Con(rows[1]))
     assert axis_placement.fingerprint("s", "v", "b") != first
+
+
+def test_the_atlas_reads_the_placement_verdict_rather_than_a_constant(monkeypatch):
+    """The audit panel published a failure the pipeline had already reversed.
+
+    It carried `axis3_person = 0.13` against a floor of 0.27 and marked that axis
+    "measured, not plotted", under a heading explaining why the plot had two axes
+    and not three — while the product plotted three and this test measured the
+    same axis at 0.62, the highest of the three. Nothing failed, because the
+    number was typed in beside the table rather than read from anywhere.
+
+    So the route must serve the live verdict. If this helper stops returning it,
+    the panel silently falls back to showing no verdict at all, which is wrong
+    but at least not a false one.
+    """
+    import json
+
+    from moral_atlas.web.routes import factors as route
+
+    stored = [{"dim_id": 0, "label": "Fatalism vs Redemption", "reliability": 0.5,
+               "noise_ceiling": 0.26, "places_people": True},
+              {"dim_id": 1, "label": "Autonomy vs Order", "reliability": 0.1,
+               "noise_ceiling": 0.25, "places_people": False}]
+
+    class Con:
+        def execute(self, *_a, **_k):
+            return self
+
+        def fetchone(self):
+            return {"axes": json.dumps(stored)}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    monkeypatch.setattr(route.db, "connect", lambda **k: Con())
+    out = route._placement_verdicts("deepseek", "subs", "dolphin-subs")
+    assert [a["places_people"] for a in out] == [True, False]
+    assert out[1]["reliability"] < out[1]["noise_ceiling"], \
+        "a failing axis must arrive with the numbers that make it failing"
+
+
+def test_no_hand_entered_person_placement_survives_in_findings():
+    """Those keys asserted a verdict the pipeline reversed; nothing may quote them.
+
+    `findings` is hand-maintained, so the guard has to be a test rather than a
+    constraint. Placement now comes from `axis_placement` on every build.
+    """
+    from moral_atlas import db
+
+    try:
+        with db.connect(read_only=True) as con:
+            keys = [r["key"] for r in con.execute(
+                "SELECT key FROM findings WHERE key LIKE '%_person' OR key='person_floor'")]
+    except Exception:
+        return  # no store in this environment; nothing to protect
+    assert not keys, f"superseded person-placement constants are back: {keys}"

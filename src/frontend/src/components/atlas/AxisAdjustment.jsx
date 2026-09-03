@@ -1,19 +1,24 @@
 import React from 'react'
 
-// What adjusting for taste did to each axis, and why only two are plotted.
+// What adjusting for taste did to each axis, and whether each one survives its
+// own tests.
 //
-// The plot draws two axes where it used to draw three, and that is a finding
-// rather than a simplification — so the finding has to be on the page beside
-// it. Without this block a reader sees a plane, assumes a design decision, and
-// never learns that the third axis was tested and failed.
+// This table used to carry hand-entered constants and a hardcoded verdict: the
+// third axis was labelled "measured, not plotted" on a person-placement of 0.13
+// against a floor of 0.27, under a heading explaining why the plot had two axes
+// and not three. Both had stopped being true. The product plots three, and the
+// placement test — which recomputes on every build and is what the product
+// actually reads — puts that axis at 0.62, the HIGHEST of the three. The page
+// whose job is to show the evidence was the last thing to hear it changed.
 //
-// `taste_explained` is live, per axis, from the reading currently selected.
-// The three verdicts below are measured constants and are shown only for the
-// reading they were measured on; quoting them against a different bank would
-// attach evidence to axes it was never gathered from.
+// So the verdict is no longer written here. `places_people` and its two numbers
+// come from the reading being displayed, and this component reports them.
+//
+// `taste_explained` is live per axis too, from the same reading.
 
-// Which reading these were measured on. Quoting them beside a different bank
-// would attach evidence to axes it was never gathered from.
+// Which reading the coherence and separation figures were measured on. Quoting
+// them beside a different bank would attach evidence to axes it was never
+// gathered from.
 const MEASURED_ON = 'dolphin-subs'
 
 function num(found, key) {
@@ -25,16 +30,11 @@ export default function AxisAdjustment({ data, taste }) {
   const axes = data?.factors || []
   const found = taste?.findings
   if (!axes.length) return null
-  const verdicts = data?.bank_version === MEASURED_ON
-    ? [1, 2, 3].map((i) => ({
-      coherence: num(found, `axis${i}_coherence`),
-      separation: num(found, `axis${i}_separation`),
-      person: num(found, `axis${i}_person`),
-      keep: i < 3,
-    }))
-    : null
+  const measured = data?.bank_version === MEASURED_ON
   const anyAdjusted = axes.some((f) => typeof f.taste_explained === 'number')
-  if (!anyAdjusted && !verdicts) return null
+  const anyPlaced = axes.some((f) => typeof f.places_people === 'boolean')
+  if (!anyAdjusted && !anyPlaced) return null
+  const dropped = axes.filter((f) => f.places_people === false)
 
   return (
     <section className="axis-adjust" aria-labelledby="adjust">
@@ -49,52 +49,83 @@ export default function AxisAdjustment({ data, taste }) {
           <tr>
             <th>Axis</th>
             <th>Taste explained</th>
-            {verdicts && <th>Own propositions agree</th>}
-            {verdicts && <th>Ideologies separate</th>}
-            {verdicts && <th>A person can be placed</th>}
+            {measured && <th>Own propositions agree</th>}
+            {measured && <th>Ideologies separate</th>}
+            {anyPlaced && <th>A person can be placed</th>}
           </tr>
         </thead>
         <tbody>
           {axes.map((f, i) => {
-            const v = verdicts?.[i]
+            const fails = f.places_people === false
             return (
-              <tr key={f.dim_id ?? i} className={v && !v.keep ? 'axis-dropped' : 'lead'}>
+              <tr key={f.dim_id ?? f.factor_id ?? i} className={fails ? 'axis-dropped' : 'lead'}>
                 <td>
                   {f.name}
-                  {v && !v.keep && <small> — measured, not plotted</small>}
+                  {fails && <small> — measured, not plotted</small>}
                 </td>
                 <td className="n">
                   {typeof f.taste_explained === 'number'
                     ? `${(f.taste_explained * 100).toFixed(0)}%` : '—'}
                 </td>
-                {verdicts && <td className="n">{v?.coherence ?? '—'}</td>}
-                {verdicts && <td className="n">{v ? `F = ${v.separation}` : '—'}</td>}
-                {verdicts && <td className="n">{v?.person ?? '—'}</td>}
+                {measured && <td className="n">{num(found, `axis${i + 1}_coherence`) ?? '—'}</td>}
+                {measured && (
+                  <td className="n">
+                    {num(found, `axis${i + 1}_separation`)
+                      ? `F = ${num(found, `axis${i + 1}_separation`)}` : '—'}
+                  </td>
+                )}
+                {anyPlaced && (
+                  <td className="n">
+                    {typeof f.person_reliability === 'number'
+                      ? `${f.person_reliability.toFixed(2)} / ${f.person_ceiling.toFixed(2)}`
+                      : '—'}
+                  </td>
+                )}
               </tr>
             )
           })}
         </tbody>
       </table>
 
-      {verdicts && (
+      {anyPlaced && (
+        <p className="atlas-note">
+          Placement is read as the figure against its own noise ceiling — the second number, which
+          differs by axis because it depends on how many people rated films that axis separates.
+          An axis clears when the first exceeds the second.
+          {measured && (
+            <> Separation is compared against the F that shuffling the films produces,{' '}
+              {num(found, 'separation_null') ?? '—'}.</>
+          )}
+        </p>
+      )}
+
+      {dropped.length > 0 && (
         <div className="note open">
-          <h3>Why the plot has two axes and not three</h3>
+          <h3>Why {dropped.length === 1 ? 'an axis is' : 'some axes are'} measured but not plotted</h3>
           <p>
-            It fails three of the four. No ideological list separates along it —
-            F = {num(found, 'axis3_separation') ?? '—'}, where shuffling the films produces{' '}
-            {num(found, 'separation_null') ?? '—'}. And a person&apos;s position on it cannot be
-            told from noise: {num(found, 'axis3_person') ?? '—'} against a floor of{' '}
-            {num(found, 'person_floor') ?? '—'}.
+            {dropped.map((f) => f.name).join(', ')} groups propositions that genuinely go together,
+            but a person&apos;s position on it cannot be told from noise. A real grouping with no
+            demonstrated validity is not a moral dimension. It stays visible here — this is an
+            audit page — but nothing is plotted or recommended from it.
           </p>
+        </div>
+      )}
+
+      {measured && dropped.length === 0 && (
+        <div className="note open">
+          <h3>All three are plotted, and one of them nearly was not</h3>
           <p>
-            A real grouping of propositions with no demonstrated validity is not a moral
-            dimension. It stays visible here — this is an audit page — but nothing is plotted or
-            recommended from it.
+            Autonomy vs Order was withdrawn once, on an earlier reading where no ideological list
+            separated along it and a person could not be placed on it above noise. Under the
+            common-factor extraction it passes both — it separates the lists at{' '}
+            F = {num(found, 'axis3_separation') ?? '—'} against{' '}
+            {num(found, 'separation_null') ?? '—'} from shuffled films, and places a person better
+            than either of the other two.
           </p>
           <p className="atlas-note">
-            The second is awkward and published anyway: its propositions are the <em>least</em>
-            coherent of the three, yet it separates ideological lists strongly and a person can be
-            placed on it. Most likely correctly identified and badly delimited.
+            The second axis stays the awkward one, and is published anyway: its propositions are
+            the <em>least</em> coherent of the three, yet it separates ideological lists and a
+            person can be placed on it. Most likely correctly identified and badly delimited.
           </p>
         </div>
       )}

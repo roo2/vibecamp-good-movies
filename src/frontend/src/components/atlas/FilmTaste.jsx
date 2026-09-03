@@ -24,11 +24,12 @@ import React from 'react'
 // scores differ by an order of magnitude between dimensions, so "55.7" and
 // "-3.3" are not comparable and printing them side by side would mislead.
 
-// Four, matching the profile, and picked the same way — by how reliably a
-// dimension places somebody from about ten ratings rather than by how much
-// of the corpus it covers. A reader who has seen their own four and then
-// opens a film should be reading the same four back.
-const SHOWN = 4
+// Five, matching the profile, and picked the same way — by how reliably a
+// dimension places somebody from about ten ratings rather than by how much of
+// the corpus it covers. A reader who has seen their own five and then opens a
+// film should be reading the same five back. The sixth is left out of both: it
+// measures at 0.25 where these five sit between 0.41 and 0.51.
+const SHOWN = 5
 
 // 73th, 21th, 3th. The suffix depends on the last two digits, not the last one.
 function ordinal(n) {

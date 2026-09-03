@@ -56,8 +56,18 @@ function AtlasPage({ onBack, access }) {
   // question the project asks — do communities that state opposed commitments
   // sit apart — and the era sets are a control rather than a worldview, so they
   // come last. Anything unlisted keeps its server order behind these.
-  const SET_ORDER = ['catholic', 'christian-edifying', 'conservative',
-                     'socialist', 'feminist', 'red-pilled',
+  // Grouped by what they are, not by how strongly they separate: the religious
+  // lists, then the two right-of-centre ones, then the progressive family with
+  // its pooled set at the head of its own members, then the era controls last —
+  // those exist to be compared against, not read as positions.
+  //
+  // `christian-answers` was missing from this list entirely and so fell to the
+  // end with the era sets, which put the single best-separating ideological list
+  // in the corpus below Marvel.
+  const SET_ORDER = ['christian-answers', 'catholic', 'christian-edifying',
+                     'conservative', 'red-pilled',
+                     'progressive-canon', 'feminist', 'glaad-lgbtq',
+                     'naacp-antiracist', 'socialist',
                      'old-hollywood', 'new-hollywood', 'blockbuster-hollywood',
                      'franchise-hollywood', 'mcu']
   const orderedSets = React.useMemo(() => {

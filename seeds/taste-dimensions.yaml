@@ -6,82 +6,134 @@
 # film-sets.yaml is — a name is a claim, and claims belong somewhere a person can
 # read and revise them.
 #
-# Three rules learned the hard way:
+# REWRITTEN for common factors. These labels described the SVD components taste
+# used to be extracted from, and the two solutions are not the same structure:
+# the closest pair of dimensions across the methods matches at 0.81 and most
+# match at 0.2-0.6, so carrying the old labels across by position would have put
+# the right words on the wrong axis with nothing failing. The old file is kept in
+# git history rather than here.
 #
-# ANCHOR IS NOT OPTIONAL for a named dimension. An SVD component's sign is
-# arbitrary. Re-deriving the axes over a larger corpus flips roughly half of
-# them, and labels keyed by dim_id then describe the wrong ends with nothing
-# failing. On the rebuild that added the 2026-09 films, five of eight named
-# dimensions inverted — putting The Godfather and Fight Club under "Enjoyable
-# trash" and Ace Ventura and Armageddon under "Acclaimed craft". The anchor is a
-# tag genome entry that belongs at the pole_high end, so orientation is checked
-# against data rather than assumed.
+# Four rules learned the hard way:
 #
-# UNNAMED IS A VALID ANSWER. Three dimensions replicate but 1,128 human tags
-# cannot characterise them. Inventing a label for a structure nobody can describe
-# is how the moral side of this project went wrong twice.
+# ANCHOR IS NOT OPTIONAL for a named dimension. A factor's sign is arbitrary.
+# Re-deriving the axes over a larger corpus flips roughly half of them, and
+# labels keyed by dim_id then describe the wrong ends with nothing failing. On
+# the rebuild that added the 2026-09 films, five of eight named dimensions
+# inverted — putting The Godfather and Fight Club under "Enjoyable trash" and Ace
+# Ventura and Armageddon under "Acclaimed craft". The anchor is a tag genome
+# entry that belongs at the pole_high end, so orientation is checked against data
+# rather than assumed.
 #
-# FRANCHISE IS A CONFESSION. A dimension whose defining tags are "new zealand"
-# and "tolkien" describes one film series, not a dimension of taste, and would
-# dissolve on a different corpus. Marked so it is never read as a finding.
+# ANCHOR THE STRONG POLE. Three dimensions here are written with their poles the
+# other way up from how they read most naturally, because the end with the
+# strongest tag correlations is the end an anchor can hold reliably. A 0.20
+# anchor is a coin toss wearing a label.
+#
+# UNNAMED IS A VALID ANSWER. A dimension that replicates but whose every tag
+# correlation sits under about 0.3 has nothing holding it, and inventing a label
+# for a structure nobody can describe is how the moral side of this project went
+# wrong twice.
+#
+# CHECK THE FILMS, NOT ONLY THE TAGS. Every label below was proposed from tag
+# correlations and then tested against the films actually at each pole, and four
+# dimensions failed that second test after passing the first — a pole whose tags
+# said "esteemed" turned out to be Batman and Bond, and one whose tags said
+# "paranormal romance" was Twilight, Fifty Shades and Mamma Mia. The labels this
+# file replaced had never been checked that way and most of them were wrong:
+# "Underrated find" was topped by Forrest Gump and Titanic, "Childlike whimsy" by
+# The Phantom Menace and The Godfather, "Emotional warmth" by four Star Wars
+# films. Tag evidence and film evidence disagree often enough that agreeing with
+# one of them is not a name.
+#
+# FRANCHISE IS A CONFESSION. The test: could a film nobody involved in this
+# series ever made sit at this pole? For "james bond, bond, 007, secret service"
+# the answer is no, and for "afi 100, 1950s, black and white, screwball" it is
+# yes — hundreds of unrelated films sit there, and Hitchcock is on that list as
+# an exemplar of the kind rather than as its definition. Six of the sixteen
+# dimensions that replicate fail this test. Marked so they are never read as
+# findings about taste.
 #
 # status: named | franchise | unnamed
 dimensions:
   - dim_id: 1
-    pole_high: "Acclaimed craft"
-    pole_low: "Enjoyable trash"
+    pole_high: "Slapdash spectacle"
+    pole_low: "Acclaimed craft"
     status: named
-    anchor: "masterpiece"
+    anchor: "bad cgi"
   - dim_id: 2
-    pole_high: "Ironic darkness"
-    pole_low: "Earnest epic grandeur"
-    status: named
-    anchor: "black comedy"
+    pole_high: "Star Wars prequels"
+    pole_low: "Quirky character comedy"
+    status: franchise
+    anchor: "star wars"
   - dim_id: 3
-    pole_high: "Underrated find"
-    pole_low: "Consensus dud"
+    pole_high: "Classic studio era"
+    pole_low: "Modern action"
     status: named
-    anchor: "underrated"
+    anchor: "afi 100"
+  # Tags said paranormal romance; the films are Twilight, Fifty Shades and
+  # Mamma Mia, which is one marketing category rather than a kind of film.
   - dim_id: 4
-    pole_high: "Modern PG-13"
-    pole_low: "1980s practical genre"
-    status: named
-    anchor: "pg-13"
+    pole_high: "Twilight romance"
+    pole_low: "Prestige drama"
+    status: franchise
+    anchor: "vampire human love"
   - dim_id: 5
-    pole_high: "Spielberg crowd-pleaser"
-    pole_low: "Tolkien fantasy"
-    status: franchise
+    pole_high: "Serious storytelling"
+    pole_low: "Silly fun"
+    status: named
+    anchor: "storytelling"
   - dim_id: 6
-    pole_high: "Canonical earnest classic"
-    pole_low: "Slacker comedy"
+    pole_high: "Art house"
+    pole_low: "Mainstream entertainment"
     status: named
-    anchor: "oscar (best picture)"
+    anchor: "art house"
+  # Every film at the high pole is Marvel and the low pole is whatever is not —
+  # DC, Transformers, a children's cartoon — so this separates one studio's
+  # output from the rest, not two kinds of film.
   - dim_id: 7
-    pole_high: "Hard action"
-    pole_low: "Emotional warmth"
-    status: named
-    anchor: "lone hero"
+    pole_high: "Marvel spectacle"
+    pole_low: "Non-Marvel blockbuster"
+    status: franchise
+    anchor: "marvel"
   - dim_id: 8
-    pole_high: "Adult brutality"
-    pole_low: "Childlike whimsy"
+    pole_high: "Gangster character study"
+    pole_low: "Big-budget crowd-pleaser"
     status: named
-    anchor: "brutality"
+    anchor: "gangster"
   - dim_id: 9
-    pole_high: "Crude comedy"
-    pole_low: "Surreal imagination"
-    status: named
-    anchor: "crude humor"
+    pole_high: "Harry Potter fantasy"
+    pole_low: "Unconventional originals"
+    status: franchise
+    anchor: "harry potter"
+  # The high pole is coherent — Fast & Furious, Van Helsing, The Mummy Returns —
+  # but its tags call the low pole esteemed film-making and its films are Batman
+  # and Bond. Two kinds of evidence contradicting each other is not a name.
   - dim_id: 10
-    pole_high: "Family franchise"
-    pole_low: "Romantic weepie"
-    status: franchise
+    status: unnamed
   - dim_id: 11
-    pole_high: "Hacker thriller"
-    pole_low: "Lecter and school"
+    pole_high: "James Bond espionage"
+    pole_low: "Epic storytelling"
     status: franchise
-  - dim_id: 14
-    status: unnamed
+    anchor: "james bond"
   - dim_id: 15
-    status: unnamed
-  - dim_id: 23
+    pole_high: "Sentimental uplift"
+    pole_low: "Surreal and weird"
+    status: named
+    anchor: "tear jerker"
+  - dim_id: 17
+    pole_high: "New Zealand high fantasy"
+    pole_low: "Small-scale character comedy"
+    status: franchise
+    anchor: "new zealand"
+  - dim_id: 18
+    pole_high: "Star Wars space fantasy"
+    pole_low: "Psychological horror"
+    status: franchise
+    anchor: "star wars"
+  - dim_id: 19
+    pole_high: "Ludlum-style espionage"
+    pole_low: "Cult horror"
+    status: franchise
+    anchor: "robert ludlum"
+  - dim_id: 21
     status: unnamed

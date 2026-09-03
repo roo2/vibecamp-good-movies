@@ -7,9 +7,12 @@ moral ones, they are in here.
 
 Method mirrors the moral pipeline deliberately, so the two are comparable:
 
-  EXTRACT     truncated SVD of the centred user-by-film matrix. Each user is
+  EXTRACT     common factors of the centred user-by-film matrix, by the same
+              principal-axis-and-promax route the moral axes take. Each user is
               centred on their own average first, so "rates everything highly"
-              produces no structure.
+              produces no structure. Components (a truncated SVD) are still
+              reachable with ATLAS_EXTRACTION=pca; they replicate as well but
+              name far worse, which is why they are no longer the default.
   VALIDATE    split the USERS in half, factor each half separately, and check
               whether the same dimensions come back. A dimension that does not
               survive a change of sample is not a dimension. Congruence is
@@ -33,8 +36,8 @@ from typing import Any, Callable
 import numpy as np
 
 from .. import db
-from ..config import ROOT
-from . import movielens
+from ..config import ROOT, settings
+from . import latent, movielens
 
 # How many components to pull out before asking which of them survive a split.
 COMPONENTS = 24
@@ -55,19 +58,62 @@ class Axes:
     movie_ids: np.ndarray      # rows of `loadings`, as MovieLens ids
 
 
-def _embed(ratings: movielens.Ratings, mask: np.ndarray | None, k: int, seed: int):
-    """Film loadings on k latent dimensions, from the given users."""
+def _components(matrix, k: int, seed: int):
+    """Truncated SVD: the principal components of co-preference."""
     from scipy.sparse.linalg import svds
 
-    matrix, _cols = movielens.centred_matrix(ratings, mask)
     # svds starts from a random vector; without a fixed one the signs and the
     # order of near-equal components move between runs on identical input, and
     # this pipeline has already been bitten once by an unstable orientation.
     rng = np.random.default_rng(seed)
     v0 = rng.standard_normal(min(matrix.shape))
-    u, s, vt = svds(matrix, k=k, v0=v0)
+    _u, s, vt = svds(matrix, k=k, v0=v0)
     order = np.argsort(-s)
     return (vt[order].T * s[order]), s[order] ** 2 / (s ** 2).sum()
+
+
+def film_correlation(matrix) -> np.ndarray:
+    """Film-by-film correlation from the sparse centred user matrix.
+
+    Computed from the Gram matrix rather than densified: 162,000 users by 646
+    films will not fit, and the product that is needed is 646 x 646.
+    """
+    n = matrix.shape[0]
+    gram = np.asarray((matrix.T @ matrix).todense(), dtype=float)
+    mu = np.asarray(matrix.sum(axis=0)).ravel() / n
+    covariance = gram / n - np.outer(mu, mu)
+    sd = np.sqrt(np.clip(np.diag(covariance), 1e-12, None))
+    return np.clip(covariance / np.outer(sd, sd), -1, 1)
+
+
+def _factors(matrix, k: int):
+    """Common factors: the same move the moral axes made, for the same reason.
+
+    A component is a weighted sum of everything, so it absorbs whatever is
+    peculiar to one film alongside what that film shares with others. Here that
+    matters more than it did on the moral side, not less: films share only about
+    a tenth of their rating variance, so nine tenths of what a component is built
+    from is one film's own idiosyncratic appeal. Factoring the common part is
+    what makes a dimension describable, and that is measured rather than assumed:
+    the two solutions barely agree (0.81 at the closest pair, 0.2-0.6 for most),
+    16 factors replicate against 10 components, and the best of the 1,128 human
+    tags describes a factor at 0.67 against a component's 0.46.
+    """
+    load, _communalities = latent._principal_axis(film_correlation(matrix), k)
+    pattern, _phi = latent._promax(load)
+    # Rotation is free to reorder importance, so dimension 1 is only reliably the
+    # largest if it is sorted afterwards. Seeded names are keyed by position.
+    strength = (pattern ** 2).sum(axis=0)
+    order = np.argsort(-strength)
+    return pattern[:, order], strength[order] / pattern.shape[0]
+
+
+def _embed(ratings: movielens.Ratings, mask: np.ndarray | None, k: int, seed: int):
+    """Film loadings on k latent dimensions, from the given users."""
+    matrix, _cols = movielens.centred_matrix(ratings, mask)
+    if settings().extraction == "fa":
+        return _factors(matrix, k)
+    return _components(matrix, k, seed)
 
 
 def _congruence(a: np.ndarray, b: np.ndarray) -> float:

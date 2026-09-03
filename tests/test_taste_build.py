@@ -80,3 +80,65 @@ def test_kept_components_are_indexed_by_their_own_column():
     assert not np.array_equal(by_column[11], by_position[11])
     # The dimension numbers the product shows are the columns, one-based.
     assert [c + 1 for c in keep][-3:] == [14, 15, 23]
+
+
+def test_film_correlation_is_a_correlation_matrix():
+    """The FA path factors this, so a mis-scaled version would poison everything.
+
+    Built from a Gram matrix rather than a dense one — 162,000 users by 646 films
+    will not fit — and that route is easy to get subtly wrong in a way no caller
+    would notice: an uncentred version still looks like a plausible matrix and
+    still factors.
+    """
+    from scipy import sparse
+
+    rng = np.random.default_rng(0)
+    dense = rng.standard_normal((400, 12))
+    dense[:, 1] = dense[:, 0] * 0.9 + dense[:, 1] * 0.1
+    matrix = sparse.csr_matrix(dense)
+
+    r = taste.film_correlation(matrix)
+    assert r.shape == (12, 12)
+    assert np.allclose(np.diag(r), 1.0, atol=1e-8), "diagonal of a correlation is 1"
+    assert np.allclose(r, r.T, atol=1e-10), "a correlation matrix is symmetric"
+    assert np.abs(r).max() <= 1.0 + 1e-9
+    # Against numpy's own answer on the dense equivalent, which is the definition.
+    assert np.allclose(r, np.corrcoef(dense, rowvar=False), atol=1e-6)
+    assert r[0, 1] > 0.9, "the deliberately correlated pair must show up"
+
+
+def test_factors_are_ordered_by_strength():
+    """Seeded names are keyed by position, so position has to mean something.
+
+    Promax is free to reorder importance, so without the sort afterwards
+    dimension 1 is not reliably the largest and every label in the seed file
+    lands on a different structure than the one it was written for.
+    """
+    from scipy import sparse
+
+    rng = np.random.default_rng(1)
+    base = rng.standard_normal((500, 3))
+    dense = np.hstack([
+        base[:, [0]] * 3 + rng.standard_normal((500, 4)) * 0.2,
+        base[:, [1]] * 2 + rng.standard_normal((500, 4)) * 0.2,
+        base[:, [2]] * 1 + rng.standard_normal((500, 4)) * 0.2,
+    ])
+    loadings, strength = taste._factors(sparse.csr_matrix(dense), 3)
+    assert loadings.shape == (12, 3)
+    assert list(strength) == sorted(strength, reverse=True), "strongest factor first"
+
+
+def test_every_seeded_dimension_has_a_status_the_pipeline_understands():
+    """`franchise` and `unnamed` are load-bearing, not decoration.
+
+    Half the dimensions that replicate are franchise capture and are stored but
+    never presented as findings about taste. A typo in the status would quietly
+    promote one of them into the interface as though it were a kind of film.
+    """
+    entries = taste.curated()
+    for dim_id, entry in entries.items():
+        assert entry["status"] in {"named", "franchise", "unnamed"}, \
+            f"dim {dim_id} has status {entry['status']!r}"
+        if entry["status"] == "unnamed":
+            assert not entry["pole_high"] and not entry["pole_low"], \
+                f"dim {dim_id} is unnamed but carries pole labels"

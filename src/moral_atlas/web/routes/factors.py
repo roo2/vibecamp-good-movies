@@ -222,8 +222,8 @@ def get_taste_dimensions() -> dict[str, Any]:
         try:
             rows = con.execute(
                 "SELECT dim_id, pole_high, pole_low, variance, replication, evidence, "
-                "tags_high, tags_low, status, source FROM taste_dimensions "
-                "ORDER BY variance DESC").fetchall()
+                "tags_high, tags_low, status, source, profile_reliability "
+                "FROM taste_dimensions ORDER BY variance DESC").fetchall()
             places = con.execute(
                 "SELECT t.film_id, t.dim_id, t.position, f.title, f.year "
                 "FROM film_taste t JOIN films f USING (film_id)").fetchall()
@@ -251,7 +251,8 @@ def get_taste_dimensions() -> dict[str, Any]:
              "replication": r["replication"], "evidence": r["evidence"],
              "tags_high": json.loads(r["tags_high"] or "[]"),
              "tags_low": json.loads(r["tags_low"] or "[]"),
-             "status": r["status"], "source": r["source"]}
+             "status": r["status"], "source": r["source"],
+             "profile_reliability": r["profile_reliability"]}
             for r in rows
         ],
         "films": list(films.values()),

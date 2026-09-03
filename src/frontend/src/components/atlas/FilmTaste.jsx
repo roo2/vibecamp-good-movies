@@ -24,7 +24,11 @@ import React from 'react'
 // scores differ by an order of magnitude between dimensions, so "55.7" and
 // "-3.3" are not comparable and printing them side by side would mislead.
 
-const SHOWN = 5
+// Four, matching the profile, and picked the same way — by how reliably a
+// dimension places somebody from about ten ratings rather than by how much
+// of the corpus it covers. A reader who has seen their own four and then
+// opens a film should be reading the same four back.
+const SHOWN = 4
 
 // 73th, 21th, 3th. The suffix depends on the last two digits, not the last one.
 function ordinal(n) {
@@ -35,7 +39,11 @@ function ordinal(n) {
 
 export default function FilmTaste({ taste, filmId }) {
   const rows = React.useMemo(() => {
-    const dims = (taste?.dimensions || []).filter((d) => d.status === 'named').slice(0, SHOWN)
+    const dims = (taste?.dimensions || [])
+      .filter((d) => d.status === 'named')
+      .slice()
+      .sort((a, b) => (b.profile_reliability ?? 0) - (a.profile_reliability ?? 0))
+      .slice(0, SHOWN)
     const films = taste?.films || []
     if (!dims.length || !films.length) return []
     const mine = films.find((f) => f.film_id === filmId)

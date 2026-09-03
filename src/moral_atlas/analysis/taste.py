@@ -195,6 +195,77 @@ def orient(loadings: np.ndarray, column: int, correlations: np.ndarray,
     return -correlations, True
 
 
+# What a person's profile is read from. Their own ratings, not the corpus — and
+# this product's users give it about a dozen films, so that is what it is
+# measured at rather than a number the corpus could support.
+PROFILE_RATINGS = 10
+PROFILE_SAMPLE = 25_000
+
+
+def profile_reliability(axes: Axes, ratings: movielens.Ratings,
+                        take: int = PROFILE_RATINGS, seed: int = 4) -> np.ndarray:
+    """How well each dimension places a PERSON, from `take` of their ratings.
+
+    A different question from `replication`, which asks whether the dimension
+    itself comes back on another sample of raters. This asks whether a dimension
+    that is real can be MEASURED on somebody from the handful of films they have
+    rated — and the two disagree enough to matter. Ranked by corpus variance, the
+    fourth dimension shown in a profile is the least reliable of the named six;
+    ranked by this, it is not shown at all.
+
+    Split each rater's films into two disjoint halves, place them from each, and
+    correlate the two placements across raters. Spearman-Brown corrects for the
+    fact that each half is half-length. Returns one figure per kept dimension, in
+    `axes.keep` order.
+    """
+    rng = np.random.default_rng(seed)
+    positions = axes.loadings[:, axes.keep].astype(float)
+    positions = (positions - positions.mean(0)) / np.where(
+        positions.std(0) == 0, 1, positions.std(0))
+    row_of = {int(m): i for i, m in enumerate(axes.movie_ids)}
+
+    users, movies, stars = ratings.users, ratings.movies, ratings.stars.astype(float)
+    seen = np.fromiter((int(m) in row_of for m in movies), bool, len(movies))
+    users, stars = users[seen], stars[seen]
+    cols = np.fromiter((row_of[int(m)] for m in movies[seen]), int, int(seen.sum()))
+
+    order = np.argsort(users, kind="stable")
+    users, cols, stars = users[order], cols[order], stars[order]
+    starts = np.searchsorted(users, np.unique(users))
+    bounds = np.append(starts, len(users))
+    counts = np.diff(bounds)
+
+    # Twice `take`, because the two halves must not share a film — otherwise the
+    # halves agree because they overlap and every dimension looks reliable.
+    eligible = np.where(counts >= take * 2)[0]
+    if len(eligible) < 200:
+        return np.full(len(axes.keep), np.nan)
+    chosen = rng.choice(eligible, size=min(PROFILE_SAMPLE, len(eligible)), replace=False)
+
+    halves = np.full((2, len(chosen), positions.shape[1]), np.nan)
+    for row, u in enumerate(chosen):
+        lo, hi = bounds[u], bounds[u + 1]
+        pick = rng.permutation(hi - lo)[:take * 2]
+        for side, part in enumerate((pick[:take], pick[take:])):
+            index = cols[lo:hi][part]
+            weight = stars[lo:hi][part]
+            weight = weight - weight.mean()
+            total = np.abs(weight).sum()
+            if total:
+                halves[side, row] = (positions[index] * weight[:, None]).sum(0) / total
+
+    out = []
+    for j in range(positions.shape[1]):
+        a, b = halves[0, :, j], halves[1, :, j]
+        ok = ~np.isnan(a) & ~np.isnan(b)
+        if ok.sum() < 200:
+            out.append(float("nan"))
+            continue
+        r = float(np.corrcoef(a[ok], b[ok])[0, 1])
+        out.append(0.0 if not np.isfinite(r) or r <= 0 else 2 * r / (1 + r))
+    return np.array(out)
+
+
 def store(axes: Axes, ratings: movielens.Ratings,
           progress: Callable[[str], None] | None = None) -> dict[str, Any]:
     """Write the dimensions and every film's place on them."""
@@ -205,6 +276,8 @@ def store(axes: Axes, ratings: movielens.Ratings,
     now = db.now()
 
     loadings = axes.loadings.copy()
+    readable = profile_reliability(axes, ratings)
+    at = {column: i for i, column in enumerate(axes.keep)}
     dims, places, flipped = [], [], []
     for column in axes.keep:
         # Indexed by the component's OWN column, never by its position in
@@ -230,7 +303,9 @@ def store(axes: Axes, ratings: movielens.Ratings,
                      float(np.abs(correlations).max()),
                      json.dumps([tags[t + 1] for t in order[-6:][::-1]]),
                      json.dumps([tags[t + 1] for t in order[:6]]),
-                     entry.get("status", "unnamed"), SOURCE, now))
+                     entry.get("status", "unnamed"), SOURCE, now,
+                     None if not np.isfinite(readable[at[column]])
+                     else float(readable[at[column]])))
         for row, movie in enumerate(axes.movie_ids):
             places.append((film_of[int(movie)], dim_id, float(loadings[row, column])))
 
@@ -240,14 +315,20 @@ def store(axes: Axes, ratings: movielens.Ratings,
         con.execute("DELETE FROM taste_dimensions")
         con.executemany(
             "INSERT INTO taste_dimensions (dim_id, pole_high, pole_low, variance, "
-            "replication, evidence, tags_high, tags_low, status, source, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?)", dims)
+            "replication, evidence, tags_high, tags_low, status, source, created_at, "
+            "profile_reliability) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", dims)
         con.executemany(
             "INSERT INTO film_taste (film_id, dim_id, position) VALUES (?,?,?)",
             places)
 
     if progress:
         progress(f"  stored {len(dims)} dimensions, {len(places):,} film placements")
+    if progress:
+        shown = sorted(((d[11] or 0.0, d[0], d[2], d[1]) for d in dims if d[8] == "named"),
+                       reverse=True)
+        progress(f"  most readable in a profile, from {PROFILE_RATINGS} ratings:")
+        for rel, dim_id, low, high in shown[:6]:
+            progress(f"    {rel:.2f}  dim {dim_id}  {low} / {high}")
     return {"dimensions": len(dims), "placements": len(places),
             "films": len({p[0] for p in places}), "flipped": flipped,
             "named": sum(1 for d in dims if d[8] == "named")}

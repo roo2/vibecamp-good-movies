@@ -109,9 +109,18 @@ def _taste_reading(preferences) -> list[dict]:
 
     try:
         with db.connect(read_only=True) as con:
+            # Ordered by how well a dimension places a PERSON from about ten
+            # ratings, not by how much of the corpus it accounts for. The two
+            # disagree: Mainstream/Art house is the fourth-biggest named
+            # dimension and the least reliable of the six — people barely differ
+            # on it, so a profile that led with it would be showing somebody a
+            # confident reading of noise. Falls back to size where the figure has
+            # not been computed yet, so an old store still renders.
             dims = con.execute(
                 "SELECT dim_id, pole_high, pole_low FROM taste_dimensions "
-                "WHERE status='named' ORDER BY variance DESC").fetchall()
+                "WHERE status='named' "
+                "ORDER BY COALESCE(profile_reliability, 0) DESC, variance DESC"
+            ).fetchall()
             places = con.execute("SELECT film_id, dim_id, position FROM film_taste").fetchall()
     except Exception:
         # Nothing derived yet. The screen simply omits the section.

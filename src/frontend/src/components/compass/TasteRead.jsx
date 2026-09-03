@@ -15,8 +15,17 @@ import React from 'react'
 // axes carry the two colours the atlas plot uses for them, and taste is not a
 // moral claim — it should not borrow the authority of looking like one.
 
+// Four, not five, and the four are chosen rather than the largest. Sixteen
+// dimensions replicate and six can be named, but a profile is READ, not audited:
+// past about four rows a reader stops comparing them and starts skimming. The
+// server hands them over ordered by how reliably each places a person from the
+// dozen or so films they rated, so the four here are the four that actually say
+// something about them — the fifth and sixth are measured at roughly half the
+// reliability of the first, and would dilute the read rather than deepen it.
+const SHOWN = 4
+
 export default function TasteRead({ taste }) {
-  const rows = (taste || []).slice(0, 5)
+  const rows = (taste || []).slice(0, SHOWN)
   if (!rows.length) return null
 
   return (

@@ -486,6 +486,14 @@ CREATE TABLE IF NOT EXISTS taste_dimensions (
     pole_low    TEXT,
     variance    REAL,    -- share of preference variation it accounts for
     replication REAL,    -- agreement across independent halves of the raters
+    -- How well this dimension places a PERSON from the handful of films they
+    -- have rated, which is a different question from how big it is in the
+    -- corpus. Split a rater's films in half, place them twice, correlate across
+    -- raters. Measured at ten ratings because that is what this product's users
+    -- actually give it. The two orderings disagree: the fourth-largest named
+    -- dimension is the least reliable of the six, and would be shown to people
+    -- as a confident reading of noise.
+    profile_reliability REAL,
     evidence    REAL,    -- |r| of the strongest tag behind the name
     tags_high   TEXT,    -- JSON array, the tags at each end
     tags_low    TEXT,
@@ -628,6 +636,7 @@ def init_db() -> None:
         # fingerprint, so `taste_null.load` treats them as stale and the atlas
         # draws no adjusted chart until `atlas taste-null` runs again.
         _add_column_if_missing(con, "null_test_adjusted", "source_fingerprint", "TEXT")
+        _add_column_if_missing(con, "taste_dimensions", "profile_reliability", "REAL")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
         _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")

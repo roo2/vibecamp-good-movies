@@ -5,10 +5,12 @@ and neither raised anything. They are regression tests, not hypotheticals.
 """
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import pytest
 
-from moral_atlas.analysis import taste
+from moral_atlas.analysis import movielens, taste
 
 
 def test_curated_names_carry_an_anchor_wherever_they_are_named():
@@ -142,3 +144,52 @@ def test_every_seeded_dimension_has_a_status_the_pipeline_understands():
         if entry["status"] == "unnamed":
             assert not entry["pole_high"] and not entry["pole_low"], \
                 f"dim {dim_id} is unnamed but carries pole labels"
+
+
+def test_profile_reliability_needs_disjoint_halves():
+    """The two halves must not share a film, or every dimension looks reliable.
+
+    Split-half on overlapping samples measures the overlap. A rater with 12
+    ratings asked for two halves of 10 would share 8 of them and correlate with
+    itself — which is why the eligibility bar is twice the sample, not the sample.
+    """
+    assert taste.PROFILE_RATINGS >= 1
+    src = inspect.getsource(taste.profile_reliability)
+    assert "take * 2" in src, "eligibility must require two disjoint halves"
+
+
+def test_profile_reliability_returns_one_figure_per_kept_dimension():
+    """Stored by column, so a length mismatch would silently shift every label.
+
+    `keep` is not contiguous — it skips the dimensions that failed replication —
+    and the caller indexes into this by position in `keep`. A short array would
+    put dimension 15's reliability on dimension 17 without raising.
+    """
+    rng = np.random.default_rng(2)
+    n_films, n_users = 40, 900
+    loadings = rng.standard_normal((n_films, 6))
+    axes = taste.Axes(loadings=loadings, keep=[0, 2, 5],
+                      variance=np.full(6, 0.1), replication=np.full(6, 0.9),
+                      movie_ids=np.arange(1, n_films + 1))
+
+    # Each rater gets their OWN affinity for dimension 1. Without that every
+    # synthetic person has identical taste, there is nothing to tell apart, and
+    # a working measure correctly reports zero.
+    users, movies, stars = [], [], []
+    for u in range(n_users):
+        affinity = rng.normal()
+        picks = rng.choice(n_films, size=30, replace=False)
+        for f in picks:
+            users.append(u)
+            movies.append(f + 1)
+            stars.append(3.0 + affinity * loadings[f, 0] + rng.normal(0, 0.3))
+    ratings = movielens.Ratings(
+        users=np.array(users), movies=np.array(movies), stars=np.array(stars),
+        movie_ids=np.arange(1, n_films + 1),
+        film_ids=np.array([f"film-{i}" for i in range(1, n_films + 1)]))
+
+    out = taste.profile_reliability(axes, ratings, take=10)
+    assert out.shape == (3,), "one figure per kept dimension, in keep order"
+    assert np.all((out[np.isfinite(out)] >= 0) & (out[np.isfinite(out)] <= 1.001))
+    # Dimension 1 is what the ratings were generated from; 3 and 6 are noise.
+    assert out[0] > out[1] and out[0] > out[2], "the real dimension must win"

@@ -2,7 +2,6 @@ import React from 'react'
 import Factors from '../components/atlas/Factors.jsx'
 import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
 import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
-import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import ModelPicker from '../components/atlas/ModelPicker.jsx'
 import { axisPair, filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
@@ -201,10 +200,19 @@ function AtlasPage({ onBack, access }) {
         </section>
       ) : (
         <>
-          {/* Before the axes, not after. The moral axes are weak predictors of
-              what anyone enjoys, and a reader who meets them first is being
-              shown the answer without the thing it has to survive. */}
-          <TasteDimensions taste={taste} />
+          {/* Taste has its own page now. It used to open this one, on the
+              argument that the axes look weak the moment they are asked to
+              predict what anybody enjoys and a reader shown only the axes never
+              finds that out. That is still true, and half a screen of
+              preference data before the first axis still made this page about
+              two subjects while leading with the weaker one. The link goes
+              first so the comparison is not hidden, and the plot still draws
+              taste as one of its three spaces. */}
+          <p className="atlas-note taste-pointer">
+            These axes are what films <em>argue</em>. What people actually choose by is a
+            different set of dimensions, and a harder test of these ones —{' '}
+            <a className="link-button" href="#/taste">the taste dimensions →</a>
+          </p>
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
           {/* Down here, next to the controls it belongs with rather than at the

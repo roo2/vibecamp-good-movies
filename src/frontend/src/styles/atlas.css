@@ -1071,3 +1071,32 @@
   background: transparent; border: 1px dashed #3a312a; border-radius: 12px;
 }
 .set-more:hover { border-color: #574f47; color: #b3aa9e; }
+
+/* The pointer that replaced the taste section on the atlas. Given a rule and
+   space so it reads as a doorway rather than as a footnote to the paragraph
+   above it — the comparison it leads to is load-bearing for the whole page. */
+.taste-pointer {
+  margin: 22px 0 30px; padding: 14px 0 0;
+  border-top: 1px solid var(--rule, #2d251f); max-width: 70ch;
+}
+.taste-pointer .link-button { font-size: inherit; white-space: nowrap; }
+
+/* Films at each end of a taste dimension: the one part of that page a reader
+   can check against what they already know. Two columns so the poles are read
+   against each other rather than as two lists. */
+.taste-poles { margin: 26px 0 0; }
+.taste-poles h3 {
+  margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--ink, #f5efe6);
+}
+.taste-poles h3 i { color: var(--ink3, #7e766c); font-style: normal; padding: 0 4px; }
+.taste-poles-row {
+  display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.taste-pole-label {
+  display: block; margin-bottom: 6px; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--mag, #eda36b);
+}
+.taste-poles ul { margin: 0; padding-left: 16px; }
+.taste-poles li {
+  font-size: 13.5px; line-height: 1.5; color: var(--ink2, #b3aa9e);
+}

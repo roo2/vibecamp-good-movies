@@ -6,6 +6,7 @@ import SessionWaitingPage from './screens/SessionWaitingPage.jsx'
 import SeenItPage from './screens/SeenItPage.jsx'
 import ShortlistPage from './screens/ShortlistPage.jsx'
 import MatchPage from './screens/MatchPage.jsx'
+import TastePage from './screens/TastePage.jsx'
 import AtlasPage from './screens/AtlasPage.jsx'
 import CorpusPage from './screens/CorpusPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
@@ -13,7 +14,7 @@ import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/atlas', '/corpus', '/lobby', '/seen-it', '/complete', '/shortlist', '/match', '/waiting'])
+const routes = new Set(['/', '/atlas', '/taste', '/corpus', '/lobby', '/seen-it', '/complete', '/shortlist', '/match', '/waiting'])
 
 // The dataset explorer is the public face of the work: it reads a published
 // file, holds nothing about anyone, and is the thing you show someone before
@@ -187,6 +188,12 @@ function App() {
 
   if (route === '/atlas') {
     return <AtlasPage onBack={() => navigate('/')} access={access} />
+  }
+
+  if (route === '/taste') {
+    // Back goes home like every other page; the atlas gets its own link in
+    // the header, because returning to it is a different intent from leaving.
+    return <TastePage onBack={() => navigate('/')} onAtlas={() => navigate('/atlas')} />
   }
 
   if (route === '/corpus') {

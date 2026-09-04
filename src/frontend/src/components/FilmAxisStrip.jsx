@@ -1,5 +1,6 @@
 import React from 'react'
-import { loadProductFilmAxes } from '../services/factorService.js'
+import { loadProductFilmAxes, loadTaste } from '../services/factorService.js'
+import { polePair } from './atlas/polePalette.js'
 
 // Where a recommended film stands morally, on the card that recommends it.
 //
@@ -22,15 +23,19 @@ const shown = (factors, limit) => factors
   .filter((factor) => factor.score != null && factor.items > 0)
   .slice(0, limit)
 
-function Axis({ factor, open, onToggle }) {
+function Axis({ factor, open, onToggle, index }) {
   const side = factor.score >= 0 ? 'high' : 'low'
+  // The axis's own two colours, the same pair the atlas and the film panel use,
+  // so a colour means one thing across every screen that shows an axis.
+  const pair = polePair('moral', index)
   const stance = factor.score >= 0 ? factor.pole_high : factor.pole_low
   const magnitude = Math.abs(factor.score) * 50
   const heaviest = Math.max(
     ...(factor.verdicts || []).map((v) => v.weight || 0), 0.0001)
 
   return (
-    <li className={`axis-strip-row ${side} ${open ? 'open' : ''}`}>
+    <li className={`axis-strip-row ${side} ${open ? 'open' : ''}`}
+        style={{ '--low': pair.low, '--high': pair.high }}>
       <button type="button" onClick={onToggle} aria-expanded={open}>
         {/* The end it landed on, not the axis name: on a card this small the
             useful three words are the ones describing where the film sits. */}
@@ -79,8 +84,13 @@ function Axis({ factor, open, onToggle }) {
   )
 }
 
-export default function FilmAxisStrip({ filmId, limit = 2 }) {
+// Three moral axes, because three is what the reading supports and showing two
+// of them left a reader wondering which one was missing and why. Taste follows,
+// because a card recommending a film should say what KIND of film it is — the
+// half of the answer that actually predicts whether somebody enjoys it.
+export default function FilmAxisStrip({ filmId, limit = 3, tasteLimit = 3 }) {
   const [factors, setFactors] = React.useState(null)
+  const [taste, setTaste] = React.useState(null)
   const [openId, setOpenId] = React.useState(null)
 
   React.useEffect(() => {
@@ -96,21 +106,76 @@ export default function FilmAxisStrip({ filmId, limit = 2 }) {
     return () => { live = false }
   }, [filmId, limit])
 
-  if (!factors?.length) return null
+  React.useEffect(() => {
+    let live = true
+    loadTaste().then((t) => live && setTaste(t)).catch(() => live && setTaste(null))
+    return () => { live = false }
+  }, [])
+
+  // Where this film sits on the taste dimensions a profile shows, standardised
+  // against the corpus rather than ranked — a percentile puts most films within
+  // a hair of the middle and draws a bar too small to read.
+  const tasteRows = React.useMemo(() => {
+    const dims = (taste?.dimensions || [])
+      .filter((d) => d.status === 'named')
+      .slice()
+      .sort((a, b) => (b.profile_reliability ?? 0) - (a.profile_reliability ?? 0))
+      .slice(0, tasteLimit)
+    const films = taste?.films || []
+    const mine = films.find((f) => f.film_id === filmId)
+    if (!mine || !dims.length) return []
+    return dims.map((d, index) => {
+      const key = String(d.dim_id)
+      const all = films.map((f) => f.position?.[key]).filter((v) => typeof v === 'number')
+      const here = mine.position?.[key]
+      if (typeof here !== 'number' || all.length < 20) return null
+      const mean = all.reduce((t, v) => t + v, 0) / all.length
+      const sd = Math.sqrt(all.reduce((t, v) => t + (v - mean) ** 2, 0) / all.length)
+      const at = sd > 0 ? Math.max(-1, Math.min(1, (here - mean) / (sd * 3))) : 0
+      return { dim: d, at, index }
+    }).filter(Boolean)
+  }, [taste, filmId, tasteLimit])
+
+  if (!factors?.length && !tasteRows.length) return null
 
   return (
     <div className="axis-strip">
       <span className="axis-strip-label">Where it stands · tap for why</span>
       <ul>
-        {factors.map((factor) => (
+        {factors.map((factor, index) => (
           <Axis
             key={factor.factor_id}
             factor={factor}
+            index={index}
             open={openId === factor.factor_id}
             onToggle={() => setOpenId(openId === factor.factor_id ? null : factor.factor_id)}
           />
         ))}
       </ul>
+      {tasteRows.length > 0 && (
+        <div className="axis-strip-taste">
+          <span className="axis-strip-label">And what kind of film</span>
+          <ul>
+            {tasteRows.map(({ dim, at, index }) => {
+              const pair = polePair('taste', index)
+              const high = at >= 0
+              return (
+                <li key={dim.dim_id} style={{ '--low': pair.low, '--high': pair.high }}>
+                  <span className="axis-strip-name">
+                    {high ? dim.pole_high : dim.pole_low}
+                    <em>over {high ? dim.pole_low : dim.pole_high}</em>
+                  </span>
+                  <span className={`axis-strip-track ${high ? 'high' : 'low'}`}>
+                    <i style={high
+                      ? { insetInlineStart: '50%', inlineSize: `${Math.abs(at) * 50}%` }
+                      : { insetInlineEnd: '50%', inlineSize: `${Math.abs(at) * 50}%` }} />
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }

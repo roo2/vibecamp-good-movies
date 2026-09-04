@@ -116,9 +116,17 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
       <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× No</span>
       <span className="swipe-cue swipe-cue-right" aria-hidden="true" style={{ opacity: swipe.direction === 'right' ? swipe.strength : 0 }}>♥ Yes</span>
       <div className="deck-art" style={film.artwork_url ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.8), transparent), url(${film.artwork_url})` } : {}}><h2>{film.title}</h2></div>
-      <div className="deck-copy"><span>{film.year}</span>{film.description && <p>{film.description}</p>}<small>{film.note || (solo ? 'Picked for you' : 'Picked for both of you')}</small></div>
+      <div className="deck-copy">
+        <span>{film.year}</span>
+        {film.description && <p>{film.description}</p>}
+        {/* Inside the card, not under it. The card stretches to fill the screen
+            and only fifty of six hundred and seventy-six films have a written
+            description, so for almost every film this was blank space above a
+            strip that had nowhere to go. */}
+        <FilmAxisStrip filmId={film.id} />
+        <small>{film.note || (solo ? 'Picked for you' : 'Picked for both of you')}</small>
+      </div>
     </article>
-    <FilmAxisStrip filmId={film.id} />
     <div className="deck-actions"><button type="button" disabled={swipe.committed} onClick={() => vote('no')}>×<span>No</span></button><button className="deck-heart" type="button" disabled={swipe.committed} onClick={() => vote('yes')}>♥<span>Yes</span></button></div>
     <p className="deck-note">Swipe right for yes · left for no. {solo ? 'Three yeses and you have your shortlist.' : 'When you both say yes, it joins your shortlist.'}</p>
   </section></main>

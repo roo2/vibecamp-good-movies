@@ -364,3 +364,28 @@ button { cursor: pointer; }
 .taste-axes-note {
   margin: 14px 0 0; color: #574f47; font-size: 11.5px; line-height: 1.45;
 }
+
+/* The taste half of the card's strip. Same rows as the moral half, one label
+   and one bar, so a reader learns the shape once. The colours come from the
+   shared pole palette through --low and --high, set per row, so a dimension is
+   the same colour here as on the film page and the compass. */
+.axis-strip-taste { margin-top: 14px; padding-top: 12px; border-top: 1px solid #241e19; }
+.axis-strip-taste ul { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+/* The same two-column row the moral half uses — name left, bar right at the
+   same 92px — so the two halves read as one instrument. */
+.axis-strip-taste li {
+  display: grid; grid-template-columns: 1fr 92px; gap: 10px; align-items: center;
+  padding: 3px 0;
+}
+.axis-strip-taste .axis-strip-track i { background: var(--high); }
+.axis-strip-taste .axis-strip-track.low i { background: var(--low); }
+
+/* The moral rows take their axis's own pair too, rather than one colour for
+   every axis on the card. */
+.axis-strip-row.high .axis-strip-track i { background: var(--high, #eda36b); }
+.axis-strip-row.low .axis-strip-track i { background: var(--low, #5cc3c0); }
+
+/* The card no longer needs to stretch around a gap: its copy grows with the
+   strip inside it and scrolls if a long description and three axes overflow. */
+.deck-card { display: flex; flex-direction: column; }
+.deck-copy { overflow-y: auto; }

@@ -1,7 +1,7 @@
 import React from 'react'
 import FilmDetail from './FilmDetail.jsx'
 import FilmPlane from './FilmPlane.jsx'
-import { axisPair, planePoints } from '../../services/atlasService.js'
+import { axisPair, planePoints, tasteAxes } from '../../services/atlasService.js'
 
 // The plot and the film panel, side by side, driven by one selection.
 //
@@ -25,6 +25,22 @@ export default function FilmExplorer({
 }) {
   const [query, setQuery] = React.useState('')
   const shown = React.useMemo(() => axisPair(axes, pair), [axes, pair])
+
+  // What the picker offers, and which two are selected, in whichever space is
+  // showing. Taste dimensions are identified by dim_id and moral axes by
+  // factor_id; the picker only needs an id, a low label and a high label.
+  const choices = React.useMemo(() => (space === 'taste'
+    ? tasteAxes(taste).map((d) => ({ id: d.dim_id, low: d.pole_low, high: d.pole_high }))
+    : axes.map((a) => ({ id: a.factor_id, low: a.pole_low_label, high: a.pole_high_label }))
+  ), [space, taste, axes])
+
+  const current = React.useMemo(() => {
+    if (space !== 'taste') return [shown[0]?.factor_id, shown[1]?.factor_id]
+    const ids = choices.map((c) => c.id)
+    const x = ids.includes(pair?.[0]) ? pair[0] : ids[0]
+    const y = ids.includes(pair?.[1]) && pair[1] !== x ? pair[1] : ids.find((i) => i !== x)
+    return [x, y]
+  }, [space, choices, pair, shown])
   const panel = React.useRef(null)
 
   // Choosing a film has to LOOK like it did something. The matches list used to
@@ -99,34 +115,23 @@ export default function FilmExplorer({
             support order — so a third axis the product reads was never
             visible. The default is unchanged; this only lets a reader look at
             another pair. Hidden when there is no choice to make. */}
-        {onPairChange && space !== 'taste' && axes.length > 2 && (
+        {onPairChange && choices.length > 2 && (
           <div className="plane-pair">
-            <label>
-              <span>across</span>
-              <select value={shown[0]?.factor_id ?? ''}
-                      onChange={(e) => onPairChange([Number(e.target.value),
-                                                     shown[1]?.factor_id])}>
-                {axes.map((a) => (
-                  <option key={a.factor_id} value={a.factor_id}
-                          disabled={a.factor_id === shown[1]?.factor_id}>
-                    {a.pole_low_label} – {a.pole_high_label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>up</span>
-              <select value={shown[1]?.factor_id ?? ''}
-                      onChange={(e) => onPairChange([shown[0]?.factor_id,
-                                                     Number(e.target.value)])}>
-                {axes.map((a) => (
-                  <option key={a.factor_id} value={a.factor_id}
-                          disabled={a.factor_id === shown[0]?.factor_id}>
-                    {a.pole_low_label} – {a.pole_high_label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {[['across', 0], ['up', 1]].map(([label, slot]) => (
+              <label key={label}>
+                <span>{label}</span>
+                <select value={current[slot] ?? ''}
+                        onChange={(e) => onPairChange(slot === 0
+                          ? [Number(e.target.value), current[1]]
+                          : [current[0], Number(e.target.value)])}>
+                  {choices.map((c) => (
+                    <option key={c.id} value={c.id} disabled={c.id === current[1 - slot]}>
+                      {c.low} – {c.high}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
           </div>
         )}
 
@@ -174,9 +179,10 @@ export default function FilmExplorer({
             axes, and there is nothing to place on the taste ones. */}
         {plane && <FilmPlane space={space} points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
                    family={space === 'taste' ? 'taste' : 'moral'}
-                   pairIndex={[axes.findIndex((a) => a.factor_id === shown[0]?.factor_id),
-                               axes.findIndex((a) => a.factor_id === shown[1]?.factor_id)]
-                              .map((i) => (i < 0 ? 0 : i))}
+                   pairIndex={plane.index
+                     || [axes.findIndex((a) => a.factor_id === shown[0]?.factor_id),
+                         axes.findIndex((a) => a.factor_id === shown[1]?.factor_id)]
+                        .map((i) => (i < 0 ? 0 : i))}
                    sets={sets}
                    viewer={space === 'moral' ? viewer : null}
                    selectedId={selectedId} matchIds={matchIds}

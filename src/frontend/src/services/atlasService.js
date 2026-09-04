@@ -227,11 +227,33 @@ export function setCentroid(positions, filmIds) {
 // and the atlas already drifted apart once — one defaulted to the reading with
 // the most verdicts and the other to the reading the product uses, so the same
 // film showed different numbers depending on which page you opened.
+// The named taste dimensions in the order everything shows them: by how
+// reliably each places a PERSON, not by how much of the corpus it covers. The
+// plot sorted by variance and the side panel by readability, so the same
+// dimension was first in one and third in the other — and took a different
+// colour in each.
+export function tasteAxes(taste) {
+  return (taste?.dimensions || [])
+    .filter((d) => d.status === 'named')
+    .slice()
+    .sort((a, b) => (b.profile_reliability ?? 0) - (a.profile_reliability ?? 0))
+}
+
 export function planePoints(factors, taste, space = 'moral', pair = null) {
   if (space === 'taste') {
-    const dims = (taste?.dimensions || []).filter((d) => d.status === 'named').slice(0, 2)
+    const dims = tasteAxes(taste)
     if (dims.length < 2) return null
-    const [dx, dy] = dims
+    // Honour the chosen pair, the way the moral plane does. This took the first
+    // two dimensions and ignored `pair` entirely, so the taste plot had no axis
+    // picker and could only ever draw one view of sixteen dimensions.
+    const at = (id, fallback) => {
+      const found = dims.findIndex((d) => d.dim_id === id)
+      return found < 0 ? fallback : found
+    }
+    const xi = at(pair?.[0], 0)
+    const yi = at(pair?.[1], xi === 1 ? 0 : 1)
+    const dx = dims[xi]
+    const dy = dims[yi]
     const points = (taste.films || []).flatMap((f) => {
       const x = f.position?.[String(dx.dim_id)]
       const y = f.position?.[String(dy.dim_id)]
@@ -242,6 +264,11 @@ export function planePoints(factors, taste, space = 'moral', pair = null) {
       points,
       xAxis: { high: dx.pole_high, low: dx.pole_low },
       yAxis: { high: dy.pole_high, low: dy.pole_low },
+      // Which dimensions these are, in the order the palette indexes by, so the
+      // plot's pole labels take the same colours the side panel gives the same
+      // dimensions. They disagreed because the plot took the first two by
+      // VARIANCE and the panel the first five by how well each places a person.
+      index: [xi, yi],
     }
   }
 

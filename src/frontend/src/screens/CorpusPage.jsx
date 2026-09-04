@@ -1,6 +1,6 @@
 import React from 'react'
 import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
-import { loadAtlas } from '../services/atlasService.js'
+import { loadAtlas, plotAxes } from '../services/atlasService.js'
 import { loadFactors, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
@@ -17,6 +17,12 @@ export default function CorpusPage({ onBack }) {
   const [reading, setReading] = React.useState(null)
   const [selected, setSelected] = React.useState(null)
   const [error, setError] = React.useState(null)
+  const [space, setSpace] = React.useState('moral')
+  // Every axis the product reads, which is what the picker offers — the same
+  // selector the atlas uses, so a label here cannot name one pair while the
+  // plot draws another.
+  const productAxes = React.useMemo(() => plotAxes(factors), [factors])
+  const [pair, setPair] = React.useState(null)
   const [factors, setFactors] = React.useState(null)
   const [taste, setTaste] = React.useState(null)
 
@@ -69,9 +75,17 @@ export default function CorpusPage({ onBack }) {
 
         {error && <p className="atlas-note">{error}</p>}
 
+        {/* The same three spaces and the same axis picker the atlas has. This
+            page drew one fixed view of one pair, so a reader who found their
+            film here could not ask what it looks like on any other axis, or in
+            taste at all — the controls existed one page away and nothing said
+            so. */}
         <FilmExplorer films={all} factors={factors} taste={taste} reading={reading}
                       selectedId={selected?.id || null}
-                      onSelect={(id) => setSelected(all.find((f) => f.id === id) || null)} />
+                      onSelect={(id) => setSelected(all.find((f) => f.id === id) || null)}
+                      space={space} onSpaceChange={setSpace}
+                      pair={pair} onPairChange={setPair}
+                      axes={productAxes} />
 
         {!selected && (
           <p className="atlas-note">

@@ -385,7 +385,40 @@ button { cursor: pointer; }
 .axis-strip-row.high .axis-strip-track i { background: var(--high, #eda36b); }
 .axis-strip-row.low .axis-strip-track i { background: var(--low, #5cc3c0); }
 
-/* The card no longer needs to stretch around a gap: its copy grows with the
-   strip inside it and scrolls if a long description and three axes overflow. */
-.deck-card { display: flex; flex-direction: column; }
-.deck-copy { overflow-y: auto; }
+/* Everything on this screen fits above the buttons, and nothing inside the card
+   scrolls.
+ *
+ * The card gained a scroll region when the axis strip moved inside it, and a
+ * scroll container inside a swipe target competes with the swipe: the browser
+ * cannot know whether a drag is meant to move the card or the content, so it
+ * guesses, and half the swipes were lost. The fix is to make the content fit
+ * rather than to let it scroll — the strip no longer expands here, which is what
+ * made the height unpredictable in the first place.
+ *
+ * svh, not vh: on a phone with a retracting toolbar vh is the LARGER height, so
+ * a card sized to it puts the buttons under the browser chrome exactly when the
+ * chrome is showing.
+ */
+.deck-screen { block-size: 100svh; min-block-size: 0; }
+.deck-card { display: flex; flex-direction: column; min-block-size: 0; }
+/* Art gives way first. It is the one part of the card that can lose height
+   without losing information. */
+.deck-art { flex: 0 1 auto; block-size: 30%; min-block-size: 132px; }
+.deck-art h2 { font-size: clamp(24px, 6vw, 34px); }
+.deck-copy { flex: 1 1 auto; min-block-size: 0; gap: 10px; padding: 14px 18px 16px; }
+.deck-copy p { font-size: clamp(15px, 4vw, 18px); }
+.deck-actions { padding: 16px 0 8px; }
+/* On a short screen the standing instructions go: they say what the buttons
+   under them already show, and they are the difference between the buttons
+   being visible and not. */
+@media (max-height: 720px) {
+  .deck-note { display: none; }
+  .deck-art { block-size: 26%; min-block-size: 108px; }
+}
+
+/* A row that cannot expand still needs the button's grid, since that is what
+   puts the label and the bar side by side. */
+.axis-strip-fixed {
+  display: grid; grid-template-columns: 1fr 92px; gap: 10px; align-items: center;
+  padding: 3px 0;
+}

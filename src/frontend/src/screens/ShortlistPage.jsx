@@ -123,7 +123,11 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
             and only fifty of six hundred and seventy-six films have a written
             description, so for almost every film this was blank space above a
             strip that had nowhere to go. */}
-        <FilmAxisStrip filmId={film.id} />
+        {/* Fixed height on this card: no expansion, and two taste rows rather
+            than three. Everything has to fit above the buttons without the
+            card scrolling, because a scroll container here competes with the
+            swipe. The full, expandable reading is on the film page. */}
+        <FilmAxisStrip filmId={film.id} expandable={false} tasteLimit={2} />
         <small>{film.note || (solo ? 'Picked for you' : 'Picked for both of you')}</small>
       </div>
     </article>

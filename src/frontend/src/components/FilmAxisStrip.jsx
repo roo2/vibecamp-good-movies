@@ -21,10 +21,14 @@ import { polePair } from './atlas/polePalette.js'
 // axes appeared in a different sequence on every screen that showed them.
 
 // How far from the corpus centre a film has to sit before the card will name
-// which end it is on, in standard deviations. Three quarters keeps a reading for
-// about seven films in ten and leaves the rest blank, which is the honest
-// outcome for a film that is typical in every direction the instrument measures.
-export const TASTE_FLOOR = 0.75
+// which end it is on, in standard deviations.
+//
+// Half rather than the three quarters this started at. The floor exists to stop
+// the card asserting a pole on a rounding error — the 2019 Lion King at 0.31 —
+// not to hold out for a dramatic reading, and three quarters was silencing
+// films that had something to say. Half still excludes that film and everything
+// like it while leaving one film in ten blank instead of one in four.
+export const TASTE_FLOOR = 0.5
 
 const shown = (factors, limit) => factors
   .filter((factor) => factor.score != null && factor.items > 0)

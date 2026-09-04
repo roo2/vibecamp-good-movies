@@ -1,4 +1,5 @@
 import React from 'react'
+import { poleColour } from './polePalette.js'
 
 // Two axes at a time, drawn flat.
 //
@@ -25,10 +26,17 @@ const PAD_NARROW = 62
 // with nothing around them to read a position against.
 const MAX_ZOOM = 6
 
-// One colour per axis, used for its rule, its ticks and both its pole labels,
-// so a label is tied to its axis by something other than position. Carried over
-// from the cloud this replaced, where they identified the same two axes.
-const AXIS_COLOUR = ['#eda36b', '#5cc3c0']
+// One colour per POLE, from the shared registry — the same amber that marks
+// Redemption here marks it in the film panel and on a person's compass.
+//
+// It used to be one colour per AXIS, shared by both its ends, which made the
+// horizontal rule and both its labels amber whichever pole they named. That
+// tied a label to its axis and left the two ends of that axis indistinguishable
+// by anything but position, while the same amber meant something else entirely
+// two panels away.
+//
+// The rule keeps a single colour, because a rule is the axis rather than either
+// end of it: it takes the pole the plot points AT, which is the high end.
 
 // A set's crosshair has to be findable among its own dots, which are already
 // that colour. Lightening rather than darkening keeps it visible on the dark
@@ -76,7 +84,18 @@ const CAPTION = {
 
 export default function FilmPlane({
   points, xAxis, yAxis, sets, viewer, onSelect, selectedId, matchIds, space = 'moral',
+  family = 'moral', pairIndex = [0, 1],
 }) {
+  // Which pair of poles this plane is drawing, so the labels can take their own
+  // colours from the registry rather than inventing a local pair.
+  const AXIS_COLOUR = [poleColour(family, pairIndex[0], 'high'),
+                       poleColour(family, pairIndex[1], 'high')]
+  const POLE = {
+    xLow: poleColour(family, pairIndex[0], 'low'),
+    xHigh: AXIS_COLOUR[0],
+    yLow: poleColour(family, pairIndex[1], 'low'),
+    yHigh: AXIS_COLOUR[1],
+  }
   const [hover, setHover] = React.useState(null)
   const box = React.useRef(null)
   const svgRef = React.useRef(null)
@@ -341,13 +360,13 @@ export default function FilmPlane({
             Placed outside they were clipped on a phone, which is where most of
             this is read. Outside the panned group: they name the whole axis,
             not a place on it, so they stay put when the window moves. */}
-        <text className="plane-pole" style={{ fill: AXIS_COLOUR[1] }}
+        <text className="plane-pole" style={{ fill: POLE.yHigh }}
               x={SIZE / 2} y={PAD - 14} textAnchor="middle">{yAxis.high}</text>
-        <text className="plane-pole" style={{ fill: AXIS_COLOUR[1] }}
+        <text className="plane-pole" style={{ fill: POLE.yLow }}
               x={SIZE / 2} y={SIZE - PAD + 24} textAnchor="middle">{yAxis.low}</text>
-        <text className="plane-pole" style={{ fill: AXIS_COLOUR[0] }}
+        <text className="plane-pole" style={{ fill: POLE.xHigh }}
               x={SIZE - PAD + 8} y={SIZE / 2 - 7} textAnchor="end">{xAxis.high}</text>
-        <text className="plane-pole" style={{ fill: AXIS_COLOUR[0] }}
+        <text className="plane-pole" style={{ fill: POLE.xLow }}
               x={PAD - 8} y={SIZE / 2 - 7} textAnchor="start">{xAxis.low}</text>
       </svg>
 

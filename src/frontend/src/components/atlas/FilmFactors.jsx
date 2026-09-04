@@ -13,7 +13,7 @@ import { loadFilmAxes } from '../../services/factorService.js'
 // and even-handedness look identical in a number and are opposites in a film:
 // one never raised the question, the other weighed it and split.
 
-function Row({ factor }) {
+function Row({ factor, index }) {
   const [open, setOpen] = React.useState(false)
   const scored = factor.score != null
   const side = factor.score >= 0 ? 'high' : 'low'
@@ -35,7 +35,7 @@ function Row({ factor }) {
                 : `${factor.name}. This film did not raise it`}>
         {scored ? (
           <AxisScale low={factor.pole_low_label} high={factor.pole_high_label}
-                     value={factor.score} family="moral" compact />
+                     value={factor.score} family="moral" index={index} />
         ) : (
           <span className="film-factor-scale">
             <em>{factor.pole_low_label}</em>
@@ -124,7 +124,9 @@ export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
       ) : (
         <>
           <ul className="film-factors">
-            {factors.map((factor) => <Row key={factor.factor_id} factor={factor} />)}
+            {factors.map((factor, index) => (
+              <Row key={factor.factor_id} factor={factor} index={index} />
+            ))}
           </ul>
           {/* The count only earns its place when it is not the full set: "3 of 3
               engaged" tells a reader nothing they cannot see. */}

@@ -41,11 +41,16 @@ export default function FilmTaste({ taste, filmId }) {
       const all = films.map((f) => f.position?.[key]).filter((v) => typeof v === 'number')
       const here = mine.position?.[key]
       if (typeof here !== 'number' || all.length < 20) return null
-      // A percentile, turned into the -1..1 the scale draws. Raw component
-      // scores differ by an order of magnitude between dimensions, so the rank
-      // is the only comparable quantity — it is just no longer printed.
-      const below = all.reduce((n, v) => n + (v < here ? 1 : 0), 0)
-      return { dim: d, value: (below / all.length) * 2 - 1 }
+      // Standardised against the corpus, not ranked against it. A percentile
+      // maps most films to near zero — Master and Commander sits at the 56th on
+      // one dimension, which drew a bar 6% of the track wide and read as a
+      // rendering fault rather than as "this film is typical". A z-score keeps
+      // the middle crowded where it belongs while giving a distinctive film a
+      // bar you can see. Divided by three because that is where the corpus
+      // runs out; beyond it the scale clamps.
+      const mean = all.reduce((t, v) => t + v, 0) / all.length
+      const sd = Math.sqrt(all.reduce((t, v) => t + (v - mean) ** 2, 0) / all.length)
+      return { dim: d, value: sd > 0 ? (here - mean) / (sd * 3) : 0 }
     }).filter(Boolean)
   }, [taste, filmId])
 
@@ -58,10 +63,10 @@ export default function FilmTaste({ taste, filmId }) {
         Discovered from which films the same people enjoy, not from anything this film says.
       </p>
       <ul className="film-factors">
-        {rows.map(({ dim, value }) => (
+        {rows.map(({ dim, value }, index) => (
           <li key={dim.dim_id} className="film-factor">
             <AxisScale low={dim.pole_low} high={dim.pole_high} value={value}
-                       family="taste" compact />
+                       family="taste" index={index} />
           </li>
         ))}
       </ul>

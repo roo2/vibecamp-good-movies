@@ -173,6 +173,10 @@ export default function FilmExplorer({
             The viewer marker stays moral-only: it is a position on the moral
             axes, and there is nothing to place on the taste ones. */}
         {plane && <FilmPlane space={space} points={plane.points} xAxis={plane.xAxis} yAxis={plane.yAxis}
+                   family={space === 'taste' ? 'taste' : 'moral'}
+                   pairIndex={[axes.findIndex((a) => a.factor_id === shown[0]?.factor_id),
+                               axes.findIndex((a) => a.factor_id === shown[1]?.factor_id)]
+                              .map((i) => (i < 0 ? 0 : i))}
                    sets={sets}
                    viewer={space === 'moral' ? viewer : null}
                    selectedId={selectedId} matchIds={matchIds}

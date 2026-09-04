@@ -1,43 +1,47 @@
 import React from 'react'
+import { polePair } from './polePalette.js'
 
-// One row: two pole labels either side of a centred bar.
+// One row: two pole labels, and a centred bar beneath them.
 //
-// Shared, because the moral axes and the taste dimensions are the same object —
-// a position between two named ends — and were being drawn by two different
-// pieces of markup. The moral rows put the labels beside a centred bar; the
-// taste rows had drifted into a three-column grid with a marker, a percentile
-// and a trailing sentence, which read as a different instrument measuring a
-// different kind of thing. It is not.
+// Shared by the moral axes and the taste dimensions, because they are the same
+// object — a position between two named ends — and were drawn by two different
+// pieces of markup that had drifted apart in layout, in colour and in what the
+// bar meant.
 //
-// COLOUR MEANS DIRECTION, in both. Not which axis — which END the film sits at.
-// That was the other half of the divergence: the moral rows coloured by
-// direction and the taste rows by dimension, so the same hue meant "redemption"
-// in one place and "the third taste dimension" in another. Each family supplies
-// its own pair through --high and --low, and no hue is shared between them.
+// LABELS ABOVE, TRACK BELOW, always. The earlier version put the labels either
+// side of the bar in a three-column grid and switched to a stacked layout in
+// narrow columns. Both existed, so both could be wrong, and in the film panel
+// the long taste labels collided anyway: "Acclaimed craft" ran into "Slapdash
+// spectacle". One layout that cannot collapse beats two that each work
+// somewhere. The labels are a flex row that can only ever be two items pushed
+// apart; the track is its own block at full width.
 //
-// The bar is centred because the axis has two directions; a left-anchored bar
-// would read as "how much of this quality the film has", which is not what a
-// score of -0.6 means. It means the film denied most of what this axis asks.
+// COLOUR COMES FROM THE POLE, not from the axis and not from the side. See
+// polePalette — the point is that Redemption is one colour everywhere it
+// appears.
 
-export default function AxisScale({ low, high, value, family = 'moral', compact = false }) {
-  // `value` is -1..1. Anything outside is a caller bug rather than a film at an
+export default function AxisScale({ low, high, value, family = 'moral', index = 0 }) {
+  // `value` is -1..1. Outside that is a caller bug rather than a film at an
   // extreme, so it is clamped instead of drawn past the end of its own track.
   const at = Math.max(-1, Math.min(1, value ?? 0))
   const side = at >= 0 ? 'high' : 'low'
-  const magnitude = Math.abs(at) * 50
+  const pair = polePair(family, index)
   return (
-    <span className={`axis-scale ${family} ${side}${compact ? ' compact' : ''}`}>
-      <em className={side === 'low' ? 'lit' : ''}>{low}</em>
+    <span className={`axis-scale ${family} ${side}`}
+          style={{ '--low': pair.low, '--high': pair.high }}>
+      <span className="axis-scale-poles">
+        <em className={side === 'low' ? 'lit' : ''}>{low}</em>
+        <em className={side === 'high' ? 'lit' : ''}>{high}</em>
+      </span>
       <span className="axis-scale-track">
         <u className="axis-scale-mid" />
         <i
           className={`axis-scale-bar ${side}`}
           style={at >= 0
-            ? { insetInlineStart: '50%', inlineSize: `${magnitude}%` }
-            : { insetInlineEnd: '50%', inlineSize: `${magnitude}%` }}
+            ? { insetInlineStart: '50%', inlineSize: `${Math.abs(at) * 50}%` }
+            : { insetInlineEnd: '50%', inlineSize: `${Math.abs(at) * 50}%` }}
         />
       </span>
-      <em className={side === 'high' ? 'lit' : ''}>{high}</em>
     </span>
   )
 }

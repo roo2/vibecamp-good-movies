@@ -1117,33 +1117,30 @@
 
 /* --- the shared axis row -------------------------------------------------
  *
- * One layout for the moral axes and the taste dimensions, because they are the
- * same object: a position between two named ends. They had drifted into two
- * different components, and the taste one had acquired a marker, a percentile
- * and a trailing sentence that made a taste dimension look like a different
- * kind of measurement from a moral one.
+ * One layout for the moral axes and the taste dimensions, and only one: labels
+ * on a line of their own, track beneath at full width. The earlier version had
+ * a wide three-column form and a stacked narrow form, which meant two ways to
+ * be wrong — and in the film panel the long taste labels collided in both.
  *
- * Colour encodes DIRECTION — which end the film sits at — in both families,
- * and the two families share no hue. Amber and teal are the moral axes' own
- * colours, carried from the plot; violet and rose are taste's, and exist so a
- * reader never has to ask whether a warm bar means redemption or a taste
- * dimension that happens to be third in the list.
+ * Colour arrives per pole through --low and --high, set by the component from
+ * polePalette. Nothing here knows which axis it is drawing.
  */
-.axis-scale {
-  --high: #eda36b; --low: #5cc3c0;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(84px, 1.4fr) minmax(0, 1fr);
-  gap: 14px; align-items: center;
+.axis-scale { --high: #eda36b; --low: #5cc3c0; display: block; }
+.axis-scale-poles {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 16px; margin-bottom: 9px;
 }
-.axis-scale.taste { --high: #b48ce0; --low: #e0899a; }
-.axis-scale em {
-  color: #b3aa9e; font-size: 13px; font-weight: 600; font-style: normal; line-height: 1.3;
+.axis-scale-poles em {
+  flex: 0 1 auto; max-inline-size: 46%;
+  color: #7e766c; font-size: 12.5px; font-weight: 600; font-style: normal;
+  line-height: 1.35; text-wrap: balance;
 }
-.axis-scale em:last-child { text-align: right; }
-.axis-scale em.lit { color: #f5efe6; }
-.axis-scale.high em.lit { color: var(--high); }
-.axis-scale.low em.lit { color: var(--low); }
+.axis-scale-poles em:last-child { text-align: right; }
+.axis-scale.low .axis-scale-poles em:first-child { color: var(--low); }
+.axis-scale.high .axis-scale-poles em:last-child { color: var(--high); }
 .axis-scale-track {
-  display: block; position: relative; height: 8px; border-radius: 3px; background: #171310;
+  display: block; position: relative; block-size: 8px; border-radius: 3px;
+  background: #171310;
 }
 .axis-scale-bar { position: absolute; inset-block: 0; border-radius: 3px; }
 .axis-scale-bar.high { background: var(--high); }
@@ -1152,15 +1149,3 @@
   position: absolute; inset-block: -2px; inset-inline-start: 50%; inline-size: 1px;
   background: #3a312a; text-decoration: none;
 }
-
-/* In the side panel every column is narrow and a three-column row squeezed the
-   pole labels onto three lines each. Labels take a row of their own, the track
-   spans beneath — the same fix the moral rows already carried. */
-.axis-scale.compact {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas: "low high" "track track";
-  gap: 5px 14px; align-items: baseline;
-}
-.axis-scale.compact > em:first-of-type { grid-area: low; text-align: left; }
-.axis-scale.compact > em:last-of-type { grid-area: high; text-align: right; }
-.axis-scale.compact .axis-scale-track { grid-area: track; margin-top: 4px; }

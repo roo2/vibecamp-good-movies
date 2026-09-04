@@ -989,8 +989,6 @@
 
 /* Taste borrows the moral scale's geometry and not its colour: it is not a
    moral claim and should not look like one. */
-.film-factor-bar.taste { background: #8a8078; }
-.film-factor.taste .film-factor-scale em.lit { color: #d5ccc1; }
 .film-taste { margin-top: 24px; padding-top: 18px; border-top: 1px solid #241e19; }
 
 @media (max-width: 900px) {
@@ -998,18 +996,22 @@
   .explorer-plot { position: static; }
 }
 
-/* In the side panel both scales are narrow, and a three-column row squeezed
-   every pole label onto two or three lines. Labels take a row of their own and
-   the track spans beneath — applied to BOTH scales, since they share this
-   markup, so the fix cannot drift between them. */
-.explorer-panel .film-factor-scale {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-areas: "low high" "track track";
-  gap: 5px 14px; align-items: baseline;
+/* The film panel is a DRAWER everywhere else and a COLUMN here, and it was
+   wearing the drawer's clothes in both places: a fixed 560px width, a full
+   viewport height and its own overflow-y. Inside a page column that makes a
+   second scrollbar — the card scrolls within a page that also scrolls, so
+   reaching the taste rows means finding the right thing to scroll. It sizes to
+   its content here and the page does the scrolling. */
+.explorer-panel .film-detail {
+  width: auto; height: auto; overflow: visible;
+  padding: 0; border-left: 0; background: transparent;
 }
-.explorer-panel .film-factor-scale > em:first-of-type { grid-area: low; text-align: left; }
-.explorer-panel .film-factor-scale > em:last-of-type { grid-area: high; text-align: right; }
-.explorer-panel .film-factor-track { grid-area: track; margin-top: 2px; }
+
+/* The pole labels used to need a narrow-column override here, because the row
+   was a three-column grid that squeezed them. The shared axis scale stacks
+   labels above the track in every width, so there is nothing left to correct.
+   `.film-factor-scale` itself survives for the "did not raise this" row, which
+   is the one place a factor still has no bar to draw. */
 .explorer-panel .film-factor > button,
 .explorer-panel .film-factor > span:first-child { padding-block: 4px; }
 .explorer-panel .film-factor-score { white-space: nowrap; }

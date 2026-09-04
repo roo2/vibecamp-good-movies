@@ -66,6 +66,17 @@ MIN_WEIGHT_TO_NAME = 0.20
 # it is honestly a presentation choice.
 
 
+# The technical terms the prompt names, and the plain word it offers instead.
+# Kept in step with the SYSTEM text by hand: if a pair is added there, add it
+# here, because the instruction alone does not hold.
+PLAINER = {
+    "determinism": "fate",
+    "deontology": "duty",
+    "utilitarian calculus": "greater good",
+    "restorative justice": "forgiveness",
+}
+
+
 class FactorName(BaseModel):
     factor_id: int
     # NO high/low here, deliberately. Which end of a factor is "high" is a
@@ -92,6 +103,25 @@ class FactorName(BaseModel):
         description="The same for the SECOND list, one or two words — or, if "
                     "that list is empty, for the position a work would hold "
                     "that denied every proposition in the first.")
+
+    # The prompt names four technical terms and the plain word to use instead.
+    # It asked, and the namer declined: a five-run consensus came back with
+    # "Determinism" for the axis the instruction gives "Fate" as the example
+    # for. An instruction a model can decline is not a constraint, which is the
+    # same lesson the two-word cap and the placeholder labels both taught.
+    #
+    # Only the pairs the PROMPT itself supplies are enforced, so this cannot
+    # reject a term the instruction never warned about.
+    @field_validator("first_label", "second_label")
+    @classmethod
+    def _plain_where_the_prompt_asked(cls, value: str) -> str:
+        plain = PLAINER.get(value.strip().lower())
+        if plain:
+            raise ValueError(
+                f"{value!r} is the technical term; the instruction gives "
+                f"{plain!r} as the plain equivalent. Use the plain one, or a "
+                f"different word entirely if neither fits the propositions.")
+        return value
 
     @field_validator("first_label", "second_label")
     @classmethod
@@ -205,6 +235,21 @@ somebody at that end does with a moral question, not what they hold — and nobo
 has ever described themselves that way. A gerund in a label is nearly always
 this mistake. Ask what the weighing is FOR, and name that; the thing being
 served is the position, and it has a name older than the procedure does.
+
+PREFER THE PLAIN WORD OVER THE TECHNICAL ONE. These labels sit at the ends of a
+line read by somebody deciding what to watch, not by somebody who has studied
+ethics. Where an ordinary phrase and a philosopher's term name the same
+position, take the ordinary one: "Greater good" over "Utilitarian calculus",
+"Fate" over "Determinism", "Duty" over "Deontology", "Forgiveness" over
+"Restorative justice". The technical term is not more precise here — it is the
+same idea with a smaller audience, and a reader who has to look a label up has
+been told nothing at the moment they read it.
+
+This is a preference between EQUALS, not a licence to blur. If the plain word
+means something narrower or wider than the propositions support, the accurate
+word wins and the sentence underneath explains it. And a plain word is still
+subject to every rule above: it must name a position somebody would own, not be
+the negation of the other end, and not be a verdict on quality.
 
 Prefer the word that ENCOMPASSES over the word that specifies. An axis is a
 whole moral world at each end, not one behaviour: "Redemption" holds more than
@@ -460,9 +505,15 @@ def name_factors(
                 break
             except Exception as error:
                 if progress:
+                    # The message, not just the class. Five runs failed as bare
+                    # "RuntimeError" and the reason — transient provider errors,
+                    # not schema rejections — could not be told from the log,
+                    # which sent the diagnosis off after the wrong cause.
+                    detail = str(error).strip().splitlines()[0][:120] if str(error) else ""
                     progress(f"  naming run {attempt + 1}"
                              + (f" attempt {retry + 1}" if retry else "")
-                             + f" failed: {type(error).__name__}")
+                             + f" failed: {type(error).__name__}"
+                             + (f" — {detail}" if detail else ""))
         if answer is None:
             continue
         candidates.append(_shape(answer, grouped, report))

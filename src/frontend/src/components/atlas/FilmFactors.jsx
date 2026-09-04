@@ -1,4 +1,5 @@
 import React from 'react'
+import AxisScale from './AxisScale.jsx'
 import Verdicts from './Verdicts.jsx'
 import { loadFilmAxes } from '../../services/factorService.js'
 
@@ -11,25 +12,6 @@ import { loadFilmAxes } from '../../services/factorService.js'
 // An axis the film never engaged shows as absent rather than as zero. Silence
 // and even-handedness look identical in a number and are opposites in a film:
 // one never raised the question, the other weighed it and split.
-
-function Bar({ score }) {
-  const magnitude = Math.abs(score) * 50
-  // A span rather than a div: this sits inside a <button>, which may only
-  // contain phrasing content. The stylesheet gives it `display: block`, without
-  // which an inline box would ignore its height and collapse to zero width —
-  // pinning every bar to the left.
-  return (
-    <span className="film-factor-track">
-      <u className="film-factor-mid" />
-      <i
-        className={score >= 0 ? 'film-factor-bar high' : 'film-factor-bar low'}
-        style={score >= 0
-          ? { insetInlineStart: '50%', inlineSize: `${magnitude}%` }
-          : { insetInlineEnd: '50%', inlineSize: `${magnitude}%` }}
-      />
-    </span>
-  )
-}
 
 function Row({ factor }) {
   const [open, setOpen] = React.useState(false)
@@ -52,11 +34,8 @@ function Row({ factor }) {
                 ? `${factor.name}. Reads as ${side === 'high' ? factor.pole_high_label : factor.pole_low_label}`
                 : `${factor.name}. This film did not raise it`}>
         {scored ? (
-          <span className="film-factor-scale">
-            <em className={side === 'low' ? 'lit' : ''}>{factor.pole_low_label}</em>
-            <Bar score={factor.score} />
-            <em className={side === 'high' ? 'lit' : ''}>{factor.pole_high_label}</em>
-          </span>
+          <AxisScale low={factor.pole_low_label} high={factor.pole_high_label}
+                     value={factor.score} family="moral" compact />
         ) : (
           <span className="film-factor-scale">
             <em>{factor.pole_low_label}</em>

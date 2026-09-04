@@ -52,6 +52,7 @@ export default function TastePage({ onBack, onAtlas }) {
 
   return (
     <main className="atlas-page">
+      <div className="atlas-wrap">
       <header className="atlas-header">
         {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
         <div>
@@ -160,6 +161,7 @@ export default function TastePage({ onBack, onAtlas }) {
           </section>
         </>
       )}
+      </div>
     </main>
   )
 }

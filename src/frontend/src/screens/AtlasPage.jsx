@@ -175,6 +175,7 @@ function AtlasPage({ onBack, access }) {
 
   return (
     <main className="atlas-page">
+      <div className="atlas-wrap">
       <header className="atlas-header">
         {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
         <div>
@@ -319,6 +320,7 @@ function AtlasPage({ onBack, access }) {
           not here used to unmount the whole section — including the search box —
           so the reader was left staring at a gap with no way to undo the typing
           that caused it. */}
+      </div>
     </main>
   )
 }

@@ -49,6 +49,10 @@ export default function AxisAdjustment({ data, taste }) {
         much that is differs enormously by axis.
       </p>
 
+      {/* Five columns of numbers do not fit a phone, and an unwrapped table
+          widens the PAGE rather than itself — every other section then
+          scrolls sideways too. It scrolls inside its own box instead. */}
+      <div className="table-scroll">
       <table className="figures">
         <thead>
           <tr>
@@ -95,6 +99,7 @@ export default function AxisAdjustment({ data, taste }) {
           })}
         </tbody>
       </table>
+      </div>
 
       {anyPlaced && (
         <p className="atlas-note">

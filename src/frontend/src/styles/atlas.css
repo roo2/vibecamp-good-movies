@@ -1134,3 +1134,15 @@
   position: absolute; inset-block: -2px; inset-inline-start: 50%; inline-size: 1px;
   background: #3a312a; text-decoration: none;
 }
+
+/* A wrapped table still needs a floor under it, or the browser shrinks the
+   columns to fit and wraps every header onto four lines instead of scrolling.
+   Narrow enough to fit a phone without scrolling when the columns allow it. */
+.table-scroll > .figures { min-inline-size: 34rem; }
+@media (max-width: 720px) {
+  /* Nothing on a phone may widen the page itself. The tables scroll in their
+     own boxes; the page does not. */
+  .atlas-page { overflow-x: hidden; }
+  .figures { font-size: 13.5px; }
+  .figures th, .figures td { padding: 8px 9px; }
+}

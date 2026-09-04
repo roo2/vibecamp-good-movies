@@ -159,67 +159,109 @@ export default function FilmPlane({
   }
 
   // ---- gestures -------------------------------------------------------------
+  //
+  // Touch is handled with NATIVE touch events, not pointer events, and the
+  // reason is that pointer events lose the gesture halfway. With
+  // `touch-action: pan-y` the browser is still entitled to start a vertical pan,
+  // and when it does it fires `pointercancel` at every finger — so a pinch that
+  // begins correctly dies the moment either finger drifts vertically, which is
+  // most of them. Nothing in the handler is wrong; it simply stops being called.
+  //
+  // A non-passive touchmove can call preventDefault the moment it sees a second
+  // finger, which takes the gesture back before the browser commits to panning.
+  // Pointer events stay for the mouse, where none of this applies.
   const touches = React.useRef(new Map())
   const pinch = React.useRef(null)
   const drag = React.useRef(null)
   const moved = React.useRef(false)
 
+  React.useEffect(() => {
+    const el = svgRef.current
+    if (!el) return undefined
+
+    const spread = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+    const mid = (t) => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2]
+
+    const onStart = (e) => {
+      moved.current = false
+      if (e.touches.length === 2) {
+        // Also on touchSTART, not only on move. Once the browser has committed
+        // to a scroll a later preventDefault is ignored, and the second finger
+        // landing is the last moment before it decides.
+        e.preventDefault()
+        pinch.current = { dist: spread(e.touches) }
+        drag.current = null
+      } else if (e.touches.length === 1 && SIZE / viewRef.current.w > 1.001) {
+        drag.current = toPlot(e.touches[0].clientX, e.touches[0].clientY)
+      }
+    }
+
+    const onMove = (e) => {
+      if (e.touches.length >= 2) {
+        // Claim it before the browser can decide this is a page pan.
+        e.preventDefault()
+        const dist = spread(e.touches)
+        if (pinch.current?.dist > 0 && dist > 0) {
+          moved.current = true
+          const [mx, my] = mid(e.touches)
+          zoomAbout(dist / pinch.current.dist, mx, my)
+        }
+        pinch.current = { dist }
+        return
+      }
+      if (drag.current && e.touches.length === 1) {
+        e.preventDefault()
+        const at = toPlot(e.touches[0].clientX, e.touches[0].clientY)
+        const dx = at.x - drag.current.x
+        const dy = at.y - drag.current.y
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved.current = true
+        setView((v) => clampView({ ...v, x: v.x - dx, y: v.y - dy }))
+      }
+    }
+
+    const onEnd = (e) => {
+      if (e.touches.length < 2) pinch.current = null
+      if (e.touches.length === 0) drag.current = null
+    }
+
+    el.addEventListener('touchstart', onStart, { passive: false })
+    el.addEventListener('touchmove', onMove, { passive: false })
+    el.addEventListener('touchend', onEnd)
+    el.addEventListener('touchcancel', onEnd)
+    return () => {
+      el.removeEventListener('touchstart', onStart)
+      el.removeEventListener('touchmove', onMove)
+      el.removeEventListener('touchend', onEnd)
+      el.removeEventListener('touchcancel', onEnd)
+    }
+  }, [toPlot, zoomAbout])
+
+  // Mouse only. Touch never reaches these — see above.
   const down = (e) => {
+    if (e.pointerType === 'touch') return
     touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     moved.current = false
-    if (touches.current.size === 2) {
-      const [a, b] = [...touches.current.values()]
-      pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y) }
-      drag.current = null
-    } else if (touches.current.size === 1 && zoomed) {
-      // Only claim one-finger drags once there is somewhere to pan to;
-      // otherwise the gesture belongs to the page, which has to stay scrollable.
+    if (zoomed) {
       drag.current = toPlot(e.clientX, e.clientY)
       e.currentTarget.setPointerCapture?.(e.pointerId)
     }
   }
 
   const move = (e) => {
-    if (!touches.current.has(e.pointerId)) return
-    touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    if (touches.current.size >= 2 && pinch.current) {
-      const [a, b] = [...touches.current.values()]
-      const dist = Math.hypot(a.x - b.x, a.y - b.y)
-      if (pinch.current.dist > 0 && dist > 0) {
-        moved.current = true
-        zoomAbout(dist / pinch.current.dist, (a.x + b.x) / 2, (a.y + b.y) / 2)
-      }
-      pinch.current = { dist }
-      return
-    }
-    if (drag.current) {
-      const at = toPlot(e.clientX, e.clientY)
-      const dx = at.x - drag.current.x
-      const dy = at.y - drag.current.y
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved.current = true
-      setView((v) => clampView({ ...v, x: v.x - dx, y: v.y - dy }))
-    }
+    if (e.pointerType === 'touch' || !touches.current.has(e.pointerId)) return
+    if (!drag.current) return
+    const at = toPlot(e.clientX, e.clientY)
+    const dx = at.x - drag.current.x
+    const dy = at.y - drag.current.y
+    if (Math.abs(dx) > 1 || Math.abs(dy) > 1) moved.current = true
+    setView((v) => clampView({ ...v, x: v.x - dx, y: v.y - dy }))
   }
 
   const up = (e) => {
+    if (e.pointerType === 'touch') return
     touches.current.delete(e.pointerId)
-    if (touches.current.size < 2) pinch.current = null
     if (touches.current.size === 0) drag.current = null
   }
-
-  // Trackpad pinch and ctrl+wheel arrive as a wheel event, and the listener has
-  // to be non-passive to stop the browser zooming the whole page instead.
-  React.useEffect(() => {
-    const el = svgRef.current
-    if (!el) return undefined
-    const onWheel = (e) => {
-      if (!e.ctrlKey && !e.metaKey) return
-      e.preventDefault()
-      zoomAbout(Math.exp(-e.deltaY / 220), e.clientX, e.clientY)
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [zoomAbout])
 
   const { placed, cx, cy, centroids } = React.useMemo(() => {
     if (!points || points.length < 2) return { placed: [], centroids: [] }

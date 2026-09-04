@@ -364,8 +364,8 @@
   flex: none; padding: 2px 7px; border-radius: 4px; font-size: 10px;
   letter-spacing: .06em; text-transform: uppercase;
 }
-.verdict.affirms { color: var(--pole-high); background: rgba(198, 131, 71, .14); }
-.verdict.denies { color: var(--pole-low); background: rgba(108, 138, 224, .16); }
+.verdict.affirms { color: var(--high, var(--pole-high)); background: color-mix(in srgb, var(--high, #c68347) 16%, transparent); }
+.verdict.denies { color: var(--low, var(--pole-low)); background: color-mix(in srgb, var(--low, #6c8ae0) 16%, transparent); }
 .verdict.not-addressed { color: var(--ink3); background: var(--surface2); }
 .item-evidence { margin: 7px 0 0; padding-left: 11px; border-left: 2px solid var(--rule2); color: var(--ink2); font-size: 12px; font-style: italic; line-height: 1.55; }
 .item-meta { display: block; margin-top: 6px; color: var(--ink3); font-size: 10px; }
@@ -568,16 +568,16 @@
    way the film leans would leave exactly the number that confused the reader. */
 .film-factor-lean { grid-column: 1 / -1; color: #b3aa9e; font-size: 11.5px; line-height: 1.4; }
 .film-factor-lean b { color: #7e766c; font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; margin-inline-end: 5px; }
-.film-factor-lean.high b { color: #eda36b; }
-.film-factor-lean.low b { color: #5cc3c0; }
+.film-factor-lean.high b { color: var(--high, #eda36b); }
+.film-factor-lean.low b { color: var(--low, #5cc3c0); }
 .film-factor-poles { display: grid; gap: 4px; margin: 0 0 9px; }
 .film-factor-poles .pole { margin: 0; color: #574f47; font-size: 11.5px; line-height: 1.4; padding-inline-start: 8px; border-inline-start: 2px solid #241e19; }
 .film-factor-poles .pole b { margin-inline-end: 5px; font-weight: 650; }
 /* The end the film actually landed on is lit; the other stays dim but present,
    so the position reads as a choice between two stated things. */
 .film-factor-poles .pole.here { color: #b3aa9e; }
-.film-factor-poles .pole.low.here { border-inline-start-color: #5cc3c0; }
-.film-factor-poles .pole.high.here { border-inline-start-color: #eda36b; }
+.film-factor-poles .pole.low.here { border-inline-start-color: var(--low, #5cc3c0); }
+.film-factor-poles .pole.high.here { border-inline-start-color: var(--high, #eda36b); }
 .film-factor-poles .pole.low.here b { color: #5cc3c0; }
 .film-factor-poles .pole.high.here b { color: #eda36b; }
 .film-factor-thin { margin: 12px 0 0; color: #968c7f; font-size: 11.5px; line-height: 1.45; font-variant-numeric: tabular-nums; }
@@ -960,32 +960,15 @@
 .axis-adjust td small { color: var(--faint, #858c9b); font-style: italic; }
 .axis-adjust tr.axis-dropped { opacity: 0.62; }
 
-/* A film's taste position, shown beside its moral one. Percentiles, because the
-   raw component scores differ by an order of magnitude between dimensions. */
-.film-taste { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule, #d9dce4); }
-.film-taste h4 { font-family: var(--sans, system-ui); margin: 0 0 4px; }
+/* A film's taste position, beside its moral one. The rows themselves are the
+   shared axis scale — see .axis-scale — so nothing here lays them out. What is
+   left is the section's own spacing. Everything else that used to live here
+   styled a four-column grid with a dot and a printed percentile, and went on
+   squashing the rows that replaced it long after that markup was deleted. */
+.film-taste { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule, #2d251f); }
 .film-taste ul { list-style: none; padding: 0; margin: 14px 0 8px; }
-.film-taste li {
-  display: grid; grid-template-columns: minmax(0, 1fr) 2.4fr minmax(0, 1fr) auto;
-  align-items: center; gap: 10px; margin-bottom: 9px;
-  font-family: var(--sans, system-ui); font-size: 12px;
-}
-.film-taste-low { text-align: right; color: var(--muted, #5b6373); }
-.film-taste-high { color: var(--muted, #5b6373); }
-.film-taste-track {
-  position: relative; height: 3px; border-radius: 2px;
-  background: var(--rule, #d9dce4);
-}
-.film-taste-track i {
-  position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
-  background: currentColor; transform: translate(-50%, -50%);
-}
-.film-taste b { font-variant-numeric: tabular-nums; font-size: 13px; }
-.film-taste b small { font-size: 10px; color: var(--faint, #858c9b); margin-left: 1px; }
-@media (max-width: 520px) {
-  .film-taste li { grid-template-columns: 1fr auto; }
-  .film-taste-track { grid-column: 1 / -1; }
-}
+.film-taste li { margin-bottom: 16px; }
+.film-taste li:last-child { margin-bottom: 0; }
 
 /* --- plot and film panel, side by side ----------------------------------- */
 

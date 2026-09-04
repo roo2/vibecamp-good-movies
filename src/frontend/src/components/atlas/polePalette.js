@@ -30,18 +30,28 @@ const MORAL = [
 // avoid every moral hue above: rose, gold, sky, mint, plum.
 const TASTE_HUES = ['#d96ba0', '#c9a227', '#4fa3d1', '#63c9a0', '#a86bd9']
 
-// The pale end of a taste dimension. Mixed toward the page rather than
-// lightened, so it recedes on a dark ground instead of glowing.
-function paler(hex) {
+// The second end of a taste dimension: the same hue lifted toward the page's
+// light, not dimmed toward its dark.
+//
+// Two earlier attempts failed in opposite directions. Mixing toward the
+// background made the pole recede as intended and took it below the contrast a
+// label needs — a pole a reader cannot read is not colour-coded, it is faint.
+// Rotating the hue kept both ends bright but sent them anywhere on the wheel,
+// and two landed on moral hues, which is the collision this palette exists to
+// prevent. A tint holds the hue, so the pair still reads as one dimension, and
+// holds contrast, so both ends are legible.
+function tint(hex, amount = 0.5) {
   const n = parseInt(hex.slice(1), 16)
-  const mix = (c) => Math.round(c * 0.55 + 0x2a * 0.45)
-  return `rgb(${mix((n >> 16) & 255)}, ${mix((n >> 8) & 255)}, ${mix(n & 255)})`
+  // Toward the page's own off-white rather than pure white, which would wash
+  // the hue out entirely at this strength.
+  const mix = (c, t) => Math.round(c + (t - c) * amount)
+  return `rgb(${mix((n >> 16) & 255, 0xf5)}, ${mix((n >> 8) & 255, 0xef)}, ${mix(n & 255, 0xe6)})`
 }
 
 export function polePair(family, index) {
   if (family === 'taste') {
     const hue = TASTE_HUES[index % TASTE_HUES.length]
-    return { low: paler(hue), high: hue }
+    return { low: tint(hue), high: hue }
   }
   return MORAL[index % MORAL.length]
 }

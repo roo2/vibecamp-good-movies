@@ -2,7 +2,6 @@ import React from 'react'
 import Factors from '../components/atlas/Factors.jsx'
 import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
 import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
-import ModelPicker from '../components/atlas/ModelPicker.jsx'
 import { axisPair, filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
@@ -28,7 +27,6 @@ function filmParam() {
 
 function AtlasPage({ onBack, access }) {
   const [models, setModels] = React.useState(null)
-  const [withdrawn, setWithdrawn] = React.useState([])
   const [selected, setSelected] = React.useState(null)
   const [factors, setFactors] = React.useState(null)
   const [filmSets, setFilmSets] = React.useState([])
@@ -134,10 +132,9 @@ function AtlasPage({ onBack, access }) {
   React.useEffect(() => {
     let live = true
     loadModels()
-      .then(({ models: found, withdrawn: gone }) => {
+      .then(({ models: found }) => {
         if (!live) return
         setModels(found)
-        setWithdrawn(gone)
         // Open on the reading the PRODUCT reads, which the server marks. It
         // used to open on whichever reading had the most verdicts — a fact
         // about how much scoring has been done, not about which answer is in
@@ -180,17 +177,12 @@ function AtlasPage({ onBack, access }) {
         {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
         <div>
           <h1>What do these films argue?</h1>
+          {/* One sentence. Everything the page used to say up here — how many
+              films, which models, what a permutation null is — is evidence, and
+              evidence belongs below the thing it is evidence for. */}
           <p className="atlas-note">
-            Films answer moral propositions written from their own dialogue. An axis is a set of
-            propositions films answer together — nobody chose them, or how many there are.
-            {factors?.films != null && factors?.items != null && (
-              <> This reading: <b>{factors.films}</b> films, <b>{factors.items}</b> propositions,{' '}
-                <b>{factors.n_clear_factors}</b> axes clearing a permutation null.</>
-            )}
-          </p>
-          <p className="atlas-note">
-            One model writes the questions, another answers them — every pairing is here because
-            they fail differently.
+            Films answer moral propositions written from their own dialogue, and an axis is a set
+            of propositions films answer together. Nobody chose them, or how many there are.
           </p>
         </div>
       </header>
@@ -220,14 +212,6 @@ function AtlasPage({ onBack, access }) {
           </p>
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
-          {/* Down here, next to the controls it belongs with rather than at the
-              top of the page: which model produced a reading is a thing you
-              change while looking at the plot, not a preamble to it.
-              Deliberately OUTSIDE the `>= 2 factors` gate below — a reading
-              with too few factors draws no plot, and a picker that disappeared
-              with it would leave no way to switch off the broken one. */}
-          <ModelPicker models={models} withdrawn={withdrawn}
-                       selected={selected?.reading_id} onSelect={setSelected} />
           {/* Before the per-axis breakdown, because the shape of the whole
               corpus is the thing a reader most wants and cannot get from three
               separate distributions read one after another. */}

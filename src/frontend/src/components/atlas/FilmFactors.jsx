@@ -1,5 +1,6 @@
 import React from 'react'
 import AxisScale from './AxisScale.jsx'
+import { polePair } from './polePalette.js'
 import Verdicts from './Verdicts.jsx'
 import { loadFilmAxes } from '../../services/factorService.js'
 
@@ -17,6 +18,11 @@ function Row({ factor, index }) {
   const [open, setOpen] = React.useState(false)
   const scored = factor.score != null
   const side = factor.score >= 0 ? 'high' : 'low'
+  // This axis's own two colours, handed down so everything inside the row —
+  // the bar, the two pole sentences, the verdict chips — agrees about which
+  // colour means which end. They were three hardcoded pairs before, so a
+  // renamed or reordered axis kept the colours of the one that used to be here.
+  const pair = polePair('moral', index)
 
   // The row is two labels and a bar, and nothing else.
   //
@@ -27,7 +33,8 @@ function Row({ factor, index }) {
   // sentence verbatim; the question is a third phrasing of the same contrast.
   // What is left is the position, and what put it there.
   return (
-    <li className={scored ? `film-factor ${side}` : 'film-factor absent'}>
+    <li className={scored ? `film-factor ${side}` : 'film-factor absent'}
+        style={{ '--low': pair.low, '--high': pair.high }}>
       <button type="button" onClick={() => scored && setOpen(!open)} aria-expanded={open}
               disabled={!scored}
               aria-label={scored

@@ -28,7 +28,13 @@ const MORAL = [
 
 // Taste hues, one per dimension in the order the profile shows them. Chosen to
 // avoid every moral hue above: rose, gold, sky, mint, plum.
-const TASTE_HUES = ['#d96ba0', '#c9a227', '#4fa3d1', '#63c9a0', '#a86bd9']
+// Six, because six taste dimensions are named and the card can now reach any of
+// them. With five the sixth wrapped to the first and two different dimensions
+// came out the same colour on one card. The sixth was chosen by measurement
+// rather than eye: it is the furthest colour from the eleven already in use
+// that still holds 4.5:1 on the ground, at both ends. Its lower-value
+// neighbours all collide with the moral green, so the brightness is load-bearing.
+const TASTE_HUES = ['#d96ba0', '#c9a227', '#4fa3d1', '#63c9a0', '#a86bd9', '#a2e368']
 
 // The second end of a taste dimension: the same hue lifted toward the page's
 // light, not dimmed toward its dark.

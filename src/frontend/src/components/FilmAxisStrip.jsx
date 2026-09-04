@@ -19,9 +19,60 @@ import { polePair } from './atlas/polePalette.js'
 // to sort by how hard THIS film leaned, which put a strong reading of a weak
 // axis above a moderate reading of the corpus's clearest one, and meant the
 // axes appeared in a different sequence on every screen that showed them.
+
+// How far from the corpus centre a film has to sit before the card will name
+// which end it is on, in standard deviations. Three quarters keeps a reading for
+// about seven films in ten and leaves the rest blank, which is the honest
+// outcome for a film that is typical in every direction the instrument measures.
+export const TASTE_FLOOR = 0.75
+
 const shown = (factors, limit) => factors
   .filter((factor) => factor.score != null && factor.items > 0)
   .slice(0, limit)
+
+// Which taste dimensions to name for one film, and where each sits.
+//
+// Standardised against the corpus rather than ranked — a percentile puts most
+// films within a hair of the middle and draws a bar too small to read.
+//
+// The dimensions chosen are the ones this film is most DISTINCTIVE on, not the
+// first in the list. Most films are unremarkable on most dimensions, so taking the top of
+// a fixed order showed two flat bars for nearly every film and buried the one
+// thing that made it unusual. Ranked by distance from the corpus centre.
+//
+// The palette index stays the one from the shared order, so a dimension keeps
+// its colour wherever it appears — otherwise the same dimension would be
+// amber on one film's card and green on the next, depending only on how
+// strongly each film happened to sit on it.
+//
+// And a dimension has to CLEAR TASTE_FLOOR before it is named at all. Naming
+// a pole is a claim, and ranking alone will always find a strongest one: the
+// 2019 Lion King sits within a third of a standard deviation of the centre on
+// every dimension, and the card still called it a slapdash spectacle because
+// that was its largest rounding error. A film with nothing to say now says
+// nothing.
+export function tasteRowsFor(taste, filmId, tasteLimit) {
+  const dims = (taste?.dimensions || [])
+    .filter((d) => d.status === 'named')
+    .slice()
+    .sort((a, b) => (b.profile_reliability ?? 0) - (a.profile_reliability ?? 0))
+  const films = taste?.films || []
+  const mine = films.find((f) => f.film_id === filmId)
+  if (!mine || !dims.length) return []
+  return dims.map((d, index) => {
+    const key = String(d.dim_id)
+    const all = films.map((f) => f.position?.[key]).filter((v) => typeof v === 'number')
+    const here = mine.position?.[key]
+    if (typeof here !== 'number' || all.length < 20) return null
+    const mean = all.reduce((t, v) => t + v, 0) / all.length
+    const sd = Math.sqrt(all.reduce((t, v) => t + (v - mean) ** 2, 0) / all.length)
+    const z = sd > 0 ? (here - mean) / sd : 0
+    return { dim: d, at: Math.max(-1, Math.min(1, z / 3)), z, index }
+  }).filter(Boolean)
+    .filter((row) => Math.abs(row.z) >= TASTE_FLOOR)
+    .sort((a, b) => Math.abs(b.at) - Math.abs(a.at))
+    .slice(0, tasteLimit)
+}
 
 function Axis({ factor, open, onToggle, index, expandable = true }) {
   const side = factor.score >= 0 ? 'high' : 'low'
@@ -124,39 +175,8 @@ export default function FilmAxisStrip({
     return () => { live = false }
   }, [])
 
-  // Where this film sits on the taste dimensions a profile shows, standardised
-  // against the corpus rather than ranked — a percentile puts most films within
-  // a hair of the middle and draws a bar too small to read.
-  // The dimensions this film is most DISTINCTIVE on, not the first two in the
-  // list. Most films are unremarkable on most dimensions, so taking the top of
-  // a fixed order showed two flat bars for nearly every film and buried the one
-  // thing that made it unusual. Ranked by distance from the corpus centre.
-  //
-  // The palette index stays the one from the shared order, so a dimension keeps
-  // its colour wherever it appears — otherwise the same dimension would be
-  // amber on one film's card and green on the next, depending only on how
-  // strongly each film happened to sit on it.
-  const tasteRows = React.useMemo(() => {
-    const dims = (taste?.dimensions || [])
-      .filter((d) => d.status === 'named')
-      .slice()
-      .sort((a, b) => (b.profile_reliability ?? 0) - (a.profile_reliability ?? 0))
-    const films = taste?.films || []
-    const mine = films.find((f) => f.film_id === filmId)
-    if (!mine || !dims.length) return []
-    return dims.map((d, index) => {
-      const key = String(d.dim_id)
-      const all = films.map((f) => f.position?.[key]).filter((v) => typeof v === 'number')
-      const here = mine.position?.[key]
-      if (typeof here !== 'number' || all.length < 20) return null
-      const mean = all.reduce((t, v) => t + v, 0) / all.length
-      const sd = Math.sqrt(all.reduce((t, v) => t + (v - mean) ** 2, 0) / all.length)
-      const at = sd > 0 ? Math.max(-1, Math.min(1, (here - mean) / (sd * 3))) : 0
-      return { dim: d, at, index }
-    }).filter(Boolean)
-      .sort((a, b) => Math.abs(b.at) - Math.abs(a.at))
-      .slice(0, tasteLimit)
-  }, [taste, filmId, tasteLimit])
+  const tasteRows = React.useMemo(
+    () => tasteRowsFor(taste, filmId, tasteLimit), [taste, filmId, tasteLimit])
 
   if (!factors?.length && !tasteRows.length) return null
 

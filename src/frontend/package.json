@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "smoke": "esbuild scripts/smoke.mjs --bundle --platform=node --format=esm --packages=external --loader:.jsx=jsx --jsx=automatic --outfile=node_modules/.smoke.mjs && node node_modules/.smoke.mjs"
+    "smoke": "esbuild scripts/smoke.mjs --bundle --platform=node --format=esm --packages=external --loader:.jsx=jsx --jsx=automatic --outfile=node_modules/.smoke.mjs && node node_modules/.smoke.mjs",
+    "taste-rows": "esbuild scripts/taste-rows.mjs --bundle --platform=node --format=esm --packages=external --loader:.jsx=jsx --jsx=automatic --outfile=node_modules/.taste-rows.mjs && node node_modules/.taste-rows.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",

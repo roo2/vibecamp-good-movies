@@ -1100,3 +1100,17 @@
 .taste-poles li {
   font-size: 13.5px; line-height: 1.5; color: var(--ink2, #b3aa9e);
 }
+
+/* The film panel reuses the compass's taste rows so a dimension keeps its
+   colour and its shape between a person's profile and a film. Two things
+   differ, and only two: the read line trails the track here (a percentile,
+   after the evidence) where the profile leads with it (a sentence, before the
+   evidence), and the panel is narrower so the type steps down. */
+.film-taste .taste-axes { margin-top: 12px; }
+.film-taste .taste-axis { padding: 12px 0 13px; }
+.film-taste .taste-axis:first-child { padding-top: 2px; }
+.film-taste .taste-axis-read {
+  margin: 9px 0 0; font-size: 12.5px; color: var(--ink3, #7e766c);
+}
+.film-taste .taste-axis-read b { color: var(--hue); font-weight: 600; }
+.film-taste .taste-axis-poles { font-size: 12px; margin-bottom: 8px; }

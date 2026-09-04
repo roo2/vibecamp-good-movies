@@ -486,6 +486,7 @@ def _shape(result: "FactorNames", grouped, report: dict[str, Any]) -> list[dict[
     margins = report.get("margins") or []
     eigenvalues = report.get("eigenvalues") or []
     dominant = {int(k): int(v) for k, v in (report.get("dominant") or {}).items()}
+    coherence = {int(k): v for k, v in (report.get("coherence") or {}).items()}
     named = []
     for factor in result.factors:
         index = factor.factor_id
@@ -519,6 +520,10 @@ def _shape(result: "FactorNames", grouped, report: dict[str, Any]) -> list[dict[
             # so len() of it is 2 — which is the count that briefly reached the
             # database and made every axis look like it rested on two
             # propositions.
+            # Measured, not asked for: how much this factor's own propositions
+            # agree with each other. Kept beside the namer's `coherent` flag,
+            # which is the model's opinion of the same question.
+            "coherence": coherence.get(index),
             "n_items": sum(len(side) for side in grouped[index]),
             # The eigenvalue of the factor this GROUP loads on, not of the
             # group's arbitrary k-means label. Ordering the axes by the latter
@@ -559,12 +564,12 @@ def persist(
         con.executemany(
             "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
             "question, pole_high, pole_low, pole_high_label, pole_low_label, coherent, "
-            "estimator, n_items, eigenvalue, margin, model, run_id, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "estimator, n_items, eigenvalue, margin, model, run_id, created_at, "
+            "coherence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [(alias, variant, bank_version, f["factor_id"], f["name"], f["question"],
               f["pole_high"], f["pole_low"], f.get("pole_high_label"), f.get("pole_low_label"),
               int(bool(f.get("coherent", True))), estimator, f["n_items"], f["eigenvalue"],
-              f["margin"], model, run_id, db.now()) for f in named],
+              f["margin"], model, run_id, db.now(), f.get("coherence")) for f in named],
         )
         loadings = report.get("loading") or {}
         # `loading` is the signed value on the factor an item was FILED under.
@@ -631,7 +636,8 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1",
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT factor_id, name, question, pole_high, pole_low, pole_high_label, "
-            "pole_low_label, coherent, estimator, n_items, eigenvalue, margin, model "
+            "pole_low_label, coherent, estimator, n_items, eigenvalue, margin, model, "
+            "coherence "
             "FROM latent_factors "
             "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
             [alias, variant, bank_version],

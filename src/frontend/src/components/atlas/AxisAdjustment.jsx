@@ -16,9 +16,13 @@ import React from 'react'
 //
 // `taste_explained` is live per axis too, from the same reading.
 
-// Which reading the coherence and separation figures were measured on. Quoting
-// them beside a different bank would attach evidence to axes it was never
-// gathered from.
+// Which reading the separation figures were measured on. Quoting them beside a
+// different bank would attach evidence to axes it was never gathered from.
+//
+// Coherence is no longer among them. It was a hand-entered constant that
+// reproduced under no statistic anyone could recover — four attempts, none
+// matching — and it now travels with the reading, recomputed on every build as
+// the mean sign-aligned correlation among a factor's own propositions.
 const MEASURED_ON = 'dolphin-subs'
 
 function num(found, key) {
@@ -33,7 +37,8 @@ export default function AxisAdjustment({ data, taste }) {
   const measured = data?.bank_version === MEASURED_ON
   const anyAdjusted = axes.some((f) => typeof f.taste_explained === 'number')
   const anyPlaced = axes.some((f) => typeof f.places_people === 'boolean')
-  if (!anyAdjusted && !anyPlaced) return null
+  const anyCoherence = axes.some((f) => typeof f.coherence === 'number')
+  if (!anyAdjusted && !anyPlaced && !anyCoherence) return null
   const dropped = axes.filter((f) => f.places_people === false)
 
   return (
@@ -49,7 +54,7 @@ export default function AxisAdjustment({ data, taste }) {
           <tr>
             <th>Axis</th>
             <th>Taste explained</th>
-            {measured && <th>Own propositions agree</th>}
+            {anyCoherence && <th>Own propositions agree</th>}
             {measured && <th>Ideologies separate</th>}
             {anyPlaced && <th>A person can be placed</th>}
           </tr>
@@ -67,7 +72,11 @@ export default function AxisAdjustment({ data, taste }) {
                   {typeof f.taste_explained === 'number'
                     ? `${(f.taste_explained * 100).toFixed(0)}%` : '—'}
                 </td>
-                {measured && <td className="n">{num(found, `axis${i + 1}_coherence`) ?? '—'}</td>}
+                {anyCoherence && (
+                  <td className="n">
+                    {typeof f.coherence === 'number' ? f.coherence.toFixed(2) : '—'}
+                  </td>
+                )}
                 {measured && (
                   <td className="n">
                     {num(found, `axis${i + 1}_separation`)
@@ -91,7 +100,10 @@ export default function AxisAdjustment({ data, taste }) {
         <p className="atlas-note">
           Placement is read as the figure against its own noise ceiling — the second number, which
           differs by axis because it depends on how many people rated films that axis separates.
-          An axis clears when the first exceeds the second.
+          An axis clears when the first exceeds the second. Agreement is the mean correlation
+          between a factor's own propositions across the films that answered both, with each
+          pair's sign turned to face the axis — two propositions stating opposite ends of one
+          idea correlate negatively and agree completely.
           {measured && (
             <> Separation is compared against the F that shuffling the films produces,{' '}
               {num(found, 'separation_null') ?? '—'}.</>

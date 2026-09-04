@@ -181,11 +181,15 @@ function AtlasPage({ onBack, access }) {
           <h1>What do these films argue?</h1>
           <p className="atlas-note">
             Films answer moral propositions written from their own dialogue. An axis is a set of
-            propositions that films answer together. Nobody chose them, or how many there are.
+            propositions films answer together — nobody chose them, or how many there are.
+            {factors?.films != null && factors?.items != null && (
+              <> This reading: <b>{factors.films}</b> films, <b>{factors.items}</b> propositions,{' '}
+                <b>{factors.n_clear_factors}</b> axes clearing a permutation null.</>
+            )}
           </p>
           <p className="atlas-note">
-            One model writes the questions, another answers them. They fail differently, so every
-            pairing is here to compare.
+            One model writes the questions, another answers them — every pairing is here because
+            they fail differently.
           </p>
         </div>
       </header>
@@ -209,9 +213,9 @@ function AtlasPage({ onBack, access }) {
               first so the comparison is not hidden, and the plot still draws
               taste as one of its three spaces. */}
           <p className="atlas-note taste-pointer">
-            These axes are what films <em>argue</em>. What people actually choose by is a
-            different set of dimensions, and a harder test of these ones —{' '}
-            <a className="link-button" href="#/taste">the taste dimensions →</a>
+            These axes are what films <em>argue</em>. What people choose by is a different set of
+            dimensions, and the harder test of these — <a className="link-button"
+            href="#/taste">the taste dimensions →</a>
           </p>
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}

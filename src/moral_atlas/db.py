@@ -249,6 +249,17 @@ CREATE TABLE IF NOT EXISTS latent_factors (
     pole_high_label TEXT,
     pole_low_label  TEXT,
     coherent     INTEGER, -- the namer's own admission that a group has no theme
+    -- How much this factor's own propositions agree with each other: the mean
+    -- correlation between every pair of them, over the films that answered
+    -- both, with each pair's sign aligned to the factor. Sign-aligning matters —
+    -- "life is sacred" and "life can be weighed" correlate NEGATIVELY while
+    -- agreeing perfectly about what the axis is, and without the flip every
+    -- axis reads as incoherent.
+    --
+    -- Computed here because the figure the atlas published for two years was
+    -- typed in by hand, matched no statistic anyone could reproduce, and had no
+    -- writer anywhere in the codebase.
+    coherence    REAL,
     -- Which reading of the responses produced this factor. Only 'strict' is
     -- written now — correlating items over the films that took a position on
     -- both, each film judged against its own affirm rate. 'dense' rows are
@@ -637,6 +648,7 @@ def init_db() -> None:
         # draws no adjusted chart until `atlas taste-null` runs again.
         _add_column_if_missing(con, "null_test_adjusted", "source_fingerprint", "TEXT")
         _add_column_if_missing(con, "taste_dimensions", "profile_reliability", "REAL")
+        _add_column_if_missing(con, "latent_factors", "coherence", "REAL")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
         _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")

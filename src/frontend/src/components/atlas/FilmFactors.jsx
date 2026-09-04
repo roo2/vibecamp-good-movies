@@ -147,9 +147,12 @@ export function FilmFactors({ scorer, filmId, variant = 'subs', bank = '' }) {
           <ul className="film-factors">
             {factors.map((factor) => <Row key={factor.factor_id} factor={factor} />)}
           </ul>
+          {/* The count only earns its place when it is not the full set: "3 of 3
+              engaged" tells a reader nothing they cannot see. */}
           <p className="atlas-note">
-            Tap an axis to read the propositions behind the position. {engaged.length} of{' '}
-            {factors.length} axes were engaged — the rest this film never raised.
+            Tap an axis for the propositions behind it.
+            {engaged.length < factors.length
+              && ` This film raised ${engaged.length} of ${factors.length}.`}
           </p>
         </>
       )}

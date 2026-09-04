@@ -3,22 +3,16 @@ import React from 'react'
 // Where a film sits on the dimensions of TASTE, shown beside its moral position.
 //
 // Both belong on the same screen, because the interesting fact about a film is
-// often the gap between them: a film can be unremarkable on every moral axis
-// and highly distinctive in what kind of film it is, or the reverse. Showing
-// only the moral position invites a reader to attribute to morality whatever
-// they can see about the film.
+// often the gap between them: a film can be unremarkable on every moral axis and
+// highly distinctive in what kind of film it is, or the reverse.
 //
-// It borrows the COMPASS's markup — the same rows a person sees for their own
-// taste in their profile — rather than the film panel's moral rows. Those put
-// both pole labels and the track in one three-column grid, which works while
-// the labels are short and collapses when they are not: "Enjoyable trash" and
-// "Acclaimed craft" ran into each other and the track shrank to a stub. The
-// compass row gives the labels a line of their own and the track the full
-// width, and it is what a reader has already learnt on their own profile.
-//
-// What stays different is the colour. The moral axes carry the two colours the
-// plot uses for them; taste is deliberately neutral, because it is not a moral
-// claim and should not borrow the authority of looking like one.
+// It uses the COMPASS's rows — the same ones a person sees for their own taste —
+// so a reader who has learnt to read their own profile can read a film without
+// learning anything new. That includes the colour: these rows were deliberately
+// grey while the moral axes sat above them wearing the plot's two colours, and
+// stopped needing to be once the profile dropped the moral axes and gave each
+// taste dimension a hue of its own. A dimension keeps its colour between the two
+// screens, which is the whole point of sharing the markup.
 //
 // Positions are percentiles rather than raw scores. The underlying component
 // scores differ by an order of magnitude between dimensions, so "55.7" and
@@ -26,10 +20,13 @@ import React from 'react'
 
 // Five, matching the profile, and picked the same way — by how reliably a
 // dimension places somebody from about ten ratings rather than by how much of
-// the corpus it covers. A reader who has seen their own five and then opens a
-// film should be reading the same five back. The sixth is left out of both: it
-// measures at 0.25 where these five sit between 0.41 and 0.51.
+// the corpus it covers. The sixth measures at 0.25 where these five sit between
+// 0.41 and 0.51.
 const SHOWN = 5
+
+// The same five hues the profile uses, in the same order, so a dimension is the
+// same colour wherever a reader meets it.
+const HUES = ['#eda36b', '#5cc3c0', '#b58ce0', '#e0899a', '#93c56b']
 
 // 73th, 21th, 3th. The suffix depends on the last two digits, not the last one.
 function ordinal(n) {
@@ -67,29 +64,34 @@ export default function FilmTaste({ taste, filmId }) {
       <span>And what kind of film it is</span>
       <p className="atlas-note">
         Discovered from which films the same people enjoy, not from anything this film says.
-        Nothing here is moral — which is the point of showing it apart.
       </p>
-      <ul className="moral-axes taste-axes">
-        {rows.map(({ dim, pct }) => (
-          <li key={dim.dim_id} className="moral-axis taste">
-            <span className="moral-axis-row">
-              <span className="moral-axis-poles">
-                <span className={pct < 50 ? 'lit' : ''}>{dim.pole_low}</span>
-                <span className={pct >= 50 ? 'lit' : ''}>{dim.pole_high}</span>
+      <ul className="taste-axes">
+        {rows.map(({ dim, pct }, index) => {
+          const high = pct >= 50
+          const far = Math.abs(pct - 50) >= 20
+          return (
+            <li key={dim.dim_id} className="taste-axis"
+                style={{ '--hue': HUES[index % HUES.length] }}>
+              <span className="taste-axis-poles">
+                <span className={high ? '' : 'lit'}>{dim.pole_low}</span>
+                <span className={high ? 'lit' : ''}>{dim.pole_high}</span>
               </span>
-              <span className="moral-axis-track" aria-hidden="true">
-                <i className="moral-axis-mid" />
-                <b className="moral-axis-marker" style={{ left: `${pct}%` }} />
+              <span className="taste-axis-track">
+                <i className="taste-axis-mid" />
+                <i className="taste-axis-band"
+                   style={high
+                     ? { left: '50%', width: `${pct - 50}%` }
+                     : { left: `${pct}%`, width: `${50 - pct}%` }} />
+                <b className="taste-axis-marker" style={{ left: `${pct}%` }} />
               </span>
-              <span className="moral-axis-evidence">{ordinal(pct)} percentile</span>
-            </span>
-          </li>
-        ))}
+              <span className="taste-axis-read">
+                {ordinal(pct)} percentile
+                {far && <> — sits toward <b>{(high ? dim.pole_high : dim.pole_low).toLowerCase()}</b></>}
+              </span>
+            </li>
+          )
+        })}
       </ul>
-      <p className="taste-axes-note">
-        Read as a percentile: the share of films this one sits above. The middle of each
-        track is the typical film.
-      </p>
     </div>
   )
 }

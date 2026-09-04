@@ -865,6 +865,38 @@ def _zeroed_share(matrix) -> float:
 
 
 
+def _group_coherence(matrix, items: list[str], groups: dict[str, int],
+                     loading: dict[str, float]) -> dict[int, float]:
+    """Mean sign-aligned correlation among each factor's own propositions.
+
+    The question a reader asks of an axis after being told it exists: do the
+    things on it actually go together? Answered over the same pairwise-complete
+    correlations the factoring uses, so a pair with too few films in common
+    contributes nothing rather than a zero.
+
+    Signs are aligned to the factor's own loadings first. Two propositions that
+    state opposite ends of the same idea correlate negatively and agree
+    completely; without the flip the most coherent axis reads as the least.
+    """
+    import numpy as np
+
+    corr = _pairwise_correlation(_film_centred(np.asarray(matrix, float)))
+    at = {item: i for i, item in enumerate(items)}
+    out: dict[int, float] = {}
+    for factor in sorted(set(groups.values())):
+        mine = [at[i] for i, g in groups.items() if g == factor and i in at]
+        signs = np.sign([loading.get(i, 0.0) or 0.0 for i, g in groups.items()
+                         if g == factor and i in at])
+        if len(mine) < 2:
+            continue
+        block = corr[np.ix_(mine, mine)] * np.outer(signs, signs)
+        off = block[np.triu_indices(len(mine), 1)]
+        off = off[off != 0]
+        if len(off):
+            out[factor] = float(np.mean(off))
+    return out
+
+
 def analyse(
     scorer: str | None = None, bank_version: str = "b1",
     n_iter: int = 200, min_films: int = MIN_FILMS_PER_ITEM, seed: int = 11,
@@ -900,6 +932,7 @@ def analyse(
            "composite": composite_groups}.get(method, item_groups)
     groups, distance, loading, dominant, all_loadings = cut(
         data["matrix"], data["items"], horn["n_clear_factors"], seed=seed)
+    coherence = _group_coherence(data["matrix"], data["items"], groups, loading)
     correlations = factor_correlations(data["matrix"], horn["n_clear_factors"]) \
         if method in ("fa", "composite") else None
     if composites:
@@ -927,6 +960,7 @@ def analyse(
         "density": round(data["density"], 4),
         "n_factors": horn["n_factors"],
         "n_clear_factors": horn["n_clear_factors"],
+        "coherence": coherence,
         # The only bar there is, carried out so a reader can be told what it was.
         "margin_floor": horn["margin_floor"],
         "margins": horn["margins"],

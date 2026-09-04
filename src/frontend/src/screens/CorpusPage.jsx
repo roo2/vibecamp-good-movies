@@ -18,13 +18,17 @@ export default function CorpusPage({ onBack }) {
   const [selected, setSelected] = React.useState(null)
   const [error, setError] = React.useState(null)
   const [space, setSpace] = React.useState('moral')
-  // Every axis the product reads, which is what the picker offers — the same
-  // selector the atlas uses, so a label here cannot name one pair while the
-  // plot draws another.
-  const productAxes = React.useMemo(() => plotAxes(factors), [factors])
   const [pair, setPair] = React.useState(null)
   const [factors, setFactors] = React.useState(null)
   const [taste, setTaste] = React.useState(null)
+  // Every axis the product reads, which is what the picker offers — the same
+  // selector the atlas uses, so a label here cannot name one pair while the
+  // plot draws another.
+  //
+  // Below the state it reads, not above it. `const` is not hoisted, so a
+  // useMemo over `factors` declared before `factors` exists throws on the first
+  // render and the page goes black — no message, nothing in the network tab.
+  const productAxes = React.useMemo(() => plotAxes(factors), [factors])
 
   React.useEffect(() => {
     let live = true

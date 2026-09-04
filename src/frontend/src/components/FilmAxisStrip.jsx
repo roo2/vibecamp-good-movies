@@ -127,12 +127,20 @@ export default function FilmAxisStrip({
   // Where this film sits on the taste dimensions a profile shows, standardised
   // against the corpus rather than ranked — a percentile puts most films within
   // a hair of the middle and draws a bar too small to read.
+  // The dimensions this film is most DISTINCTIVE on, not the first two in the
+  // list. Most films are unremarkable on most dimensions, so taking the top of
+  // a fixed order showed two flat bars for nearly every film and buried the one
+  // thing that made it unusual. Ranked by distance from the corpus centre.
+  //
+  // The palette index stays the one from the shared order, so a dimension keeps
+  // its colour wherever it appears — otherwise the same dimension would be
+  // amber on one film's card and green on the next, depending only on how
+  // strongly each film happened to sit on it.
   const tasteRows = React.useMemo(() => {
     const dims = (taste?.dimensions || [])
       .filter((d) => d.status === 'named')
       .slice()
       .sort((a, b) => (b.profile_reliability ?? 0) - (a.profile_reliability ?? 0))
-      .slice(0, tasteLimit)
     const films = taste?.films || []
     const mine = films.find((f) => f.film_id === filmId)
     if (!mine || !dims.length) return []
@@ -146,6 +154,8 @@ export default function FilmAxisStrip({
       const at = sd > 0 ? Math.max(-1, Math.min(1, (here - mean) / (sd * 3))) : 0
       return { dim: d, at, index }
     }).filter(Boolean)
+      .sort((a, b) => Math.abs(b.at) - Math.abs(a.at))
+      .slice(0, tasteLimit)
   }, [taste, filmId, tasteLimit])
 
   if (!factors?.length && !tasteRows.length) return null

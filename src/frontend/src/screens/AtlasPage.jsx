@@ -34,6 +34,7 @@ function AtlasPage({ onBack, access }) {
   const [factors, setFactors] = React.useState(null)
   const [filmSets, setFilmSets] = React.useState([])
   const [activeSets, setActiveSets] = React.useState(() => new Set())
+  const [allSets, setAllSets] = React.useState(false)
   const [factorsError, setFactorsError] = React.useState(null)
   const [corpus, setCorpus] = React.useState(null)
   const [selectedId, setSelectedId] = React.useState(filmParam)
@@ -70,6 +71,15 @@ function AtlasPage({ onBack, access }) {
                      'naacp-antiracist', 'socialist',
                      'old-hollywood', 'new-hollywood', 'blockbuster-hollywood',
                      'franchise-hollywood', 'mcu']
+  // The three lists with the strongest evidence behind them, and the only ones
+  // offered first. Sixteen chips is a wall a reader has to work through before
+  // the plot, and most of those chips are era controls or lists that do not
+  // separate — they belong in the drawer, not in the opening question. Church of
+  // Satan is deliberately not here: it separates on thirteen films, which is
+  // real but borderline, and whether it belongs inside the manosphere set or
+  // beside it is not settled.
+  const SHORTLIST = ['christian-answers', 'progressive-canon', 'red-pilled']
+
   const orderedSets = React.useMemo(() => {
     const rank = (s) => {
       const at = SET_ORDER.indexOf(s.set_id)
@@ -219,7 +229,13 @@ function AtlasPage({ onBack, access }) {
                       sources pushed the plot off the screen. Hover or focus
                       opens it; the chip still carries the source in `title` so
                       it survives with no pointer at all. */}
-                  {orderedSets.map((s) => (
+                  {orderedSets
+                    // A set switched on stays on screen even when the drawer is
+                    // shut. Hiding it would leave its films highlighted in the
+                    // plot with no chip left to switch them off.
+                    .filter((s) => allSets || SHORTLIST.includes(s.set_id)
+                      || activeSets.has(s.set_id))
+                    .map((s) => (
                     <span key={s.set_id} className="set-chip-wrap">
                       <button
                         type="button"
@@ -258,6 +274,12 @@ function AtlasPage({ onBack, access }) {
                       </span>
                     </span>
                   ))}
+                  <button type="button" className="set-more"
+                          aria-expanded={allSets}
+                          onClick={() => setAllSets((v) => !v)}>
+                    {allSets ? 'fewer sets' : `more sets (${
+                      orderedSets.filter((s) => !SHORTLIST.includes(s.set_id)).length})`}
+                  </button>
                 </div>
               )}
               <FilmExplorer films={corpus?.films || []} factors={factors} taste={taste}

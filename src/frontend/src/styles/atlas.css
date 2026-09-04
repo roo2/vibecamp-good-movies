@@ -1061,3 +1061,13 @@
 }
 .plane-pair select:hover { border-color: #574f47; color: #f5efe6; }
 .plane-pair select:focus-visible { outline: 2px solid #eda36b; outline-offset: 2px; }
+
+/* The drawer handle for the sets beyond the shortlist. Styled as a chip so it
+   sits in the same row without pretending to be a set — no colour swatch, and
+   the label says what opening it costs. */
+.set-more {
+  display: inline-flex; align-items: center; cursor: pointer;
+  padding: 4px 9px; font-size: 11.5px; color: #6a6158;
+  background: transparent; border: 1px dashed #3a312a; border-radius: 12px;
+}
+.set-more:hover { border-color: #574f47; color: #b3aa9e; }

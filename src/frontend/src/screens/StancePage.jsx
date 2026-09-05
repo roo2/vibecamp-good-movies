@@ -32,7 +32,7 @@ export default function StancePage({ access, shareToken, skipIfAnswered = true, 
   return (
     <main className="app-page">
       <section className="phone-screen stance-screen">
-        <p className="screen-label">Before the films</p>
+        <p className="screen-label">Your moral position</p>
         <StancePicker
           access={access}
           shareToken={shareToken}

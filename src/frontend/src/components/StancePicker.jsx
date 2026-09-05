@@ -1,13 +1,17 @@
 import React from 'react'
 import { loadStance, saveStance } from '../services/stanceService.js'
 
-// Choosing a moral position, by picking the claim that rings true.
+// Choosing a moral position.
 //
-// NOBODY IS ASKED TO WEAR A LABEL. The three positions come from a red-pilled
-// canon, a Christian one and a feminist one, and none of those words appears
-// here. What appears is a face and a claim, because the claim is the thing the
-// axes are actually built from, and it is the thing a person can answer about
-// themselves without being sorted into a group.
+// THE POSITIONS ARE NAMED, and the screen says the word morality. An earlier
+// version showed only a face and a claim and named nothing, so that nobody was
+// asked to wear a label. That made the screen ambiguous rather than gentle:
+// this product measures two different things about a film — what it argues for,
+// and what kind of film it is — and three unlabelled quotes leave the reader to
+// guess which of the two is being asked about.
+//
+// The label leads and the claim supports it, because the label is what somebody
+// scans and the claim is what makes it mean something specific.
 //
 // The face is a signpost, not the coordinates. Those come from the whole canon
 // behind it — Wonder Woman herself sits at -0.17 on self-determination where her
@@ -73,9 +77,11 @@ export default function StancePicker({
 
   return (
     <div className="stance-picker">
-      <h2>Which of these rings truest?</h2>
+      <h2>Where do you stand?</h2>
       <p className="stance-note">
-        It steers what you are shown. Only you see it, and you can change it whenever.
+        This one is about <strong>morality</strong> — what a film argues for, not what
+        kind of film it is. It steers what you are shown. Only you see it, and you can
+        change it whenever.
       </p>
 
       <ul className="stance-options">
@@ -99,6 +105,7 @@ export default function StancePicker({
                 />
               )}
               <span className="stance-words">
+                <strong>{stance.label}</strong>
                 <q>{stance.line}</q>
                 <small>{stance.character}</small>
               </span>

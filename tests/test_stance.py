@@ -53,8 +53,12 @@ def _user(name: str) -> dict[str, str]:
 def test_the_catalogue_offers_three_faces_and_a_way_out(isolated_web_database):
     headers = _user("Ada")
     body = client.get("/api/profile/stance", headers=headers).json()
-    assert [s["stance_id"] for s in body["stances"]] == ["ruin", "order", "self"]
+    # Most-affirming first, so the screen does not open on the bleakest label.
+    assert [s["label"] for s in body["stances"]] == ["Traditional", "Progressive", "Cynical"]
     assert all(s["character"] and s["line"] for s in body["stances"])
+    # The label is the thing somebody scans; the claim is what stops it being a
+    # word they have to interpret. Neither is optional.
+    assert all(s["label"] and s["line"] for s in body["stances"])
     # Never asked: no stance, and not yet answered.
     assert body["stance_id"] is None and body["answered"] is False
 

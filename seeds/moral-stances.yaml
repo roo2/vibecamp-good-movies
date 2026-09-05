@@ -34,19 +34,34 @@
 # worse than a poster for this — each one below was looked at before it was
 # kept, and only Mufasa's came back as a single clean figure.
 #
-# NAMING NO IDEOLOGY IS DELIBERATE. Nobody is asked whether they are a Christian
-# or a feminist or anything else. They are asked which claim rings true, which is
-# the thing the axes measure and the thing somebody can answer about themselves
-# without being labelled.
+# THE POSITIONS ARE NAMED. An earlier version showed only the claim and the face
+# and named nothing, on the reasoning that nobody should be asked to wear a
+# label. It made the screen ambiguous instead of gentle: three quotes with no
+# frame do not tell somebody they are being asked about MORALITY, and this
+# product measures two different things about a film, so leaving the reader to
+# infer which one is being asked about is the worse failure.
+#
+# The labels are chosen to be recognisable without being factional:
+#
+# Listed most-affirming first, so the screen does not open on the bleakest of
+# the three. Nothing downstream depends on the order.
+#
+#   Traditional  the Christian canon — redemption, and an order above the
+#                individual. +0.72 and +0.67 on those two axes.
+#   Progressive  the feminist canon — self-determination, at -0.43. Note this is
+#                a MORE honest name than "feminist" was: the feminist and
+#                progressive canons sit 0.06 apart, so the narrower word was
+#                claiming a precision the instrument does not have.
+#   Cynical      the red-pilled canon. Named from where it actually sits rather
+#                than from the subculture: -1.18 on inevitable ruin against
+#                redemption, further from the centre than anything else about it.
+#                "Red pill" and "sigma" name a faction and pick a fight; cynical
+#                names the belief, is understood by everyone, and is something
+#                people call themselves without flinching.
 
 stances:
-  - stance_id: ruin
-    character: The Joker
-    film_id: joker-2019
-    line: The world runs on power, and pretending otherwise is the lie.
-    sets: [red-pilled]
-
   - stance_id: order
+    label: Traditional
     character: Mufasa
     film_id: the-lion-king-1994
     line: There is an order to things, and your place in it is real.
@@ -54,7 +69,15 @@ stances:
     sets: [catholic, christian-answers, christian-edifying]
 
   - stance_id: self
+    label: Progressive
     character: Wonder Woman
     film_id: wonder-woman-2017
     line: Nobody else gets to decide what your life is for.
     sets: [feminist]
+  - stance_id: ruin
+    label: Cynical
+    character: The Joker
+    film_id: joker-2019
+    line: The world runs on power, and pretending otherwise is the lie.
+    sets: [red-pilled]
+

@@ -46,6 +46,7 @@ def catalogue() -> list[dict[str, Any]]:
         # title treatment, so the fallback is a compromise rather than the plan.
         out.append({
             "stance_id": row["stance_id"],
+            "label": row["label"],
             "character": row["character"],
             "line": row["line"],
             "film_id": row["film_id"],

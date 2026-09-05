@@ -15,7 +15,11 @@ import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
 import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
-const routes = new Set(['/', '/atlas', '/taste', '/corpus', '/lobby', '/seen-it', '/complete', '/shortlist', '/match', '/waiting'])
+// Every route the app can be at. A hash that is not in here resolves to '/',
+// which is the right answer for a typo and a silent trap for a new screen: the
+// URL changes, no error is raised, and the landing page renders forever. That
+// is exactly what shipping '/stance' without this line did.
+const routes = new Set(['/', '/atlas', '/taste', '/corpus', '/lobby', '/stance', '/seen-it', '/complete', '/shortlist', '/match', '/waiting'])
 
 // The dataset explorer is the public face of the work: it reads a published
 // file, holds nothing about anyone, and is the thing you show someone before
@@ -185,6 +189,16 @@ function App() {
     navigate('/shortlist')
   }, [navigate, shortlist])
 
+  const leaveStance = useCallback(() => {
+    setStanceReturn('/seen-it')
+    navigate(stanceReturn)
+  }, [navigate, stanceReturn])
+
+  const enterStance = useCallback(() => {
+    setStanceReturn('/shortlist')
+    navigate('/stance')
+  }, [navigate])
+
   const handleStartOver = useCallback(() => {
     setShortlist([])
     setMatchesSeen(0)
@@ -215,7 +229,7 @@ function App() {
   if (route === '/stance') {
     return <StancePage access={access} shareToken={groupSession?.shareToken}
                        skipIfAnswered={stanceReturn === '/seen-it'}
-                       onContinue={() => { setStanceReturn('/seen-it'); navigate(stanceReturn) }} />
+                       onContinue={leaveStance} />
   }
 
   if (route === '/seen-it') {
@@ -242,7 +256,7 @@ function App() {
 
   if (route === '/shortlist') {
     return <ShortlistPage access={access} shareToken={groupSession?.shareToken} matchesSeen={matchesSeen} solo={solo}
-                          onSteer={() => { setStanceReturn('/shortlist'); navigate('/stance') }}
+                          onSteer={enterStance}
                           onDone={(films) => { setShortlist(films); navigate('/match') }} />
   }
   if (route === '/match') {

@@ -14,6 +14,7 @@
 // Screens are imported explicitly rather than read from the directory: a
 // bundler cannot follow a computed path, and a list you have to edit is a list
 // that says what is covered.
+import { readFileSync } from 'node:fs'
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
@@ -78,5 +79,29 @@ for (const [name, Screen] of Object.entries(SCREENS)) {
   }
 }
 const total = Object.keys(SCREENS).length
+// Every route the app navigates to must be a route it knows.
+//
+// `currentRoute` resolves an unknown hash to '/', which is right for a typo and
+// a trap for a new screen: the URL changes, nothing throws, and the landing page
+// renders forever. Shipping '/stance' without adding it to the set did exactly
+// that, and nothing above caught it — rendering the screen directly works fine,
+// because the screen was never the problem.
+const source = readFileSync(new URL('../src/App.jsx', import.meta.url), 'utf8')
+const declared = new Set(
+  [...(source.match(/const routes = new Set\(\[([^\]]*)\]/) || [null, ''])[1]
+    .matchAll(/'([^']+)'/g)].map((hit) => hit[1]))
+const targets = [...source.matchAll(/navigate\('([^']+)'\)/g)].map((hit) => hit[1])
+const orphans = [...new Set(targets)].filter((route) => !declared.has(route)
+  && !route.startsWith('/join/'))
+if (orphans.length) {
+  console.error(`FAIL  navigates to routes it does not know: ${orphans.join(', ')}`)
+  console.error('      add them to `routes` in App.jsx, or they resolve to the landing page')
+  failed += 1
+}
+else {
+  console.log(`ok    ${targets.length} navigate targets, all declared among ${declared.size} routes`)
+}
+
 console.log(`\n${total - failed} of ${total} screens execute`)
 process.exit(failed ? 1 : 0)
+

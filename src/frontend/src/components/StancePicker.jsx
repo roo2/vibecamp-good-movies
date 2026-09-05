@@ -25,6 +25,15 @@ export default function StancePicker({
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState(null)
 
+  // Held in a ref, and deliberately NOT a dependency of the fetch below.
+  //
+  // A callback prop is a new function on every render of whatever passes it, so
+  // depending on it here means: fetch, setData, re-render, new callback, fetch
+  // again — forever. That is what it did. The screen never settled, and from the
+  // outside it looked like the button after the landing page did nothing.
+  const loadedRef = React.useRef(onLoaded)
+  React.useEffect(() => { loadedRef.current = onLoaded })
+
   React.useEffect(() => {
     let live = true
     loadStance(access)
@@ -34,11 +43,11 @@ export default function StancePicker({
         // The page above decides what an already-answered person sees, because
         // only it knows whether they are walking the flow or came back to
         // change their mind.
-        onLoaded?.(body)
+        loadedRef.current?.(body)
       })
       .catch(() => live && setError('Could not load the positions.'))
     return () => { live = false }
-  }, [access, onLoaded])
+  }, [access])
 
   const commit = React.useCallback(async (stanceId, weight) => {
     setSaving(true)

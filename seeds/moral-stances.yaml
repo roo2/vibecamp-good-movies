@@ -25,14 +25,29 @@
 # and church-of-satan 0.68 from red-pilled. Offering either as a fourth option
 # would ask people to distinguish positions the instrument cannot.
 #
-# A CHARACTER IMAGE, NOT THE POSTER, where one can be found. A poster sells a
-# film and is mostly title treatment; this screen is asking which PERSON speaks
-# to somebody, so it should show the person. `image_url` overrides the film's
-# artwork when it is set, and the poster is the fallback rather than the intent.
-# Wikipedia is the same source the film artwork already comes from, but its
-# character articles usually lead with a montage of every incarnation, which is
-# worse than a poster for this — each one below was looked at before it was
-# kept, and only Mufasa's came back as a single clean figure.
+# A CHARACTER IMAGE, NOT THE POSTER. A poster sells a film and is mostly title
+# treatment; this screen asks which PERSON speaks to somebody, so it shows the
+# person. Every image below was looked at before it was kept — Wikipedia's
+# character articles usually lead with a montage of every incarnation, and a
+# nine-panel grid of Jokers is worse than a poster for this.
+#
+# Two of the three faces changed because of what could actually be found:
+#
+#   THE JOKER -> MICHAEL CORLEONE. There is no usable single-character image of
+#   the 2019 Joker on Wikipedia at all: montages, comic art, and a Justice League
+#   group shot. The Godfather is a red-pilled canon member sitting further out on
+#   inevitable ruin than Joker does (-2.10 against -1.75), and the claim on this
+#   tile — the world runs on power, and pretending otherwise is the lie — is
+#   closer to Michael Corleone than to almost anyone. Travis Bickle and Patrick
+#   Bateman are equally good on the data and have equally clean portraits.
+#
+#   WONDER WOMAN -> ELLEN RIPLEY. The 2017 article leads with the poster and the
+#   character article with a twelve-panel montage. The only clean Wonder Woman
+#   image is the 1975 Lynda Carter publicity still, and that era of the character
+#   is a doubtful thing to label progressive. Ripley needs no such argument: the
+#   image is a single clean figure, and Aliens is the MOST TYPICAL film in the
+#   feminist canon — 0.34 from its centre, against Wonder Woman's 0.62 — so this
+#   swap improves the fit as well as the picture.
 #
 # THE POSITIONS ARE NAMED. An earlier version showed only the claim and the face
 # and named nothing, on the reasoning that nobody should be asked to wear a
@@ -70,14 +85,16 @@ stances:
 
   - stance_id: self
     label: Progressive
-    character: Wonder Woman
-    film_id: wonder-woman-2017
+    character: Ellen Ripley
+    film_id: aliens-1986
     line: Nobody else gets to decide what your life is for.
+    image_url: https://upload.wikimedia.org/wikipedia/en/1/17/Ellen_ripley.jpg
     sets: [feminist]
   - stance_id: ruin
     label: Cynical
-    character: The Joker
-    film_id: joker-2019
+    character: Michael Corleone
+    film_id: the-godfather-1972
     line: The world runs on power, and pretending otherwise is the lie.
+    image_url: https://upload.wikimedia.org/wikipedia/en/d/df/Michaelcoreleone.jpg
     sets: [red-pilled]
 

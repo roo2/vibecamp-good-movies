@@ -163,19 +163,18 @@ def test_a_share_token_that_is_not_yours_reorders_nothing():
     assert out["reordered"] is False      # somebody else's deck does not move
 
 
-def test_a_character_image_beats_the_film_poster():
-    """The screen asks which PERSON speaks to somebody, so it should show one.
+def test_every_face_is_a_character_not_a_poster():
+    """The screen asks which PERSON speaks to somebody, so it shows one.
 
-    Mufasa has a character image in the seeds and the other two do not yet, so
-    this also pins the fallback: no image in the seeds means the film's poster,
-    and the flag says which of the two a caller is looking at.
+    All three carry a character image now. The assertion is on the flag rather
+    than on the URLs, so swapping a face does not break the test — but losing one
+    to a poster fallback does, which is the regression worth catching.
     """
     from moral_atlas.web.stances import catalogue
 
     rows = {row["stance_id"]: row for row in catalogue()}
-    assert rows["order"]["shows_character"] is True
-    assert "Mufasa" in rows["order"]["artwork_url"]
-    # Independent of the film row: the isolated database has no Lion King in it,
-    # so a poster fallback would have come back empty here.
-    assert rows["order"]["film_title"] is None
-    assert rows["ruin"]["shows_character"] is False
+    assert all(row["shows_character"] for row in rows.values())
+    # Independent of the film row: this database holds none of these films, so
+    # anything falling back to a poster would have come back empty.
+    assert all(row["film_title"] is None for row in rows.values())
+    assert all(row["artwork_url"] for row in rows.values())

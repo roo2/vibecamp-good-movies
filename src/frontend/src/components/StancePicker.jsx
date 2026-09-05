@@ -1,13 +1,14 @@
 import React from 'react'
 import { loadStance, saveStance } from '../services/stanceService.js'
 
-// How much the chosen position drives the ranking, as five named amounts.
+// How much the chosen position drives the ranking, as three named amounts.
 //
-// A slider was worse in both directions. It was fiddly to land on a value, and
-// it implied a precision the number does not have: nothing about this is
-// calibrated finely enough that 0.55 differs from 0.60 in a way anybody could
-// perceive. Five options say what the ends actually mean, which a percentage
-// never did.
+// A slider was worse in both directions: fiddly to land on a value, and it
+// implied a precision the number does not have — nothing here is calibrated
+// finely enough that 0.55 differs from 0.60 in a way anybody could perceive.
+// Five buttons were the same mistake in smaller print. Three are as many
+// distinctions as the thing being set can carry, and they fit at a size worth
+// tapping.
 //
 // The captions name the real trade rather than the mechanism. Turning this up
 // does NOT make recommendations better — on 162,265 outside raters, neighbour
@@ -21,11 +22,9 @@ import { loadStance, saveStance } from '../services/stanceService.js'
 // reliably less watchable, so the strongest setting keeps a fifth of the say
 // with enjoyment rather than offering a way to turn the good half off.
 const STEER = [
-  { weight: 0.15, label: 'A nudge', caption: 'Mostly films you are likely to enjoy, tipped your way.' },
-  { weight: 0.3, label: 'A little', caption: 'Still led by what you will enjoy, with a clear lean.' },
-  { weight: 0.5, label: 'Half', caption: 'An even mix of what you will enjoy and what you believe.' },
-  { weight: 0.65, label: 'A lot', caption: 'Led by what you believe, with enjoyment as the tie-break.' },
-  { weight: 0.8, label: 'As far as it goes', caption: 'Led hard by what you believe. Enjoyment keeps a fifth of the say, so the deck stays watchable.' },
+  { weight: 0.25, label: 'A nudge', caption: 'Mostly films you are likely to enjoy, tipped your way.' },
+  { weight: 0.5, label: 'Half and half', caption: 'An even mix of what you will enjoy and what you believe.' },
+  { weight: 0.8, label: 'As far as it goes', caption: 'Led by what you believe. Enjoyment keeps a fifth of the say, so the deck stays watchable.' },
 ]
 // A stored weight need not be one of the five — earlier versions wrote any value
 // the slider could reach — so the nearest is shown rather than none of them.
@@ -54,31 +53,23 @@ const nearestLevel = (weight) => STEER.reduce((best, level) =>
 // The control is here to STEER, and steering somewhere you do not want to go is
 // not a feature.
 export default function StancePicker({
-  access, shareToken = null, onChange, onClose, onLoaded, closeLabel = 'Done',
+  access, shareToken = null, onChange, onClose, closeLabel = 'Done',
 }) {
   const [data, setData] = React.useState(null)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState(null)
 
-  // Held in a ref, and deliberately NOT a dependency of the fetch below.
-  //
-  // A callback prop is a new function on every render of whatever passes it, so
-  // depending on it here means: fetch, setData, re-render, new callback, fetch
-  // again — forever. That is what it did. The screen never settled, and from the
-  // outside it looked like the button after the landing page did nothing.
-  const loadedRef = React.useRef(onLoaded)
-  React.useEffect(() => { loadedRef.current = onLoaded })
-
+  // Depends on `access` alone, and must keep doing so. A callback prop is a new
+  // function on every render of whatever passes it, so taking one as a
+  // dependency here means fetch, setData, re-render, new callback, fetch again,
+  // forever. That happened, and from the outside it looked like the button after
+  // the landing page did nothing.
   React.useEffect(() => {
     let live = true
     loadStance(access)
       .then((body) => {
         if (!live) return
         setData(body)
-        // The page above decides what an already-answered person sees, because
-        // only it knows whether they are walking the flow or came back to
-        // change their mind.
-        loadedRef.current?.(body)
       })
       .catch(() => live && setError('Could not load the positions.'))
     return () => { live = false }
@@ -91,8 +82,10 @@ export default function StancePicker({
       const saved = await saveStance(access, stanceId, weight, shareToken)
       setData((current) => ({ ...current, ...saved }))
       onChange?.(saved)
+      return true
     } catch {
       setError('That did not save. Try again?')
+      return false
     } finally {
       setSaving(false)
     }
@@ -150,7 +143,7 @@ export default function StancePicker({
         className={`stance-none ${chosen === null && data.answered ? 'chosen' : ''}`}
         aria-pressed={chosen === null && data.answered}
         disabled={saving}
-        onClick={() => commit(null, 0)}
+        onClick={() => commit(null, 0).then((ok) => ok && onClose?.())}
       >
         None of these — just show me good films
       </button>
@@ -166,7 +159,7 @@ export default function StancePicker({
                 className={level === nearestLevel(weight) ? 'chosen' : ''}
                 aria-pressed={level === nearestLevel(weight)}
                 disabled={saving}
-                onClick={() => commit(chosen, level.weight)}
+                onClick={() => commit(chosen, level.weight).then((ok) => ok && onClose?.())}
               >
                 {level.label}
               </button>

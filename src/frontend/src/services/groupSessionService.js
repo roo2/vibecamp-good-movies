@@ -10,6 +10,17 @@ export function saveGroupSession(groupSession) {
   localStorage.setItem(storageKey, JSON.stringify({ shareToken: groupSession.share_token }))
 }
 
+// Forget the session without forgetting the person. Backing out of a
+// half-answered quiz should not sign anybody out or lose the moral position
+// they set — neither is what they are abandoning.
+export function clearGroupSession() {
+  try {
+    localStorage.removeItem(storageKey)
+  } catch {
+    // A browser refusing storage is not a reason to fail leaving a screen.
+  }
+}
+
 export function loadGroupSession() {
   try {
     return JSON.parse(localStorage.getItem(storageKey))

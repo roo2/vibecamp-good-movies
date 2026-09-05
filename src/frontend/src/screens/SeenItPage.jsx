@@ -28,7 +28,7 @@ const ENOUGH_TO_READ = 6
 // seen almost nothing on offer should be told so, not dealt cards forever.
 const MAX_TOP_UPS = 2
 
-function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
+function SeenItPage({ access, shareToken, onSubmit, onComplete, onAbandon }) {
   const [films, setFilms] = useState([])
   const [filmIndex, setFilmIndex] = useState(0)
   const [error, setError] = useState(null)
@@ -112,6 +112,13 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete }) {
             </button>
           </div>
         </div>
+        {/* Deliberately the quietest thing on the screen. It is an escape
+            hatch, not a step: twenty films is a long way in to find out you
+            wanted the other mode or a different position, but nobody should be
+            invited to abandon a quiz they are halfway through. */}
+        {onAbandon && (
+          <button type="button" className="quiet-exit" onClick={onAbandon}>Start over</button>
+        )}
         <aside className="seen-it-note"><span aria-hidden="true">ⓘ</span><p>{topUps > 0
           ? 'A few more — we need a handful you have actually seen before we can read you. Your friend never sees these.'
           : 'Swipe right if you liked it · left if it wasn’t for you. Your friend never sees these.'}</p></aside>

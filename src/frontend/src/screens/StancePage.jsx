@@ -17,18 +17,14 @@ import StancePicker from '../components/StancePicker.jsx'
 // NO PROGRESS BAR. That bar counts films and only films, and this is not one: a
 // "1 / 21" here would promise a different shape of task than the one that
 // follows.
-export default function StancePage({ access, shareToken, skipIfAnswered = true, onContinue }) {
-  // Somebody resuming a session has already answered, and a guest arrives here
-  // by the same route as the host. Asking again would make the flow feel like
-  // it forgot; the ref stops a re-render from navigating twice.
-  const skipped = React.useRef(false)
-  const handleLoaded = React.useCallback((body) => {
-    if (skipIfAnswered && body.answered && !skipped.current) {
-      skipped.current = true
-      onContinue()
-    }
-  }, [skipIfAnswered, onContinue])
-
+// NOTHING SKIPS PAST THIS SCREEN. It used to move anybody who had already
+// answered straight on to the films, so that a guest reaching it by the same
+// route as the host was not asked twice. The cost was worse than the saving:
+// reloading the page bounced you into the quiz, because a reload is
+// indistinguishable from arriving, and the screen you were looking at vanished
+// under you. Somebody who has answered sees their answer already selected,
+// which is not the same as being asked again.
+export default function StancePage({ access, shareToken, onContinue }) {
   return (
     <main className="app-page">
       <section className="phone-screen stance-screen">
@@ -36,7 +32,6 @@ export default function StancePage({ access, shareToken, skipIfAnswered = true, 
         <StancePicker
           access={access}
           shareToken={shareToken}
-          onLoaded={handleLoaded}
           onClose={onContinue}
           closeLabel="Continue"
         />

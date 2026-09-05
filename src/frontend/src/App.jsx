@@ -13,7 +13,7 @@ import CorpusPage from './screens/CorpusPage.jsx'
 import { loadAccess, startAccess } from './services/accessService.js'
 import { submitMovieReaction } from './services/movieService.js'
 import { submitTestResult } from './services/resultService.js'
-import { beginResultsWait, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
+import { beginResultsWait, clearGroupSession, continueWithoutMembers, createGroupSession, joinGroupSession, loadGroupSession, loadGroupSessionStatus, startGroupSession } from './services/groupSessionService.js'
 
 // Every route the app can be at. A hash that is not in here resolves to '/',
 // which is the right answer for a typo and a silent trap for a new screen: the
@@ -199,6 +199,20 @@ function App() {
     navigate('/stance')
   }, [navigate])
 
+  // Leaving the quiz, from inside it. Twenty films is a long way in to discover
+  // you wanted the other mode, or a different position, and there was no way
+  // back short of closing the tab. The session goes with it — a half-answered
+  // one is not worth resuming — while access and the moral position stay, since
+  // neither is what somebody is backing out of.
+  const handleAbandon = useCallback(() => {
+    clearGroupSession()
+    setGroupSession(null)
+    setSessionStatus(null)
+    setShortlist([])
+    setMatchesSeen(0)
+    navigate('/')
+  }, [navigate])
+
   const handleStartOver = useCallback(() => {
     setShortlist([])
     setMatchesSeen(0)
@@ -223,12 +237,11 @@ function App() {
     return <LandingPage onStart={handleStart} />
   }
 
-  // First step of the flow. Whoever has already answered — a guest arriving by
-  // the same route as the host, or anybody resuming — is passed straight
-  // through, so the question is asked once rather than at every entrance.
+  // First step of the flow, and it stays put: reloading it used to bounce
+  // anybody who had already answered into the quiz, because a reload cannot be
+  // told apart from arriving. An existing answer shows as selected instead.
   if (route === '/stance') {
     return <StancePage access={access} shareToken={groupSession?.shareToken}
-                       skipIfAnswered={stanceReturn === '/seen-it'}
                        onContinue={leaveStance} />
   }
 
@@ -237,7 +250,7 @@ function App() {
     // are gone. The empty answer map is not a placeholder for something missing:
     // there are no pair answers to send, and submitting is still what marks this
     // member complete for the others waiting on them.
-    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => handleComplete({})} />
+    return <SeenItPage access={access} shareToken={groupSession?.shareToken} onSubmit={handleMovieReaction} onComplete={() => handleComplete({})} onAbandon={handleAbandon} />
   }
 
   if (route === '/lobby' && groupSession) {

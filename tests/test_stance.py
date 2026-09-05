@@ -178,3 +178,24 @@ def test_every_face_is_a_character_not_a_poster():
     # anything falling back to a poster would have come back empty.
     assert all(row["film_title"] is None for row in rows.values())
     assert all(row["artwork_url"] for row in rows.values())
+
+
+def test_the_weight_cannot_reach_the_top_of_its_range(isolated_web_database):
+    """Full weight would drop the only part of the ranking that predicts enjoyment.
+
+    The cap holds on the way in and on the way out, so a value written before it
+    existed behaves the way the screen says rather than the way it was stored.
+    """
+    from moral_atlas.web.store import MAX_MORAL_WEIGHT, moral_stance, save_moral_stance
+
+    headers = _user("Ada")
+    body = client.put("/api/profile/stance",
+                      json={"stance_id": "ruin", "weight": 1.0}, headers=headers).json()
+    assert body["weight"] == MAX_MORAL_WEIGHT
+
+    # A row written directly, as an older build would have left it.
+    from moral_atlas import db as real_db
+    user_id = client.get("/api/access/me", headers=headers).json()["id"]
+    with real_db.connect() as con:
+        con.execute("UPDATE users SET moral_weight=1.0 WHERE user_id=?", [user_id])
+    assert moral_stance(user_id)[1] == MAX_MORAL_WEIGHT

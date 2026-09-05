@@ -1,6 +1,37 @@
 import React from 'react'
 import { loadStance, saveStance } from '../services/stanceService.js'
 
+// How much the chosen position drives the ranking, as five named amounts.
+//
+// A slider was worse in both directions. It was fiddly to land on a value, and
+// it implied a precision the number does not have: nothing about this is
+// calibrated finely enough that 0.55 differs from 0.60 in a way anybody could
+// perceive. Five options say what the ends actually mean, which a percentage
+// never did.
+//
+// The captions name the real trade rather than the mechanism. Turning this up
+// does NOT make recommendations better — on 162,265 outside raters, neighbour
+// films order a liked film above a disliked one 83% of the time against the
+// moral axes' 57% — so it buys agreement with what you believe at the cost of
+// how well the deck predicts what you will enjoy. Saying "more moral weight"
+// would hide that; saying which of the two you get more of does not.
+// The top is 0.8, not 1. At full weight the ranking drops co-preference
+// entirely, and co-preference is the only part of it that predicts enjoyment —
+// 83% against the axes' 57%. A deck ordered purely by what a film argues is
+// reliably less watchable, so the strongest setting keeps a fifth of the say
+// with enjoyment rather than offering a way to turn the good half off.
+const STEER = [
+  { weight: 0.15, label: 'A nudge', caption: 'Mostly films you are likely to enjoy, tipped your way.' },
+  { weight: 0.3, label: 'A little', caption: 'Still led by what you will enjoy, with a clear lean.' },
+  { weight: 0.5, label: 'Half', caption: 'An even mix of what you will enjoy and what you believe.' },
+  { weight: 0.65, label: 'A lot', caption: 'Led by what you believe, with enjoyment as the tie-break.' },
+  { weight: 0.8, label: 'As far as it goes', caption: 'Led hard by what you believe. Enjoyment keeps a fifth of the say, so the deck stays watchable.' },
+]
+// A stored weight need not be one of the five — earlier versions wrote any value
+// the slider could reach — so the nearest is shown rather than none of them.
+const nearestLevel = (weight) => STEER.reduce((best, level) =>
+  Math.abs(level.weight - weight) < Math.abs(best.weight - weight) ? level : best, STEER[0])
+
 // Choosing a moral position.
 //
 // THE POSITIONS ARE NAMED, and the screen says the word morality. An earlier
@@ -125,23 +156,24 @@ export default function StancePicker({
       </button>
 
       {chosen && (
-        <label className="stance-weight">
+        <div className="stance-weight">
           <span>How much should it steer?</span>
-          <input
-            type="range" min="0" max="100" step="5"
-            value={Math.round(weight * 100)}
-            disabled={saving}
-            onChange={(event) => {
-              const next = Number(event.target.value) / 100
-              setData((current) => ({ ...current, weight: next }))
-            }}
-            onPointerUp={(event) => commit(chosen, Number(event.target.value) / 100)}
-            onKeyUp={(event) => commit(chosen, Number(event.target.value) / 100)}
-          />
-          <output>
-            {weight === 0 ? 'Not at all' : `${Math.round(weight * 100)}%`}
-          </output>
-        </label>
+          <div className="stance-levels" role="group" aria-label="How much should it steer?">
+            {STEER.map((level) => (
+              <button
+                key={level.weight}
+                type="button"
+                className={level === nearestLevel(weight) ? 'chosen' : ''}
+                aria-pressed={level === nearestLevel(weight)}
+                disabled={saving}
+                onClick={() => commit(chosen, level.weight)}
+              >
+                {level.label}
+              </button>
+            ))}
+          </div>
+          <p className="stance-caption">{nearestLevel(weight).caption}</p>
+        </div>
       )}
 
       {error && <p className="message">{error}</p>}

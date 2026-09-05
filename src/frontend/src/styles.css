@@ -461,8 +461,13 @@ button { cursor: pointer; }
    weighting morality does not improve what gets recommended. */
 .stance-none { width: 100%; min-height: 46px; margin-bottom: 14px; padding: 0 14px; border: 1px solid #3a312a; border-radius: 14px; color: #b3aa9e; background: transparent; font-size: 13px; }
 .stance-none.chosen { border-color: #eda36b; color: #eda36b; }
-.stance-weight { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid #2d251f; }
+.stance-weight { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid #2d251f; }
 .stance-weight span { color: #7e766c; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
-.stance-weight input { width: 100%; accent-color: #eda36b; }
-.stance-weight output { color: #b3aa9e; font-size: 12px; }
+/* Five equal columns, and they stay five: the labels are short enough to fit a
+   narrow phone, and wrapping one onto its own row would read as a sixth option
+   of a different kind. */
+.stance-levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.stance-levels button { min-height: 42px; padding: 0 2px; border: 1px solid #3a312a; border-radius: 11px; color: #b3aa9e; background: transparent; font-size: 11.5px; line-height: 1.2; }
+.stance-levels button.chosen { border-color: #eda36b; color: #171310; background: #eda36b; font-weight: 650; }
+.stance-caption { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; min-height: 34px; }
 .stance-done { width: 100%; min-height: 48px; margin-top: 18px; border: 0; border-radius: 24px; color: #171310; background: #eda36b; font-weight: 700; }

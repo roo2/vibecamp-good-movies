@@ -39,6 +39,8 @@ from .. import db
 from ..config import settings
 from ..analysis import neighbours as neighbour_scores
 from ..analysis import user_scores
+from . import stances as stances_module
+from .store import moral_stance as store_stance
 from .film_service import _recency as _film_recency
 from .store import user_pair_answers, user_rating_inputs
 
@@ -191,6 +193,22 @@ def _alignment(scores: dict[int, float], stances: dict[int, user_scores.Stance],
     return (numerator / (denominator + PRIOR) if denominator else 0.0), parts
 
 
+def _blend(own: float, chosen: float | None, weight: float) -> float:
+    """Mix what somebody is predicted to like with what they said they believe.
+
+    Weight 0 returns `own` UNCHANGED and by the same arithmetic path, not merely
+    a number that rounds to it — the control is only defensible if turning it off
+    gives back exactly the deck that was there before it existed.
+
+    A chosen position with nothing behind it (a reference set emptied by a corpus
+    change) is treated as no position rather than as the origin, which would
+    quietly rank every film by how UNLIKE the average film it is.
+    """
+    if not weight or chosen is None:
+        return own
+    return (1.0 - weight) * own + weight * chosen
+
+
 def _member_preferences(user_ids: list[str]) -> dict[str, list[Any]]:
     """Everything a person has told us, per person, read once.
 
@@ -278,6 +296,15 @@ def ranked_shortlist(
         for user_id in user_ids
     } if neighbours else {}
 
+    # Read once for the whole request: the centroid walks a reference set's
+    # films, and the shortlist walks the corpus.
+    stance_weights, stance_profiles = {}, {}
+    for user_id in user_ids:
+        stance_id, weight = store_stance(user_id)
+        stance_weights[user_id] = weight
+        if stance_id and weight:
+            stance_profiles[user_id] = stances_module.centroid(stance_id, stances, baseline)
+
     ranked = []
     for film_id, film_stances in stances.items():
         if film_id in seen:
@@ -297,11 +324,24 @@ def ranked_shortlist(
         per_member = {user_id: _alignment(profiles[user_id], film_stances, baseline)
                       for user_id in user_ids}
         alignments = [value for value, _parts in per_member.values()]
-        if cf_scores:
-            merit = [NEIGHBOUR_SCALE * cf_scores[user_id].get(film_id, 0.0)
-                     for user_id in user_ids]
-        else:
-            merit = alignments
+        merit = []
+        for index, user_id in enumerate(user_ids):
+            own = (NEIGHBOUR_SCALE * cf_scores[user_id].get(film_id, 0.0)
+                   if cf_scores else alignments[index])
+            # A CHOSEN position, mixed in at the weight its owner set. It
+            # replaces the inferred profile for this part rather than adding to
+            # it: the inferred one is largely taste wearing moral labels, which
+            # is the whole reason the position is asked for instead of read off
+            # what somebody likes.
+            #
+            # The two scores are already on one scale — NEIGHBOUR_SCALE exists
+            # to put the neighbour score on the alignment's — so the mix is a
+            # weighted average and not a change of units. At weight 0 this is
+            # exactly the previous expression.
+            profile = stance_profiles.get(user_id)
+            chosen = (_alignment(profile, film_stances, baseline)[0]
+                      if profile else None)
+            merit.append(_blend(own, chosen, stance_weights.get(user_id, 0.0)))
         # The worst member, not the average, for the reason the room cares
         # about: a film one person actively rejects is not a shared pick however
         # much the other two like it.

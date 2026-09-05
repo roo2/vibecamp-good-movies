@@ -433,3 +433,29 @@ button { cursor: pointer; }
   display: grid; grid-template-columns: 1fr 92px; gap: 10px; align-items: center;
   padding: 3px 0;
 }
+
+/* Choosing a moral position. A sheet over the deck rather than another screen:
+   the whole point is to change what is behind it and see that happen, and a
+   route change loses the deck you were judging. */
+.deck-steer { min-height: 28px; padding: 0 12px; border: 1px solid #3a312a; border-radius: 14px; color: #b3aa9e; background: transparent; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.deck-steer:hover, .deck-steer:focus-visible { border-color: #eda36b; color: #eda36b; }
+.stance-sheet { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; overflow-y: auto; background: rgba(11, 9, 7, .82); }
+.stance-picker { width: min(100%, 390px); padding: 22px 20px 20px; border: 1px solid #3a312a; border-radius: 20px; background: #1c1713; }
+.stance-picker h2 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 26px; font-weight: 400; }
+.stance-note { margin: 0 0 18px; color: #7e766c; font-size: 12px; line-height: 1.45; }
+.stance-options { display: grid; gap: 10px; margin: 0 0 10px; padding: 0; list-style: none; }
+.stance-options button { display: flex; width: 100%; align-items: center; gap: 14px; padding: 10px; border: 1px solid #3a312a; border-radius: 14px; color: #f5efe6; background: transparent; text-align: left; }
+.stance-options button.chosen { border-color: #eda36b; background: #241c15; }
+.stance-options img { width: 46px; height: 64px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; }
+.stance-words { display: grid; gap: 5px; min-width: 0; }
+.stance-words q { font-family: Georgia, serif; font-size: 15px; line-height: 1.35; quotes: none; }
+.stance-words small { color: #7e766c; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+/* As prominent as the three, because for most people it is the right answer:
+   weighting morality does not improve what gets recommended. */
+.stance-none { width: 100%; min-height: 46px; margin-bottom: 14px; padding: 0 14px; border: 1px solid #3a312a; border-radius: 14px; color: #b3aa9e; background: transparent; font-size: 13px; }
+.stance-none.chosen { border-color: #eda36b; color: #eda36b; }
+.stance-weight { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid #2d251f; }
+.stance-weight span { color: #7e766c; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+.stance-weight input { width: 100%; accent-color: #eda36b; }
+.stance-weight output { color: #b3aa9e; font-size: 12px; }
+.stance-done { width: 100%; min-height: 48px; margin-top: 18px; border: 0; border-radius: 24px; color: #171310; background: #eda36b; font-weight: 700; }

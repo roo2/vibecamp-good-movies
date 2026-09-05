@@ -317,7 +317,21 @@ CREATE INDEX IF NOT EXISTS idx_props_film ON propositions_raw (film_id);
 CREATE TABLE IF NOT EXISTS users (
     user_id    TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    -- A moral position the person CHOSE, as the id of a reference set, and how
+    -- much of the ranking it is allowed to drive.
+    --
+    -- Choosing beats inferring here, and not for convenience. A position read
+    -- off somebody's ratings is mostly their taste wearing moral labels: placed
+    -- twice from disjoint halves of 160,952 MovieLens raters' liked films, the
+    -- three axes agree at 0.54 / 0.24 / 0.04, and once taste is residualised out
+    -- 0.08 / 0.12 / -0.06. A declared position cannot be contaminated that way,
+    -- because it never touches what they like to watch.
+    --
+    -- NULL weight means the person never answered, which is not the same as
+    -- answering zero, and the difference decides whether to ask again.
+    moral_stance TEXT,
+    moral_weight REAL
 );
 
 CREATE TABLE IF NOT EXISTS user_sessions (
@@ -653,6 +667,8 @@ def init_db() -> None:
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
         _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")
         _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
+        _add_column_if_missing(con, "users", "moral_stance", "TEXT")
+        _add_column_if_missing(con, "users", "moral_weight", "REAL")
         # Which model produced each derived row. Older databases carry the model
         # only on `runs`, reachable through a join that most callers never made;
         # these columns put it where the row is.

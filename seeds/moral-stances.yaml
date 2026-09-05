@@ -1,0 +1,50 @@
+# The moral positions a person can choose, and the faces that stand for them.
+#
+# WHY CHOSEN AND NOT INFERRED. A position read off somebody's ratings is mostly
+# their taste wearing moral labels. Placing 160,952 MovieLens raters twice, from
+# disjoint halves of the films they liked, the three axes agree at 0.54 / 0.24 /
+# 0.04 — and once taste is residualised out of the film positions, 0.08 / 0.12 /
+# -0.06. There is no honest way to read this off what somebody watches. Asking
+# is not a fallback; it is the only clean instrument.
+#
+# WHY A CHARACTER AND NOT A QUESTION. The propositions these axes are built from
+# are abstract by construction, and a survey of them is what people abandon: of
+# forty submissions, twenty-four answered nothing. A face and a sentence are one
+# tap, and the sentence is close to a proposition the axis is actually made of.
+#
+# THE POSITION IS THE SET'S CENTRE, NOT THE CHARACTER'S FILM. Wonder Woman sits
+# only -0.17 along self-determination, well short of her canon's -0.43, and
+# Joker at -1.75 / +2.27 is far past the red-pilled centre rather than at it. The
+# character is a signpost people recognise; the coordinates come from the whole
+# canon behind it, so recognisability and typicality stop competing.
+#
+# WHY THESE THREE. Measured in units of each set's own internal spread, the
+# centres are 2.11 (red-pilled to christian), 1.88 (red-pilled to feminist) and
+# 1.39 (christian to feminist) apart — three distinct corners. Two sets that were
+# considered are deliberately absent: progressive-canon sits 0.06 from feminist,
+# and church-of-satan 0.68 from red-pilled. Offering either as a fourth option
+# would ask people to distinguish positions the instrument cannot.
+#
+# NAMING NO IDEOLOGY IS DELIBERATE. Nobody is asked whether they are a Christian
+# or a feminist or anything else. They are asked which claim rings true, which is
+# the thing the axes measure and the thing somebody can answer about themselves
+# without being labelled.
+
+stances:
+  - stance_id: ruin
+    character: The Joker
+    film_id: joker-2019
+    line: The world runs on power, and pretending otherwise is the lie.
+    sets: [red-pilled]
+
+  - stance_id: order
+    character: Mufasa
+    film_id: the-lion-king-1994
+    line: There is an order to things, and your place in it is real.
+    sets: [catholic, christian-answers, christian-edifying]
+
+  - stance_id: self
+    character: Wonder Woman
+    film_id: wonder-woman-2017
+    line: Nobody else gets to decide what your life is for.
+    sets: [feminist]

@@ -123,3 +123,18 @@ class SessionMember(BaseModel):
 class GroupSessionStatus(GroupSession):
     members: list[SessionMember]
     can_continue_without_members: bool
+
+
+class StanceChoice(BaseModel):
+    """A chosen moral position, or the absence of one.
+
+    `stance_id` of None is the don't-care answer and forces the weight to zero,
+    so "none of these" cannot be stored as a position weighted at anything.
+    """
+
+    stance_id: str | None = None
+    weight: float = Field(default=0.0, ge=0.0, le=1.0)
+    # Optional: the session whose deck should be re-ranked. Without it the choice
+    # is saved and the deck they are looking at keeps its old order, which reads
+    # as the control doing nothing.
+    share_token: str | None = None

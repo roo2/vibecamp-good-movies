@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import useSwipeDecision from '../hooks/useSwipeDecision.js'
 import FilmAxisStrip from '../components/FilmAxisStrip.jsx'
+import StancePicker from '../components/StancePicker.jsx'
 import { loadNextShortlistFilm, loadShortlistSelection, saveShortlistReaction } from '../services/shortlistService.js'
 
 // Swiping must never wait on the network.
@@ -24,6 +25,7 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
   const [error, setError] = useState(null)
   const [matches, setMatches] = useState(matchesSeen)
   const voted = useRef(new Set())
+  const [picking, setPicking] = useState(false)
   const fetching = useRef(false)
 
   const finish = useCallback((films) => {
@@ -109,8 +111,13 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
       : `${matches} shortlisted · looking for more`
   return <main className="app-page"><section className="phone-screen deck-screen">
     <header className="deck-header">
-      <span>{solo ? 'Picked for you' : 'Films for the two of you'}</span>
       <span>{progress}</span>
+      {/* The deck is re-ranked server-side, so the queue in hand is stale the
+          moment a position is saved. Emptying it makes the refill effect fetch
+          the new order rather than finishing the old one first. */}
+      <button type="button" className="deck-steer" onClick={() => setPicking(true)}>
+        Steer
+      </button>
     </header>
     <article className="deck-card swipe-card" key={film.id} {...swipe.handlers} style={swipe.style}>
       <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× No</span>
@@ -135,6 +142,16 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
         {film.note && <small>{film.note}</small>}
       </div>
     </article>
+    {picking && (
+      <div className="stance-sheet" role="dialog" aria-label="Choose a position">
+        <StancePicker
+          access={access}
+          shareToken={shareToken}
+          onChange={() => { voted.current = new Set(voted.current); setQueue([]) }}
+          onClose={() => setPicking(false)}
+        />
+      </div>
+    )}
     <div className="deck-actions"><button type="button" disabled={swipe.committed} onClick={() => vote('no')}>×<span>No</span></button><button className="deck-heart" type="button" disabled={swipe.committed} onClick={() => vote('yes')}>♥<span>Yes</span></button></div>
     <p className="deck-note">Swipe right to say yes, left to pass.</p>
   </section></main>

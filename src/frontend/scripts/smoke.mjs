@@ -17,6 +17,7 @@
 import React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 
+import StancePicker from '../src/components/StancePicker.jsx'
 import AtlasPage from '../src/screens/AtlasPage.jsx'
 import CompassScreen from '../src/screens/CompassScreen.jsx'
 import CorpusPage from '../src/screens/CorpusPage.jsx'
@@ -29,7 +30,10 @@ import ShortlistPage from '../src/screens/ShortlistPage.jsx'
 import TastePage from '../src/screens/TastePage.jsx'
 import TestCompletePage from '../src/screens/TestCompletePage.jsx'
 
+// Not a screen, but it renders over one and only when a button is pressed, so
+// nothing else here would execute its module body.
 const SCREENS = {
+  StancePicker,
   AtlasPage, CompassScreen, CorpusPage, LandingPage, MatchPage, SeenItPage,
   SessionLobbyPage, SessionWaitingPage, ShortlistPage, TastePage, TestCompletePage,
 }

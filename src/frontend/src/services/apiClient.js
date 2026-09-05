@@ -50,4 +50,5 @@ async function request(path, options = {}, attempt = 0) {
 export const apiClient = {
   get: (path, options) => request(path, options),
   post: (path, body, options = {}) => request(path, { ...options, method: 'POST', body: JSON.stringify(body) }),
+  put: (path, body, options = {}) => request(path, { ...options, method: 'PUT', body: JSON.stringify(body) }),
 }

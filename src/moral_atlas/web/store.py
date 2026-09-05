@@ -133,6 +133,49 @@ def user_rating_inputs(user_id: str) -> list[tuple[str, str]]:
     return [(row["film_id"], row["reaction"]) for row in rows]
 
 
+def moral_stance(user_id: str) -> tuple[str | None, float]:
+    """The position this person chose, and how much of the ranking it drives.
+
+    A missing row and an explicit zero are both "do not weight morality", and
+    the caller cannot tell them apart from here — `stance_answered` can, and
+    that is the one that decides whether to ask again.
+    """
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        row = con.execute(
+            "SELECT moral_stance, moral_weight FROM users WHERE user_id=?",
+            [user_id]).fetchone()
+    if not row:
+        return None, 0.0
+    weight = row["moral_weight"]
+    return row["moral_stance"], float(weight) if weight is not None else 0.0
+
+
+def stance_answered(user_id: str) -> bool:
+    """Whether they have answered at all — including by choosing to opt out."""
+    _ensure_db()
+    with db.connect(read_only=True) as con:
+        row = con.execute("SELECT moral_weight FROM users WHERE user_id=?",
+                          [user_id]).fetchone()
+    return bool(row) and row["moral_weight"] is not None
+
+
+def save_moral_stance(user_id: str, stance_id: str | None, weight: float) -> tuple[str | None, float]:
+    """Record a chosen position. `stance_id` of None is the don't-care answer.
+
+    The weight is stored even when the stance is None, because answering "none
+    of these" is an answer and must not read as never having been asked.
+    """
+    _ensure_db()
+    weight = max(0.0, min(1.0, float(weight)))
+    if stance_id is None:
+        weight = 0.0
+    with db.connect() as con:
+        con.execute("UPDATE users SET moral_stance=?, moral_weight=? WHERE user_id=?",
+                    [stance_id, weight, user_id])
+    return stance_id, weight
+
+
 def user_pair_answers(user_id: str) -> list[tuple[str, list[str]]]:
     """(choice, [film_a, film_b]) for every blind pair the user answered.
 
@@ -225,6 +268,39 @@ def _ensure_shortlist(con, session_id: str) -> None:
         film_ids = [row["film_id"] for row in con.execute("SELECT film_id FROM films").fetchall()]
         random.SystemRandom().shuffle(film_ids)
     con.executemany("INSERT INTO session_shortlist_films (session_id, film_id, position) VALUES (?,?,?)", [(session_id, film_id, position) for position, film_id in enumerate(film_ids)])
+
+
+def reorder_shortlist(share_token: str, user_id: str) -> bool:
+    """Throw away a session's deck order so the next request rebuilds it.
+
+    A session materialises its order once and keeps it, which is right while the
+    inputs are fixed and wrong the moment somebody changes their moral position:
+    the control would save, report success, and deal the same cards forever.
+
+    Only the ORDER is dropped. Votes live in `shortlist_reactions`, keyed by
+    session and film rather than by position, so anything already swiped stays
+    swiped and does not come back round.
+
+    In a shared session this re-ranks the deck for everyone, which is the honest
+    consequence of one deck serving two people — the ranking already scores each
+    member separately and takes the worst, so the other person's say is not lost,
+    it is re-applied.
+    """
+    _ensure_db()
+    with db.connect() as con:
+        session = con.execute(
+            "SELECT session_id FROM group_sessions WHERE share_token=?",
+            [share_token]).fetchone()
+        if session is None:
+            return False
+        member = con.execute(
+            "SELECT 1 FROM session_members WHERE session_id=? AND user_id=?",
+            [session["session_id"], user_id]).fetchone()
+        if not member:
+            return False
+        con.execute("DELETE FROM session_shortlist_films WHERE session_id=?",
+                    [session["session_id"]])
+    return True
 
 
 def next_shortlist_film(share_token: str, user_id: str, since: int = 0) -> dict[str, Any] | None:

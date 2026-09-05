@@ -27,13 +27,14 @@ import SeenItPage from '../src/screens/SeenItPage.jsx'
 import SessionLobbyPage from '../src/screens/SessionLobbyPage.jsx'
 import SessionWaitingPage from '../src/screens/SessionWaitingPage.jsx'
 import ShortlistPage from '../src/screens/ShortlistPage.jsx'
+import StancePage from '../src/screens/StancePage.jsx'
 import TastePage from '../src/screens/TastePage.jsx'
 import TestCompletePage from '../src/screens/TestCompletePage.jsx'
 
 // Not a screen, but it renders over one and only when a button is pressed, so
 // nothing else here would execute its module body.
 const SCREENS = {
-  StancePicker,
+  StancePicker, StancePage,
   AtlasPage, CompassScreen, CorpusPage, LandingPage, MatchPage, SeenItPage,
   SessionLobbyPage, SessionWaitingPage, ShortlistPage, TastePage, TestCompletePage,
 }

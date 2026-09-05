@@ -5,6 +5,7 @@ import SessionLobbyPage from './screens/SessionLobbyPage.jsx'
 import SessionWaitingPage from './screens/SessionWaitingPage.jsx'
 import SeenItPage from './screens/SeenItPage.jsx'
 import ShortlistPage from './screens/ShortlistPage.jsx'
+import StancePage from './screens/StancePage.jsx'
 import MatchPage from './screens/MatchPage.jsx'
 import TastePage from './screens/TastePage.jsx'
 import AtlasPage from './screens/AtlasPage.jsx'
@@ -37,6 +38,10 @@ function App() {
   // How many agreed films they have already been shown, so "keep looking"
   // returns to swiping instead of bouncing straight back to the same three.
   const [matchesSeen, setMatchesSeen] = useState(0)
+  // Where the first step hands over to. Normally the films; '/shortlist' when
+  // somebody came back from the deck to change their position, so that Continue
+  // returns them to the cards they were judging rather than restarting the flow.
+  const [stanceReturn, setStanceReturn] = useState('/seen-it')
 
   const navigate = useCallback((nextRoute) => {
     window.location.hash = nextRoute
@@ -71,7 +76,7 @@ function App() {
     setGroupSession({ shareToken: nextGroupSession.share_token })
     if (mode === 'solo') {
       await startGroupSession(nextAccess, nextGroupSession.share_token)
-      navigate('/seen-it')
+      navigate('/stance')
       return
     }
     navigate('/lobby')
@@ -105,13 +110,13 @@ function App() {
       const everyoneReady = members.length > 0 && members.every((member) => member.completed_at)
 
       if (route === '/lobby') {
-        if (nextStatus.status === 'in_progress') { navigate('/seen-it'); return }
+        if (nextStatus.status === 'in_progress') { navigate('/stance'); return }
         // Your partner is here and nothing else has to happen first.
         if (isHost && nextStatus.status === 'lobby' && members.length > 1 && !advancing.current) {
           advancing.current = true
           try {
             await startGroupSession(access, groupSession.shareToken)
-            navigate('/seen-it')
+            navigate('/stance')
           } finally {
             advancing.current = false
           }
@@ -138,7 +143,7 @@ function App() {
 
   const handleStartSession = useCallback(async () => {
     await startGroupSession(access, groupSession.shareToken)
-    navigate('/seen-it')
+    navigate('/stance')
   }, [access, groupSession, navigate])
 
   const handleMovieReaction = useCallback(async (filmId, reaction, shareToken) => {
@@ -204,6 +209,15 @@ function App() {
     return <LandingPage onStart={handleStart} />
   }
 
+  // First step of the flow. Whoever has already answered — a guest arriving by
+  // the same route as the host, or anybody resuming — is passed straight
+  // through, so the question is asked once rather than at every entrance.
+  if (route === '/stance') {
+    return <StancePage access={access} shareToken={groupSession?.shareToken}
+                       skipIfAnswered={stanceReturn === '/seen-it'}
+                       onContinue={() => { setStanceReturn('/seen-it'); navigate(stanceReturn) }} />
+  }
+
   if (route === '/seen-it') {
     // Reacting to the last film is the end of the test now that the blind pairs
     // are gone. The empty answer map is not a placeholder for something missing:
@@ -228,6 +242,7 @@ function App() {
 
   if (route === '/shortlist') {
     return <ShortlistPage access={access} shareToken={groupSession?.shareToken} matchesSeen={matchesSeen} solo={solo}
+                          onSteer={() => { setStanceReturn('/shortlist'); navigate('/stance') }}
                           onDone={(films) => { setShortlist(films); navigate('/match') }} />
   }
   if (route === '/match') {

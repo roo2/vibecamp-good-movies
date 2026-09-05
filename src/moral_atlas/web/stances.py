@@ -41,13 +41,17 @@ def catalogue() -> list[dict[str, Any]]:
     out = []
     for row in definitions():
         film = db.get_film(row["film_id"])
+        # The character where there is one, the poster where there is not. The
+        # screen asks which PERSON speaks to somebody and a poster is mostly
+        # title treatment, so the fallback is a compromise rather than the plan.
         out.append({
             "stance_id": row["stance_id"],
             "character": row["character"],
             "line": row["line"],
             "film_id": row["film_id"],
             "film_title": (film or {}).get("title"),
-            "artwork_url": (film or {}).get("artwork_url"),
+            "artwork_url": row.get("image_url") or (film or {}).get("artwork_url"),
+            "shows_character": bool(row.get("image_url")),
         })
     return out
 

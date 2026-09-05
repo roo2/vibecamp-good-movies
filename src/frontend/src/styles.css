@@ -434,21 +434,24 @@ button { cursor: pointer; }
   padding: 3px 0;
 }
 
-/* Choosing a moral position. A sheet over the deck rather than another screen:
-   the whole point is to change what is behind it and see that happen, and a
-   route change loses the deck you were judging. */
+/* Choosing a moral position — the first step of the flow, and a screen rather
+   than a sheet. It was a modal over the deck, which put the one question the
+   ratings cannot answer AFTER twenty of them and behind a button. */
 .deck-steer { min-height: 28px; padding: 0 12px; border: 1px solid #3a312a; border-radius: 14px; color: #b3aa9e; background: transparent; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 .deck-steer:hover, .deck-steer:focus-visible { border-color: #eda36b; color: #eda36b; }
-.stance-sheet { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; overflow-y: auto; background: rgba(11, 9, 7, .82); }
-.stance-picker { width: min(100%, 390px); padding: 22px 20px 20px; border: 1px solid #3a312a; border-radius: 20px; background: #1c1713; }
-.stance-picker h2 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 26px; font-weight: 400; }
-.stance-note { margin: 0 0 18px; color: #7e766c; font-size: 12px; line-height: 1.45; }
+.stance-screen { justify-content: start; gap: 0; }
+.stance-picker { width: 100%; }
+/* Sized like the other first questions in the flow, not like a dialog title. */
+.stance-picker h2 { margin: 10px 0 8px; font-family: Georgia, 'Times New Roman', serif; font-size: 38px; font-weight: 400; line-height: 1.06; letter-spacing: -.02em; }
+.stance-note { margin: 0 0 22px; color: #7e766c; font-size: 13px; line-height: 1.5; }
 .stance-options { display: grid; gap: 10px; margin: 0 0 10px; padding: 0; list-style: none; }
 .stance-options button { display: flex; width: 100%; align-items: center; gap: 14px; padding: 10px; border: 1px solid #3a312a; border-radius: 14px; color: #f5efe6; background: transparent; text-align: left; }
 .stance-options button.chosen { border-color: #eda36b; background: #241c15; }
-.stance-options img { width: 46px; height: 64px; flex: 0 0 auto; border-radius: 8px; object-fit: cover; }
+.stance-options img { width: 58px; height: 74px; flex: 0 0 auto; border-radius: 10px; background: #241c15; }
+.stance-options img.is-poster { object-fit: cover; object-position: center 22%; }
+.stance-options img.is-character { object-fit: contain; padding: 3px; }
 .stance-words { display: grid; gap: 5px; min-width: 0; }
-.stance-words q { font-family: Georgia, serif; font-size: 15px; line-height: 1.35; quotes: none; }
+.stance-words q { font-family: Georgia, serif; font-size: 16px; line-height: 1.35; quotes: none; }
 .stance-words small { color: #7e766c; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 /* As prominent as the three, because for most people it is the right answer:
    weighting morality does not improve what gets recommended. */

@@ -25,6 +25,15 @@
 # and church-of-satan 0.68 from red-pilled. Offering either as a fourth option
 # would ask people to distinguish positions the instrument cannot.
 #
+# A CHARACTER IMAGE, NOT THE POSTER, where one can be found. A poster sells a
+# film and is mostly title treatment; this screen is asking which PERSON speaks
+# to somebody, so it should show the person. `image_url` overrides the film's
+# artwork when it is set, and the poster is the fallback rather than the intent.
+# Wikipedia is the same source the film artwork already comes from, but its
+# character articles usually lead with a montage of every incarnation, which is
+# worse than a poster for this — each one below was looked at before it was
+# kept, and only Mufasa's came back as a single clean figure.
+#
 # NAMING NO IDEOLOGY IS DELIBERATE. Nobody is asked whether they are a Christian
 # or a feminist or anything else. They are asked which claim rings true, which is
 # the thing the axes measure and the thing somebody can answer about themselves
@@ -41,6 +50,7 @@ stances:
     character: Mufasa
     film_id: the-lion-king-1994
     line: There is an order to things, and your place in it is real.
+    image_url: https://upload.wikimedia.org/wikipedia/en/a/a0/Mufasa_promotional_image.webp
     sets: [catholic, christian-answers, christian-edifying]
 
   - stance_id: self

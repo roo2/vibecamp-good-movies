@@ -18,7 +18,9 @@ import { loadStance, saveStance } from '../services/stanceService.js'
 // outside raters, weighting morality does not improve what gets recommended.
 // The control is here to STEER, and steering somewhere you do not want to go is
 // not a feature.
-export default function StancePicker({ access, shareToken = null, onChange, onClose }) {
+export default function StancePicker({
+  access, shareToken = null, onChange, onClose, onLoaded, closeLabel = 'Done',
+}) {
   const [data, setData] = React.useState(null)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState(null)
@@ -26,10 +28,17 @@ export default function StancePicker({ access, shareToken = null, onChange, onCl
   React.useEffect(() => {
     let live = true
     loadStance(access)
-      .then((body) => live && setData(body))
+      .then((body) => {
+        if (!live) return
+        setData(body)
+        // The page above decides what an already-answered person sees, because
+        // only it knows whether they are walking the flow or came back to
+        // change their mind.
+        onLoaded?.(body)
+      })
       .catch(() => live && setError('Could not load the positions.'))
     return () => { live = false }
-  }, [access])
+  }, [access, onLoaded])
 
   const commit = React.useCallback(async (stanceId, weight) => {
     setSaving(true)
@@ -72,7 +81,13 @@ export default function StancePicker({ access, shareToken = null, onChange, onCl
                 stance.stance_id === chosen ? weight : (weight || 0.5))}
             >
               {stance.artwork_url && (
-                <img src={stance.artwork_url} alt="" loading="lazy" />
+                // A character image is a figure and must not be cropped; a
+                // poster is a composition and has to be, or the tile is mostly
+                // title treatment. They cannot share a fit.
+                <img
+                  className={stance.shows_character ? 'is-character' : 'is-poster'}
+                  src={stance.artwork_url} alt="" loading="lazy"
+                />
               )}
               <span className="stance-words">
                 <q>{stance.line}</q>
@@ -115,7 +130,7 @@ export default function StancePicker({ access, shareToken = null, onChange, onCl
 
       {error && <p className="message">{error}</p>}
       {onClose && (
-        <button type="button" className="stance-done" onClick={onClose}>Done</button>
+        <button type="button" className="stance-done" onClick={onClose}>{closeLabel}</button>
       )}
     </div>
   )

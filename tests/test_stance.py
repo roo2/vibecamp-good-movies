@@ -157,3 +157,21 @@ def test_a_share_token_that_is_not_yours_reorders_nothing():
                      headers=intruder).json()
     assert out["stance_id"] == "ruin"     # their own choice still saves
     assert out["reordered"] is False      # somebody else's deck does not move
+
+
+def test_a_character_image_beats_the_film_poster():
+    """The screen asks which PERSON speaks to somebody, so it should show one.
+
+    Mufasa has a character image in the seeds and the other two do not yet, so
+    this also pins the fallback: no image in the seeds means the film's poster,
+    and the flag says which of the two a caller is looking at.
+    """
+    from moral_atlas.web.stances import catalogue
+
+    rows = {row["stance_id"]: row for row in catalogue()}
+    assert rows["order"]["shows_character"] is True
+    assert "Mufasa" in rows["order"]["artwork_url"]
+    # Independent of the film row: the isolated database has no Lion King in it,
+    # so a poster fallback would have come back empty here.
+    assert rows["order"]["film_title"] is None
+    assert rows["ruin"]["shows_character"] is False

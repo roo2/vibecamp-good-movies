@@ -907,6 +907,78 @@ def get_film(film_id: str) -> dict[str, Any] | None:
     return _decode_film(row) if row is not None else None
 
 
+# Every way a table can name a film. `film_id` is the obvious one; the
+# neighbour table names a second film in a second column, and a film deleted
+# from `films` while still sitting in someone else's neighbour list is a
+# dangling reference that only shows up when a page tries to render it.
+FILM_REFERENCE_COLUMNS = ("film_id", "neighbour_id", "selected_film_id")
+
+# Where a film reference is cleared rather than deleted. A group session that
+# ended on a removed film is still a record that somebody played; the film it
+# landed on is the part that has stopped being true, not the evening.
+NULLED_FILM_REFERENCES = {("group_sessions", "selected_film_id")}
+
+
+def film_references() -> list[tuple[str, str]]:
+    """(table, column) for every place in this store that names a film.
+
+    Read from the schema rather than listed by hand, so a table added later is
+    covered without anyone remembering to add it here. Which matters: this is
+    the list a deletion sweeps, and the failure mode of a stale list is rows
+    left pointing at a film that no longer exists.
+    """
+    out = []
+    with connect(read_only=True) as con:
+        tables = [r["name"] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+        for table in tables:
+            columns = {r["name"] for r in con.execute(f'PRAGMA table_info("{table}")')}
+            for column in FILM_REFERENCE_COLUMNS:
+                if column in columns:
+                    out.append((table, column))
+    return out
+
+
+def remove_films(film_ids: list[str]) -> dict[str, int]:
+    """Delete a film and everything that names it, corpus rows and user rows alike.
+
+    Used when a film should never have been in the corpus — most likely because
+    its identifier belonged to another film, so its dialogue, its scores and its
+    position on every axis describe something else.
+
+    User rows go too, and that is deliberate rather than careless: a rating of a
+    film that no longer exists cannot be read back, and a shortlist that renders
+    it shows a blank card. They are counted separately in the return so the cost
+    is visible rather than silent — see `atlas remove-film`.
+
+    Note for the deployed copy: `infra/load-corpus.sh` replaces corpus tables and
+    never writes user tables, so loading a corpus with a film removed leaves the
+    runner's own rows for it behind. Run this there as well.
+
+    One reference is deliberately left alone: a group session's `deck_json`
+    still names the film among its cards. Rewriting a stored deck would change
+    what a session in progress is asking people, and it does not need rewriting
+    — `film_card` returns nothing for a film that is gone and the deck readers
+    already drop what they cannot render.
+    """
+    if not film_ids:
+        return {}
+    placeholders = ",".join("?" * len(film_ids))
+    removed: dict[str, int] = {}
+    with connect() as con:
+        for table, column in film_references():
+            verb = ("UPDATE \"%s\" SET \"%s\"=NULL" % (table, column)
+                    if (table, column) in NULLED_FILM_REFERENCES
+                    else 'DELETE FROM "%s"' % table)
+            touched = con.execute(
+                f'{verb} WHERE "{column}" IN ({placeholders})', film_ids
+            ).rowcount
+            if touched:
+                key = table if column == "film_id" else f"{table}.{column}"
+                removed[key] = removed.get(key, 0) + touched
+    return removed
+
+
 def list_films() -> list[dict[str, Any]]:
     with connect(read_only=True) as con:
         rows = con.execute("SELECT * FROM films ORDER BY year, title").fetchall()

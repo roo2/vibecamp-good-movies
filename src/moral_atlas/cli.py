@@ -154,6 +154,42 @@ def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that a
     console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
 
 
+@app.command("remove-film")
+def remove_film(
+    film_ids: list[str] = typer.Argument(..., help="Film ids to delete, e.g. carlos-2010."),
+    yes: bool = typer.Option(False, "--yes", help="Skip the confirmation."),
+) -> None:
+    """Delete films and everything that names them, including user rows.
+
+    For a film that should never have been in the corpus — usually one whose
+    identifier belonged to another film, so every score it carries describes
+    something else. Run it on the runner too: a corpus load replaces corpus
+    tables and leaves the runner's own ratings and shortlists behind.
+    """
+    db.init_db()
+    known = {film["film_id"]: film for film in db.list_films()}
+    missing = [f for f in film_ids if f not in known]
+    for film_id in missing:
+        console.print(f"[yellow]not in films[/] {film_id} — sweeping its other rows anyway")
+    for film_id in film_ids:
+        film = known.get(film_id)
+        if film:
+            console.print(f"  {film['title']} ({film.get('year')})")
+
+    if not yes:
+        typer.confirm(f"Delete {len(film_ids)} film(s) and every row naming them?", abort=True)
+
+    removed = db.remove_films(film_ids)
+    if not removed:
+        console.print("[dim]nothing to remove[/]")
+        return
+    table = Table("table", "rows")
+    for name, count in sorted(removed.items(), key=lambda kv: -kv[1]):
+        table.add_row(name, str(count))
+    console.print(table)
+    console.print(f"[green]removed[/] {sum(removed.values())} rows across {len(removed)} tables")
+
+
 @app.command("resolve-articles")
 def resolve_articles() -> None:
     """Point every film at the Wikipedia article its IMDb id resolves to."""

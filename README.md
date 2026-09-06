@@ -271,6 +271,16 @@ under is what surfaced it. `resolve-articles` checks each stored id against the
 labels, aliases and release years Wikidata holds for it and reports the ones
 that point at another film rather than following them.
 
+Both were then taken out of the corpus with `atlas remove-film`, which is why it
+holds 674 films rather than 676. Everything either film contributed — verdicts,
+taste positions, similarity edges in *other* films' neighbour lists, set
+memberships — was derived from another film's dialogue, so repairing the row
+would have meant re-scoring it from scratch, and neither is load-bearing for
+anything the project claims. Removal sweeps every table that names a film,
+found from the schema rather than from a list somebody has to remember to
+update. Run it on the runner as well: a corpus load replaces corpus tables and
+leaves the runner's own ratings and shortlists pointing at nothing.
+
 **The house style is checked, not requested.** `describe_problems` rejects a
 card that runs long, names anything, uses more than one sentence, rates the
 story or reaches for criticism vocabulary; a rejected card is rewritten once

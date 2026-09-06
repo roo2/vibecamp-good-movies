@@ -18,6 +18,32 @@ import { loadNextShortlistFilm, loadShortlistSelection, saveShortlistReaction } 
 
 const REFILL_AT = 2
 
+// How long to wait before asking again when the server deals back only cards
+// this person has already swiped. It backs off so a deck that is waiting on a
+// slow connection is not hammering, and it never gives up: every reason for an
+// empty hand here is temporary, and the alternative is the screen this fixed.
+const RETRY_MS = [400, 900, 2000, 4000, 8000]
+
+// Which of the dealt cards are actually new to this person.
+//
+// Exported and pure because the bug it exists to prevent is invisible in a
+// render: the deck asks for more the moment two cards are left, the votes for
+// the cards already gone are still in flight, and the server — which knows a
+// film is spent only once its vote arrives — deals those same films straight
+// back. Every one is dropped here, and a screen that treats an empty hand as an
+// answer sits on "Finding films for you…" until the page is reloaded.
+export function freshCards(dealt, queued, votedIds) {
+  const have = new Set(queued.map((film) => film.id))
+  return dealt.filter((film) => film && !have.has(film.id) && !votedIds.has(film.id))
+}
+
+// Whether a hand contains anything this person has not already judged. False is
+// the state that used to end the deck: the server dealt, every card came back
+// stale, and nothing asked again.
+export function hasNewCards(dealt, votedIds) {
+  return dealt.some((film) => film && !votedIds.has(film.id))
+}
+
 export default function ShortlistPage({ access, shareToken, matchesSeen = 0, solo = false, onDone, onSteer }) {
   const [queue, setQueue] = useState([])
   const [state, setState] = useState('loading')
@@ -25,6 +51,14 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
   const [matches, setMatches] = useState(matchesSeen)
   const voted = useRef(new Set())
   const fetching = useRef(false)
+  // Votes the server has not acknowledged yet. A refill waits on these, because
+  // asking for more cards while they are in the air is asking a question the
+  // server cannot answer correctly.
+  const pending = useRef(new Set())
+  const retryAt = useRef(0)
+  const retryTimer = useRef(null)
+
+  useEffect(() => () => window.clearTimeout(retryTimer.current), [])
 
   const finish = useCallback((films) => {
     if (films.length > matchesSeen) onDone(films)
@@ -33,19 +67,38 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
   const refill = useCallback(async () => {
     if (fetching.current) return
     fetching.current = true
+    window.clearTimeout(retryTimer.current)
     try {
+      // Let the votes land first. They were sent optimistically so the card
+      // could leave in the same frame, which means the server can still be
+      // holding films this person has already judged — and it would deal them
+      // straight back, to be dropped below as stale.
+      if (pending.current.size) await Promise.allSettled([...pending.current])
+
       const result = await loadNextShortlistFilm(access, shareToken, matchesSeen)
       if (result.state === 'shortlist') { finish(result.films); return }
       if (result.state === 'exhausted') { setState('exhausted'); return }
-      // Anything already swiped locally is dropped: the server has not heard
-      // about those votes yet and would otherwise deal the same card twice.
-      setQueue((current) => {
-        const have = new Set(current.map((film) => film.id))
-        const fresh = (result.queue || [result.film])
-          .filter((film) => !have.has(film.id) && !voted.current.has(film.id))
-        return [...current, ...fresh]
-      })
+
+      const dealt = result.queue || [result.film]
+      // Decided out here rather than inside the updater: React runs an updater
+      // during the render it schedules, so anything the updater assigns is
+      // still unset on the next line, and the retry below would fire every
+      // time. `voted` is a ref, so this reads the same set the merge will.
+      const anythingNew = hasNewCards(dealt, voted.current)
+      setQueue((current) => [...current, ...freshCards(dealt, current, voted.current)])
       setState('ready')
+
+      // An empty hand is not an answer. The server has cards — it just dealt
+      // some — so this is a race with our own votes, and asking again is what
+      // resolves it. Nothing else would: the refill effect watches the queue
+      // length and the state, and neither of them changed.
+      if (!anythingNew) {
+        const wait = RETRY_MS[Math.min(retryAt.current, RETRY_MS.length - 1)]
+        retryAt.current += 1
+        retryTimer.current = window.setTimeout(() => { refill() }, wait)
+      } else {
+        retryAt.current = 0
+      }
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -78,12 +131,14 @@ export default function ShortlistPage({ access, shareToken, matchesSeen = 0, sol
     voted.current.add(decided.id)
     setQueue((current) => current.slice(1))     // the card is gone this frame
 
-    saveShortlistReaction(access, shareToken, decided.id, reaction)
+    const sent = saveShortlistReaction(access, shareToken, decided.id, reaction)
       .then((result) => {
         if (result?.state === 'shortlist') finish(result.films)
         else if (typeof result?.matches === 'number') setMatches(result.matches)
       })
       .catch((voteError) => setError(voteError.message))
+      .finally(() => pending.current.delete(sent))
+    pending.current.add(sent)
   }
 
   const swipe = useSwipeDecision({ disabled: !film, onLeft: () => vote('no'), onRight: () => vote('yes') })

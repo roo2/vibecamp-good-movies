@@ -236,3 +236,96 @@ THE FILM
 
 {evidence_block}
 """
+
+
+# --------------------------------------------------------------------------
+# Blind story descriptions
+# --------------------------------------------------------------------------
+# These are not analysis. They are the card a person is shown when the title is
+# hidden — "Story A" against "Story B" — so they are part of an INSTRUMENT, and
+# the framing a model reaches for by default is exactly the contamination to
+# avoid. A description that says a character "must learn to let go of the past"
+# has already voted on the film's morals; the person is then choosing between
+# two models' readings rather than between two stories.
+#
+# The examples below are the fifty written by hand for the phase-0 films. They
+# are the specification: whatever rule a sentence here breaks, the rule is wrong.
+DESCRIBE_EXAMPLES = """\
+A young leader must face his past and decide whether to save the home he left behind.
+A feared outsider must decide whether pain from the past will rule her, or whether care can change her.
+A soldier enters battle without a weapon and risks his life to save others while staying true to his beliefs.
+A lonely man, ignored by his city, searches for respect as his pain turns into anger.
+Young people join a proud army and begin to question what they were taught about duty and the enemy.
+Two friends escape their old lives, but each step toward freedom leaves them fewer ways back.
+A businessman inside a cruel system risks his wealth and safety to save the lives of strangers.
+A man must choose between a comfortable lie and a dangerous truth.
+A poor family enters the life of a rich family, building a plan that could easily fall apart.
+A father and son search for a stolen bicycle that their family needs to survive.
+Several people tell different stories about the same crime, making the truth hard to find.
+A public official risks his freedom and life rather than say something he believes is wrong.
+A family dispute traps several people between honesty and duty, with every choice hurting someone.
+"""
+
+DESCRIBE_SYSTEM = f"""\
+You write the one-sentence card a person reads when they are shown a film's
+story WITHOUT its title, and asked which of two stories draws them.
+
+Everything about this job follows from that. The reader does not know which film
+this is, may never have seen it, and is about to make a choice on the strength of
+your sentence alone. Two other people will read your sentence about two other
+films and their choices will be compared with theirs.
+
+THE RULES, IN ORDER OF IMPORTANCE
+
+1. NAME NO NAMES. Not the title, not a character, not a place, not a country, not
+   a franchise, not a book it adapts. "A young leader", "a distant kingdom", "a
+   feared outsider". If a proper noun is the only way you can identify the
+   situation, describe the situation instead.
+
+2. DO NOT SETTLE IT. Name the situation and the choice or pressure it forces —
+   then stop. Do not say how it ends, who was right, or what anyone learns about
+   life. The reader is being asked to want one story over another, not to be told
+   what the film concluded. A card that has already delivered the verdict has
+   taken the reader's answer away from them.
+
+3. ONE SENTENCE, TWELVE TO TWENTY WORDS, present tense. Twenty. Not twenty-five
+   with a good excuse. It is read at 21px on a phone, once, quickly.
+
+   The choice IS the sentence. Setup gets one clause and no more, because every
+   word spent establishing the world is a word not spent on the pressure. Write
+   the card, then try to cut five words: if the choice survives, the five words
+   were furniture.
+
+4. PLAIN WORDS. A twelve-year-old should get through it without stopping. No
+   criticism vocabulary — no "subverts", "narrative", "allegory", "explores
+   themes of", "coming-of-age", "meditation on".
+
+5. NEUTRAL REGISTER. Describe a person's conduct if the plot turns on it ("a
+   selfish man", "a feared outsider") but never rate it — no "heroic", "bravely",
+   "wrongly", "finally accepts". Two films that argue opposite things must be
+   written in the same voice, or the card is arguing instead of the film.
+
+6. PICTURE, DO NOT SUMMARISE. One situation, one tension. Not the plot's whole
+   sequence, not a genre label, not the theme in the abstract.
+
+7. DO NOT GIVE THE FILM AWAY. The card is shown with the title hidden, and a
+   reader who recognises the film is answering about a film they already have
+   opinions about rather than about the story. So drop the one detail that
+   identifies it — the signature object, the famous device, the unmistakable
+   setting — and write its general form instead: "dangerous powers she cannot
+   control" rather than a queen who freezes a kingdom. Everything else stays
+   concrete.
+
+WORKED EXAMPLES — these were written by hand and are the specification:
+
+{DESCRIBE_EXAMPLES}
+Note what they all do: an unnamed person, a concrete situation, a pressure that
+has not yet resolved. Note what none of them do: name anything, end anything.
+
+WHERE THE WORDS COME FROM
+
+Write from the supplied evidence only. You will often recognise the film; the
+sentence must still be one that a reader of this evidence would agree is fair to
+it. Nothing you remember about how it was received, what it is famous for, or
+what it "is really about" belongs in the card.
+"""

@@ -33,6 +33,11 @@ def _client():
         raise typer.Exit(1) from None
 
 
+def _client_for(model: str):
+    from .llm.client import LLMClient
+    return LLMClient(model=model)
+
+
 def _film_ids(limit: Optional[int] = None) -> list[str]:
     ids = [f["film_id"] for f in db.list_films()]
     return ids[:limit] if limit else ids
@@ -147,6 +152,58 @@ def populate_artwork(force: bool = typer.Option(False, help="Refresh URLs that a
     from .sources import wikipedia as wiki_mod
     result = wiki_mod.populate_artwork(force=force)
     console.print(f"[green]artwork ready[/] updated {result['updated']}, missing {result['missing']}, skipped {result['skipped']}")
+
+
+@app.command("resolve-articles")
+def resolve_articles() -> None:
+    """Point every film at the Wikipedia article its IMDb id resolves to."""
+    from .sources import wikipedia as wiki_mod
+    result = wiki_mod.resolve_articles(progress=console.print)
+    console.print(
+        f"[green]articles resolved[/] {result['stored']} stored, "
+        f"{result['unchanged']} already right, {result['no_article']} entity without "
+        f"an English article, {result['no_entity']} id unknown to Wikidata, "
+        f"[red]{result['suspect']} carrying an identifier for another film[/]"
+    )
+
+
+@app.command("backfill-plots")
+def backfill_plots(
+    force: bool = typer.Option(False, help="Refetch films that already have a plot section."),
+    limit: Optional[int] = typer.Option(None, help="Stop after this many films."),
+) -> None:
+    """Fetch Wikipedia plot/themes/reception for corpus films that lack them."""
+    from .sources import wikipedia as wiki_mod
+    result = wiki_mod.backfill_plots(force=force, limit=limit, progress=console.print)
+    console.print(
+        f"[green]plots backfilled[/] {result['fetched']} fetched, "
+        f"{result['no_plot']} article without a plot section, "
+        f"{result['not_found']} no article, {result['failed']} failed, "
+        f"{result['unresolved']} without a resolved article, "
+        f"{result['skipped']} already had one"
+    )
+
+
+@app.command()
+def describe(
+    limit: Optional[int] = typer.Option(None, help="Stop after this many films."),
+    overwrite: bool = typer.Option(False, help="Rewrite generated cards too (never curated ones)."),
+    allow_subtitles: bool = typer.Option(
+        False, help="Also write cards for films with no Wikipedia plot, from the dialogue track."),
+    model: Optional[str] = typer.Option(None, help="Override ATLAS_MODEL for this run."),
+) -> None:
+    """Write the blind story card for films that have no hand-written one."""
+    from .llm import stages
+    client = _client() if model is None else _client_for(model)
+    run_id, stats = stages.describe_films(
+        _film_ids(limit), client, overwrite=overwrite,
+        require_plot=not allow_subtitles, progress=console.print)
+    console.print(
+        f"\n[green]{stats['written']} cards written[/]  "
+        f"{stats['retried']} needed a second attempt, {stats['failed']} rejected, "
+        f"{stats['no_evidence']} had no evidence, {stats['skipped']} already had one"
+    )
+    console.print(f"[dim]run {run_id}  ${client.usage.cost_usd:.2f}[/]")
 
 
 @app.command("audit-verdicts")

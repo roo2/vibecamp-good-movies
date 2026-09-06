@@ -656,6 +656,10 @@ def init_db() -> None:
         con.executescript(SCHEMA)
         _add_column_if_missing(con, "films", "description", "TEXT")
         _add_column_if_missing(con, "films", "artwork_url", "TEXT")
+        # Which hand wrote the blind story card. NULL on the fifty written by
+        # hand before the column existed; `atlas describe` stamps everything it
+        # writes, so a generated card can always be told from a curated one.
+        _add_column_if_missing(con, "films", "description_source", "TEXT")
         _add_column_if_missing(con, "film_sets", "url", "TEXT")
         # Added after the table shipped: rows written before this carry no
         # fingerprint, so `taste_null.load` treats them as stale and the atlas
@@ -834,19 +838,22 @@ FILM_COLUMNS = [
     "film_id", "tmdb_id", "imdb_id", "title", "year", "runtime",
     "origin_country", "original_language", "genres", "keywords",
     "directors", "writers", "billed_cast", "collection", "based_on",
-    "budget", "revenue", "wikipedia_title", "seed_note", "description", "artwork_url", "fetched_at",
+    "budget", "revenue", "wikipedia_title", "seed_note", "description", "artwork_url",
+    "description_source", "fetched_at",
 ]
 
 
 def upsert_film(row: dict[str, Any]) -> None:
     # Metadata refreshes should not erase curated product fields.
-    if row.get("description") is None or row.get("artwork_url") is None:
+    if any(row.get(c) is None for c in ("description", "artwork_url", "description_source")):
         existing = get_film(row["film_id"])
         if existing:
             row = {
                 **row,
                 "description": row.get("description") or existing.get("description"),
                 "artwork_url": row.get("artwork_url") or existing.get("artwork_url"),
+                "description_source": (row.get("description_source")
+                                       or existing.get("description_source")),
             }
     values = [_encode(c, row.get(c)) for c in FILM_COLUMNS]
     with connect() as con:
@@ -860,6 +867,11 @@ def upsert_film(row: dict[str, Any]) -> None:
 def set_film_description(film_id: str, description: str) -> None:
     with connect() as con:
         con.execute("UPDATE films SET description=? WHERE film_id=?", [description, film_id])
+
+
+def set_film_description_source(film_id: str, source: str) -> None:
+    with connect() as con:
+        con.execute("UPDATE films SET description_source=? WHERE film_id=?", [source, film_id])
 
 
 def set_film_artwork_url(film_id: str, artwork_url: str) -> None:

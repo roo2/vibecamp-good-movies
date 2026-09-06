@@ -105,6 +105,7 @@ def sync_seed_films(path: str = "seeds/phase0.yaml") -> dict[str, int]:
                 "year": seed.get("year"),
                 "seed_note": seed.get("note"),
                 "description": description,
+                "description_source": "curated",
                 "fetched_at": db.now(),
             })
             existing[key] = {"film_id": film_id, "description": description}
@@ -114,6 +115,7 @@ def sync_seed_films(path: str = "seeds/phase0.yaml") -> dict[str, int]:
             # Use the stored id rather than deriving it: imported corpora may
             # preserve an older id convention even when title and year match.
             db.set_film_description(existing[key]["film_id"], description)
+            db.set_film_description_source(existing[key]["film_id"], "curated")
             existing[key]["description"] = description
             result["updated"] += 1
         else:

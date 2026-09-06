@@ -10,7 +10,7 @@ from ..config import PROMPT_VERSION
 from ..sources import packet as packet_mod
 from . import prompts
 from .client import LLMClient
-from .schemas import MoralSkeleton, PropositionSet, ScoreSet
+from .schemas import FilmDescription, MoralSkeleton, PropositionSet, ScoreSet
 
 
 def _user_block(p: packet_mod.Packet, extra: str = "") -> str:
@@ -225,3 +225,199 @@ def _load_bank(bank_version: str) -> list[dict[str, Any]]:
             [bank_version],
         ).fetchall()
     return [{"item_id": r[0], "text": r[1]} for r in rows]
+
+
+# --------------------------------------------------------------------------
+# Blind story descriptions
+# --------------------------------------------------------------------------
+
+# The house style, enforced rather than requested. Every one of these was a rule
+# a model broke on the first fifty-film pass.
+#
+# The fifty hand-written cards run 12 to 20 words, which is what the prompt asks
+# for. The check allows 22, because a card rejected for a single word over is a
+# good sentence thrown away and a second call bought — and the retry that
+# follows a length rejection reliably comes back shorter AND flatter, having
+# spent its attention on the word count rather than on the choice.
+MIN_WORDS, MAX_WORDS = 11, 22
+
+_VERDICT_WORDS = {
+    "heroic", "heroically", "bravely", "cowardly", "wrongly", "rightly", "evil",
+    "villainous", "noble", "nobly", "finally", "ultimately", "triumphs",
+    "redeems himself", "redeems herself", "learns that he", "learns that she",
+    "in the end",
+}
+_CRITIC_WORDS = {
+    "subverts", "subversion", "narrative", "allegory", "allegorical", "themes",
+    "meditation", "coming-of-age", "deconstructs", "explores", "examines",
+    "poignant", "iconic", "acclaimed", "masterpiece",
+}
+
+
+def _proper_nouns(sentence: str) -> list[str]:
+    """Capitalised words that are not sentence-initial.
+
+    Crude on purpose. It over-reports (a sentence starting a clause after a
+    dash) and the caller treats a hit as a retry prompt rather than a verdict,
+    so a false positive costs one call and a missed name costs a leaked title.
+    """
+    import re
+    words = re.findall(r"[A-Za-z][\w'-]*", sentence)
+    return [w for i, w in enumerate(words)
+            if i > 0 and w[0].isupper() and w not in {"I", "A"}]
+
+
+def describe_problems(sentence: str, title: str) -> list[str]:
+    """Every house-style rule this sentence breaks, in words the model can act on."""
+    import re
+    problems = []
+    text = sentence.strip()
+    words = text.split()
+    if not text:
+        return ["it is empty"]
+    if len(words) < MIN_WORDS:
+        problems.append(f"it is {len(words)} words; the card needs at least {MIN_WORDS}")
+    if len(words) > MAX_WORDS:
+        problems.append(f"it is {len(words)} words; the card allows at most {MAX_WORDS}")
+    if not text.endswith("."):
+        problems.append("it does not end in a full stop")
+    if re.search(r"[.!?]\s+\S", text):
+        problems.append("it is more than one sentence")
+    names = _proper_nouns(text)
+    if names:
+        problems.append(f"it names {', '.join(sorted(set(names)))} — the card names nothing")
+    # Two words, not one. The first version of this rule flagged any title word
+    # over three letters and rejected three of the fifty hand-written cards —
+    # "bicycle" in Bicycle Thieves, "life" in It's a Wonderful Life, "pride" in
+    # Pride & Prejudice. Those are ordinary nouns doing ordinary work; what
+    # gives a film away is the title's PHRASE coming back, and names are already
+    # caught above.
+    title_words = {w.lower().strip(":,'") for w in title.split() if len(w) > 3}
+    hit = sorted(title_words & {w.lower().strip(".,'") for w in words})
+    if len(hit) > 1:
+        problems.append(f"it reuses the title's own words ({', '.join(hit)})")
+    low = f" {text.lower()} "
+    for banned, label in ((_VERDICT_WORDS, "it rates or resolves the story"),
+                          (_CRITIC_WORDS, "it uses criticism vocabulary")):
+        found = sorted(w for w in banned if f" {w} " in low or f" {w}," in low)
+        if found:
+            problems.append(f"{label} ({', '.join(found)})")
+    return problems
+
+
+def _describe_evidence(film: dict[str, Any], require_plot: bool = True) -> tuple[str, str] | None:
+    """The text one card is written from, and which layer it came from.
+
+    Plot first: it is six hundred editorially neutral words and it is what the
+    card is a compression of. Where Wikipedia has no plot section, the opening
+    and closing of the dialogue track stands in — enough to see the situation
+    set up and the pressure it comes under, without paying for 20,000 words.
+    """
+    from ..sources import subtitles as subs_mod
+
+    evidence = db.get_evidence(film["film_id"])
+    plot = (evidence.get("plot") or "").strip()
+    if plot:
+        return plot[:12000], "plot"
+    if require_plot:
+        return None
+    track = (evidence.get("subtitles") or "").strip()
+    if track:
+        cues = subs_mod.parse_any(track)
+        if cues:
+            opening = subs_mod.cues_to_text(subs_mod.slice_by_position(cues, 0.0, 0.12))
+            middle = subs_mod.cues_to_text(subs_mod.slice_by_position(cues, 0.45, 0.55))
+            return (f"[OPENING 12%]\n{opening[:6000]}\n\n[MIDDLE]\n{middle[:3000]}",
+                    "subtitles")
+    return None
+
+
+def describe_films(
+    film_ids: Iterable[str], client: LLMClient,
+    overwrite: bool = False, require_plot: bool = True, progress=None,
+) -> tuple[str, dict[str, int]]:
+    """Write the blind story card for films that have no hand-written one.
+
+    Curated descriptions are never touched. `films.description_source` records
+    which is which, so a generated card can be found, audited and replaced by a
+    hand-written one later without hunting for it.
+
+    `require_plot` holds the corpus to one evidence tier. A card written from
+    the opening and middle of a dialogue track is a guess at a film's situation;
+    a card written from the plot section is a compression of one. Mixing the two
+    silently would put both in the same deck under the same name, so the weaker
+    tier has to be asked for. Run `atlas backfill-plots` first and there is
+    usually nothing left to ask for.
+    """
+    run_id = db.start_run("describe", client.model, PROMPT_VERSION,
+                          {"overwrite": overwrite, "require_plot": require_plot})
+    stats = {"written": 0, "skipped": 0, "no_evidence": 0, "failed": 0, "retried": 0}
+
+    jobs = []
+    for film_id in film_ids:
+        film = db.get_film(film_id)
+        if film is None:
+            continue
+        has = bool((film.get("description") or "").strip())
+        curated = (film.get("description_source") or "curated") == "curated"
+        if has and (curated or not overwrite):
+            stats["skipped"] += 1
+            continue
+        got = _describe_evidence(film, require_plot=require_plot)
+        if got is None:
+            stats["no_evidence"] += 1
+            if progress:
+                progress(f"[dim]no evidence[/] {film['title']}")
+            continue
+        jobs.append((film, got[0], got[1]))
+
+    def work(job):
+        film, evidence, layer = job
+        year = film.get("year") or "unknown year"
+        user = (
+            f"EVIDENCE ({layer}) for a {year} film. Write its card.\n\n"
+            f"===== EVIDENCE =====\n\n{evidence}\n"
+        )
+        result = client.parse(
+            system=prompts.DESCRIBE_SYSTEM, user=user,
+            output_model=FilmDescription, max_tokens=4000,
+        )
+        problems = describe_problems(result.description, film["title"])
+        if problems:
+            stats["retried"] += 1
+            result = client.parse(
+                system=prompts.DESCRIBE_SYSTEM,
+                user=user + (
+                    f"\nYOUR FIRST ATTEMPT WAS REJECTED.\n\nYou wrote:\n"
+                    f"{result.description}\n\nIt breaks the house style: "
+                    f"{'; '.join(problems)}. Write it again, keeping the same "
+                    f"situation and the same restraint about the ending.\n"
+                ),
+                output_model=FilmDescription, max_tokens=4000,
+            )
+            problems = describe_problems(result.description, film["title"])
+        return film, result.description.strip(), layer, problems
+
+    def save(_job, res) -> None:
+        film, description, layer, problems = res
+        if problems:
+            stats["failed"] += 1
+            if progress:
+                progress(f"[yellow]REJECTED[/] {film['title']}: {'; '.join(problems)}\n"
+                         f"          {description}")
+            return
+        db.set_film_description(film["film_id"], description)
+        db.set_film_description_source(
+            film["film_id"], f"generated:{client.model}:{PROMPT_VERSION}:{layer}")
+        stats["written"] += 1
+        if progress:
+            progress(f"{film['title'][:34]:<36} {description}")
+
+    def failed(job, error) -> None:
+        stats["failed"] += 1
+        if progress:
+            progress(f"[red]FAILED[/] {job[0]['title']}: {type(error).__name__}: {error}")
+
+    client.map(jobs, work, on_result=save, on_error=failed)
+    db.finish_run(run_id, client.usage.as_dict())
+    return run_id, stats

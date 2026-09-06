@@ -161,3 +161,20 @@ VERDICT_TO_INT = {
     "not_addressed": 0,
 }
 MAX_STRENGTH = 2
+
+
+class FilmDescription(BaseModel):
+    """One blind story card.
+
+    `proper_nouns_used` is a self-audit, not decoration. Asking for the list
+    makes the model check its own sentence against the hardest rule to keep, and
+    a non-empty list is a rejection the caller can act on without re-reading the
+    prose. It is never stored.
+    """
+    description: str = Field(
+        description="One sentence, 12-24 words, present tense, no proper nouns, "
+                    "ending not revealed."
+    )
+    proper_nouns_used: list[str] = Field(
+        description="Every proper noun that appears in your sentence. Should be empty."
+    )

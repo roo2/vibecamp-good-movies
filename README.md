@@ -235,6 +235,51 @@ Cite the corpus if any of this is published: Lison & Tiedemann (2016),
 *OpenSubtitles2016: Extracting Large Parallel Corpora from Movie and TV
 Subtitles*, LREC.
 
+## The one-line story cards
+
+Every film carries a `description`: one sentence, twelve to twenty words, no
+proper nouns, present tense, ending withheld. It is the line under the title on
+a swipe card, and it is the whole of what a person sees in the blind story pair,
+where the title and poster are hidden and two films are judged as stories alone.
+
+Fifty were written by hand. They are the specification — `DESCRIPTIONS` in
+`sources/seed.py` — and nothing overwrites them. The rest are condensed from the
+film's Wikipedia plot section by `atlas describe`, and stamped in
+`films.description_source` so a generated card can always be told from a written
+one, found, and replaced.
+
+```bash
+atlas resolve-articles      # IMDb id -> Wikipedia article, via Wikidata
+atlas backfill-plots        # the plot/themes/reception layers for films missing them
+atlas describe              # ~640 words of plot -> one sentence
+```
+
+**Why Wikipedia and not a film API.** TMDB's terms bar using its content in
+connection with an AI or ML application, and IMDb's non-commercial licence is
+narrower still; a one-line overview from either cannot legally be fed to a model
+or stored as a derived corpus. Wikipedia plot sections are CC BY-SA, run about
+640 words, and are written to an editorial policy that keeps interpretation out
+— which is the same reason the `spine` evidence condition reads them. The corpus
+already held the identifiers to reach them.
+
+**Resolution is by identifier, never by title.** `search_article` returns a
+confident answer whether or not it is the right film, and on this corpus it was
+wrong twice: Carlos (2010) resolved to Marmaduke, Jeanne Dielman to Gerry. Both
+films had also been ingested under the wrong IMDb id, so their subtitle tracks
+belong to those films too — a card that did not sound like the film it was filed
+under is what surfaced it. `resolve-articles` checks each stored id against the
+labels, aliases and release years Wikidata holds for it and reports the ones
+that point at another film rather than following them.
+
+**The house style is checked, not requested.** `describe_problems` rejects a
+card that runs long, names anything, uses more than one sentence, rates the
+story or reaches for criticism vocabulary; a rejected card is rewritten once
+with the specific failure quoted back. The rules are held to the fifty
+hand-written cards — a test asserts all fifty pass the check that gates the
+generated ones, so a rule that rejects the specification is a broken rule. Cards
+that survive neither attempt are left unwritten, and re-running `atlas describe`
+picks them up.
+
 ## Looking at the data
 
 The store is a plain SQLite file, so anything that reads SQLite reads it — the

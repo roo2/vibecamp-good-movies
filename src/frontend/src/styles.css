@@ -457,19 +457,18 @@ button { cursor: pointer; }
 .stance-words strong { font-family: Georgia, 'Times New Roman', serif; font-size: 23px; font-weight: 400; line-height: 1.1; letter-spacing: -.01em; }
 .stance-words q { color: #b3aa9e; font-size: 13px; line-height: 1.35; quotes: none; }
 .stance-words small { color: #7e766c; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
-/* As prominent as the three, because for most people it is the right answer:
-   weighting morality does not improve what gets recommended. */
-.stance-none { width: 100%; min-height: 46px; margin-bottom: 14px; padding: 0 14px; border: 1px solid #3a312a; border-radius: 14px; color: #b3aa9e; background: transparent; font-size: 13px; }
-.stance-none.chosen { border-color: #eda36b; color: #eda36b; }
-.stance-weight { display: grid; gap: 10px; padding-top: 16px; border-top: 1px solid #2d251f; }
-.stance-weight span { color: #7e766c; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
-/* Five equal columns, and they stay five: the labels are short enough to fit a
-   narrow phone, and wrapping one onto its own row would read as a sixth option
-   of a different kind. */
-.stance-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.stance-levels button { min-height: 52px; padding: 0 6px; border: 1px solid #3a312a; border-radius: 12px; color: #b3aa9e; background: transparent; font-size: 13px; line-height: 1.25; }
-.stance-levels button.chosen { border-color: #eda36b; color: #171310; background: #eda36b; font-weight: 650; }
-.stance-caption { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; min-height: 34px; }
+/* The fourth tile, and the same size as the other three, because for most
+   people it is the right answer: weighting morality does not improve what gets
+   recommended. It was a thin line under the options, which made the correct
+   answer the smallest thing on the screen. It inherits the tile from
+   `.stance-options button`; only the empty image column is its own. */
+.stance-blank {
+  width: 62px; height: 80px; flex: 0 0 auto; border-radius: 10px;
+  /* A quiet panel, not a dashed outline. Dashes read as an image that failed
+     to load; this reads as the place where a face would be if this answer had
+     one, which is the truth. */
+  background: linear-gradient(155deg, #33302b 0%, #1f1a16 100%);
+}
 .stance-done { width: 100%; min-height: 48px; margin-top: 18px; border: 0; border-radius: 24px; color: #171310; background: #eda36b; font-weight: 700; }
 
 /* The way out of the quiz. Sized and coloured to be findable rather than

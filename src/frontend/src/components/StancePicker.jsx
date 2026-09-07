@@ -1,35 +1,21 @@
 import React from 'react'
 import { loadStance, saveStance } from '../services/stanceService.js'
 
-// How much the chosen position drives the ranking, as three named amounts.
+// How much a chosen position drives the ranking. One value, not a question.
 //
-// A slider was worse in both directions: fiddly to land on a value, and it
-// implied a precision the number does not have — nothing here is calibrated
-// finely enough that 0.55 differs from 0.60 in a way anybody could perceive.
-// Five buttons were the same mistake in smaller print. Three are as many
-// distinctions as the thing being set can carry, and they fit at a size worth
-// tapping.
+// It used to be asked: three named amounts appeared under the tiles and picking
+// one was what moved you on. Nobody needs to answer it. The two ends were never
+// really on offer — a nudge is barely distinguishable from not answering, and
+// the far end is the setting the caption had to warn people about, because a
+// deck ordered mostly by what a film argues is reliably less watchable (on
+// 162,265 outside raters, neighbour films order a liked film above a disliked
+// one 83% of the time against the moral axes' 57%). Half and half was the
+// answer worth having and the one nearly everybody took, so it is the answer.
 //
-// The captions name the real trade rather than the mechanism. Turning this up
-// does NOT make recommendations better — on 162,265 outside raters, neighbour
-// films order a liked film above a disliked one 83% of the time against the
-// moral axes' 57% — so it buys agreement with what you believe at the cost of
-// how well the deck predicts what you will enjoy. Saying "more moral weight"
-// would hide that; saying which of the two you get more of does not.
-// The top is 0.8, not 1. At full weight the ranking drops co-preference
-// entirely, and co-preference is the only part of it that predicts enjoyment —
-// 83% against the axes' 57%. A deck ordered purely by what a film argues is
-// reliably less watchable, so the strongest setting keeps a fifth of the say
-// with enjoyment rather than offering a way to turn the good half off.
-const STEER = [
-  { weight: 0.25, label: 'A nudge', caption: 'Mostly films you are likely to enjoy, tipped your way.' },
-  { weight: 0.5, label: 'Half and half', caption: 'An even mix of what you will enjoy and what you believe.' },
-  { weight: 0.8, label: 'As far as it goes', caption: 'Led by what you believe. Enjoyment keeps a fifth of the say, so the deck stays watchable.' },
-]
-// A stored weight need not be one of the five — earlier versions wrote any value
-// the slider could reach — so the nearest is shown rather than none of them.
-const nearestLevel = (weight) => STEER.reduce((best, level) =>
-  Math.abs(level.weight - weight) < Math.abs(best.weight - weight) ? level : best, STEER[0])
+// The cost is that the far end is no longer reachable from the interface. That
+// is the intended trade: a second question on the cheapest screen in the flow
+// bought a setting whose extremes were either invisible or discouraged.
+const DEFAULT_WEIGHT = 0.5
 
 // Choosing a moral position.
 //
@@ -48,10 +34,16 @@ const nearestLevel = (weight) => STEER.reduce((best, level) =>
 // canon sits at -0.43, so using her film's own position would place people
 // somewhere weaker than the position they picked.
 //
-// A prominent way out, because for most people this is the right answer: on
+// FOUR ANSWERS, ONE TAP. Declining is the fourth tile rather than a thin line
+// under the other three, because for most people it is the right answer: on
 // outside raters, weighting morality does not improve what gets recommended.
-// The control is here to STEER, and steering somewhere you do not want to go is
-// not a feature.
+// An option that is correct for most readers should not be the smallest thing
+// on the screen. The control is here to STEER, and steering somewhere you do
+// not want to go is not a feature.
+//
+// A tap answers and moves on. There is nothing else to ask — the amount is
+// settled, and the tiles say everything they are going to say before they are
+// touched, so there is nothing to be discovered by selecting one and looking.
 export default function StancePicker({
   access, shareToken = null, onChange, onClose, closeLabel = 'Done',
 }) {
@@ -95,9 +87,7 @@ export default function StancePicker({
   if (!data) return <p className="message">Reading the positions…</p>
 
   const chosen = data.stance_id
-  // A first choice arrives with the weight already meaning something. Zero would
-  // store a position and then ignore it, which reads as the control being broken.
-  const weight = data.weight ?? 0
+  const declined = chosen === null && data.answered
 
   return (
     <div className="stance-picker">
@@ -116,8 +106,8 @@ export default function StancePicker({
               className={stance.stance_id === chosen ? 'chosen' : ''}
               aria-pressed={stance.stance_id === chosen}
               disabled={saving}
-              onClick={() => commit(stance.stance_id,
-                stance.stance_id === chosen ? weight : (weight || 0.5))}
+              onClick={() => commit(stance.stance_id, DEFAULT_WEIGHT)
+                .then((ok) => ok && onClose?.())}
             >
               {stance.artwork_url && (
                 // A character image is a figure and must not be cropped; a
@@ -136,38 +126,25 @@ export default function StancePicker({
             </button>
           </li>
         ))}
+        <li>
+          <button
+            type="button"
+            className={`stance-decline ${declined ? 'chosen' : ''}`}
+            aria-pressed={declined}
+            disabled={saving}
+            onClick={() => commit(null, 0).then((ok) => ok && onClose?.())}
+          >
+            {/* Holds the column the three faces occupy, so the fourth tile is
+                the same shape rather than a shorter one pretending to be. */}
+            <span className="stance-blank" aria-hidden="true" />
+            <span className="stance-words">
+              <strong>No position</strong>
+              <q>Just show me good films.</q>
+            </span>
+          </button>
+        </li>
       </ul>
 
-      <button
-        type="button"
-        className={`stance-none ${chosen === null && data.answered ? 'chosen' : ''}`}
-        aria-pressed={chosen === null && data.answered}
-        disabled={saving}
-        onClick={() => commit(null, 0).then((ok) => ok && onClose?.())}
-      >
-        None of these — just show me good films
-      </button>
-
-      {chosen && (
-        <div className="stance-weight">
-          <span>How much should it steer?</span>
-          <div className="stance-levels" role="group" aria-label="How much should it steer?">
-            {STEER.map((level) => (
-              <button
-                key={level.weight}
-                type="button"
-                className={level === nearestLevel(weight) ? 'chosen' : ''}
-                aria-pressed={level === nearestLevel(weight)}
-                disabled={saving}
-                onClick={() => commit(chosen, level.weight).then((ok) => ok && onClose?.())}
-              >
-                {level.label}
-              </button>
-            ))}
-          </div>
-          <p className="stance-caption">{nearestLevel(weight).caption}</p>
-        </div>
-      )}
 
       {error && <p className="message">{error}</p>}
       {onClose && (

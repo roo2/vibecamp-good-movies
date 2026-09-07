@@ -68,9 +68,14 @@ export default function TasteRead({ taste, companions = [] }) {
             .filter((c) => c.row)
           return (
             <li key={row.dim_id} className="taste-axis" style={{ '--hue': HUES[index % HUES.length] }}>
+              {/* The colour marks the pole and nothing else. "between" and
+                  "and" were inside the same emphasis, so a row that named two
+                  ends lit the sentence's joinery along with them and the eye
+                  could not pick out what the dimension was actually called. */}
               <p className="taste-axis-read">
                 {strength === 'right in the middle'
-                  ? <>You sit <b>between {row.pole_low.toLowerCase()} and {row.pole_high.toLowerCase()}</b>.</>
+                  ? <>You sit between <b>{row.pole_low.toLowerCase()}</b> and{' '}
+                      <b>{row.pole_high.toLowerCase()}</b>.</>
                   : <>You {strength === 'leans' ? 'lean toward' : ''}{strength === 'clearly' ? 'clearly prefer' : ''}{strength === 'strongly' ? 'strongly prefer' : ''} <b>{label.toLowerCase()}</b>.</>}
               </p>
               <span className="taste-axis-poles">

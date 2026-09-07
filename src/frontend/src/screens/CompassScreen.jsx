@@ -47,11 +47,14 @@ function CompassScreen({ access, shareToken, onContinue }) {
         </header>
 
         <h1>What you are drawn to.</h1>
-        <p className="compass-lede">Read from the films you know, against 162,000 other raters.</p>
+        {/* One line at 390px, deliberately: the count of films read is already
+            in the header above it, and this sentence wrapping to two was the
+            difference between the five rows fitting a phone and not. */}
+        <p className="compass-lede">From the films you know, against 162,000 raters.</p>
 
         {profile.is_provisional && (
           <p className="compass-provisional">
-            Still provisional — a few more films and these will settle.
+            Provisional — a few more films will settle these.
           </p>
         )}
 

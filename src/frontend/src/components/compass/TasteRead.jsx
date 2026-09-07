@@ -52,7 +52,8 @@ export default function TasteRead({ taste, companions = [] }) {
 
   return (
     <section className="taste-read">
-      <h2 className="taste-read-head">What you are drawn to</h2>
+      {/* No heading. The screen's own h1 is "What you are drawn to." and this
+          said it again, three lines below itself. */}
       <ul className="taste-axes">
         {rows.map((row, index) => {
           const high = row.percentile >= 50
@@ -98,10 +99,12 @@ export default function TasteRead({ taste, companions = [] }) {
           )
         })}
       </ul>
-      <p className="taste-axes-note">
-        Built from which films the same people enjoy, across 162,000 outside raters.
-        {companions.length > 0 && ' Hollow markers are the others in your session.'}
-      </p>
+      {/* Where the rows come from is already said above the fold, in the lede.
+          What is left here is a legend, and only when there is something to
+          read one for. */}
+      {companions.length > 0 && (
+        <p className="taste-axes-note">Hollow markers are the others in your session.</p>
+      )}
     </section>
   )
 }

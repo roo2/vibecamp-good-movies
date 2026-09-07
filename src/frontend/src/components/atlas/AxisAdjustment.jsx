@@ -45,7 +45,7 @@ export default function AxisAdjustment({ data, taste }) {
     <section className="axis-adjust" aria-labelledby="adjust">
       <h2 id="adjust">The axes, before and after taste is taken out</h2>
       <p>
-        Every moral position on this page has had the part predictable from taste removed. How
+        Every values position on this page has had the part predictable from taste removed. How
         much that is differs enormously by axis.
       </p>
 
@@ -122,7 +122,7 @@ export default function AxisAdjustment({ data, taste }) {
           <p>
             {dropped.map((f) => f.name).join(', ')} groups propositions that genuinely go together,
             but a person&apos;s position on it cannot be told from noise. A real grouping with no
-            demonstrated validity is not a moral dimension. It stays visible here — this is an
+            demonstrated validity is not a dimension of values. It stays visible here — this is an
             audit page — but nothing is plotted or recommended from it.
           </p>
         </div>

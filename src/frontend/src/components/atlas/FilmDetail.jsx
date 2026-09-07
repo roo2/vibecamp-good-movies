@@ -58,7 +58,7 @@ function FilmDetail({ film, scorer, variant, bank, taste, onClose }) {
               plot summary and a critical-reception section too, and showing
               them here implied they fed the positions — they did not, and
               deliberately so: a plot summary is an editor's account of which
-              events mattered, and reception is critics' moral opinions
+              events mattered, and reception is critics' opinions of its values
               outright. Scoring on either measures the writer, not the film. */}
           {(state.document.layers || [])
             .filter((layer) => layer.layer === variant

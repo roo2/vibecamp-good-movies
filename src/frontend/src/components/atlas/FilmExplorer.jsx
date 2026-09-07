@@ -89,12 +89,12 @@ export default function FilmExplorer({
             <button type="button" role="tab" aria-selected={space === 'moral'}
                     className={space === 'moral' ? 'on' : undefined}
                     onClick={() => onSpaceChange('moral')}>
-              What films argue
+              Values
             </button>
             <button type="button" role="tab" aria-selected={space === 'taste'}
                     className={space === 'taste' ? 'on' : undefined}
                     onClick={() => onSpaceChange('taste')}>
-              What people choose by
+              Taste
             </button>
             {/* The moral position with the part taste predicts taken out. Its
                 own view rather than the default, because it is a DIFFERENT
@@ -105,7 +105,7 @@ export default function FilmExplorer({
             <button type="button" role="tab" aria-selected={space === 'adjusted'}
                     className={space === 'adjusted' ? 'on' : undefined}
                     onClick={() => onSpaceChange('adjusted')}>
-              What they argue, taste removed
+              Values, taste removed
             </button>
           </div>
         )}
@@ -201,8 +201,8 @@ export default function FilmExplorer({
             onClose={() => onSelect(null)} />
         ) : (
           <p className="atlas-note explorer-empty">
-            Every dot is one film, placed by what its dialogue argues. Films near each other
-            make similar moral claims.
+            Every dot is one film, placed by the values its dialogue argues for. Films near each
+            other hold similar values.
           </p>
         )}
       </div>

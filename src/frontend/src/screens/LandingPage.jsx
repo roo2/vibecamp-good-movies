@@ -33,12 +33,17 @@ function LandingPage({ onStart, joining = false }) {
         <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
         <div className="login-content">
           <p className="screen-label">{joining ? 'A friend invited you' : '90 seconds · no sign-up'}</p>
-          {/* Only the word that carries the promise is lit. Emphasis on a whole
-              phrase is emphasis on nothing — the eye needs one place to land. */}
-          <h1>{joining ? <>Watch something<br /><em>together.</em></> : <>Find something<br /><em>good</em> to watch.</>}</h1>
+          {/* Two words, two colours, and they are the app's whole vocabulary:
+              taste is what kind of film you like, values is what a film argues
+              for. Each takes the first colour of its own family — the same two
+              a film card uses for its taste rows and its values rows — so the
+              distinction is learnt here and never has to be explained again. */}
+          <h1>{joining
+            ? <>Watch something<br /><em>together.</em></>
+            : <>Find a film by your<br /><em className="lit-taste">taste</em> and <em className="lit-values">values</em>.</>}</h1>
           <p className="screen-copy">{joining
             ? 'They are already answering. You will each answer on your own — neither of you sees the other’s answers until the end.'
-            : 'Every film argues for something. Spend ninety seconds on films you already know, and we will read what you believe out of what you liked — then find films that argue for it.'}</p>
+            : 'Ninety seconds on films you already know. We read both out of what you liked, then find what matches.'}</p>
         </div>
 
         {error && <p className="message" role="alert">{error}</p>}
@@ -56,7 +61,7 @@ function LandingPage({ onStart, joining = false }) {
             </button>
             <button className="start-secondary" type="button" disabled={starting} onClick={() => begin('solo')}>
               {starting === 'solo' ? 'Starting…' : 'Just me'}
-              <small>Find out what your taste says about you</small>
+              <small>See your taste and your values</small>
             </button>
           </div>
         )}

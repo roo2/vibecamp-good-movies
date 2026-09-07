@@ -13,6 +13,13 @@ button { cursor: pointer; }
 .screen-copy { margin: 0; color: #b3aa9e; font-size: 15px; line-height: 1.55; }
 .phone-screen h1 { margin: 0; color: #f5efe6; font-family: Georgia, 'Times New Roman', serif; font-size: 44px; font-weight: 400; line-height: 1.04; letter-spacing: -.02em; }
 .phone-screen h1 em { color: #eda36b; font-style: italic; }
+/* The two words the whole app is built on, each in the first colour of its own
+   family — violet is where a film card's values rows start, rose is where its
+   taste rows start (see polePalette). Neither is the brand amber, because a
+   word in the accent colour reads as "emphasised" rather than as "the taste
+   one". They are not italic either: these are names, not stresses. */
+.phone-screen h1 em.lit-taste { color: #d96ba0; font-style: normal; }
+.phone-screen h1 em.lit-values { color: #9b7fd4; font-style: normal; }
 
 .login-content { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px; }
 .login-content h1 { font-size: 42px; }

@@ -33,7 +33,7 @@ export default function MatchPage({ access, shareToken, films: initial, solo = f
     <h1>Your <em>shortlist.</em></h1>
     <p className="match-lede">
       {solo
-        ? `${films.length} ${films.length === 1 ? 'film' : 'films'} that argue for what your taste says you believe. Pick whichever you fancy tonight.`
+        ? `${films.length} ${films.length === 1 ? 'film' : 'films'} matched to your taste and your values. Pick whichever you fancy tonight.`
         : `${films.length} ${films.length === 1 ? 'film' : 'films'} you each said yes to, without seeing what the other one picked. Pick whichever you fancy tonight.`}
     </p>
     {error && <p className="message" role="alert">{error}</p>}

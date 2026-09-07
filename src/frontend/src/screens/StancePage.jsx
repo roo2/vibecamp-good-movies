@@ -28,7 +28,7 @@ export default function StancePage({ access, shareToken, onContinue }) {
   return (
     <main className="app-page">
       <section className="phone-screen stance-screen">
-        <p className="screen-label">Your moral position</p>
+        <p className="screen-label">Your values</p>
         <StancePicker
           access={access}
           shareToken={shareToken}

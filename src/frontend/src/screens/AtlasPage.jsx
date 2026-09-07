@@ -176,13 +176,14 @@ function AtlasPage({ onBack, access }) {
       <header className="atlas-header">
         {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
         <div>
-          <h1>What do these films argue?</h1>
+          <h1>What do these films value?</h1>
           {/* One sentence. Everything the page used to say up here — how many
               films, which models, what a permutation null is — is evidence, and
               evidence belongs below the thing it is evidence for. */}
           <p className="atlas-note">
-            Films answer moral propositions written from their own dialogue, and an axis is a set
-            of propositions films answer together. Nobody chose them, or how many there are.
+            Films answer propositions about values, written from their own dialogue, and an axis
+            is a set of propositions films answer together. Nobody chose them, or how many there
+            are.
           </p>
         </div>
       </header>
@@ -206,9 +207,8 @@ function AtlasPage({ onBack, access }) {
               first so the comparison is not hidden, and the plot still draws
               taste as one of its three spaces. */}
           <p className="atlas-note taste-pointer">
-            These axes are what films <em>argue</em>. What people choose by is a different set of
-            dimensions, and the harder test of these — <a className="link-button"
-            href="#/taste">the taste dimensions →</a>
+            These axes are <em>values</em>. Taste is a different set of dimensions, and the harder
+            test of these — <a className="link-button" href="#/taste">the taste dimensions →</a>
           </p>
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}

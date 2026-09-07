@@ -93,9 +93,9 @@ export default function StancePicker({
     <div className="stance-picker">
       <h2>Where do you stand?</h2>
       <p className="stance-note">
-        This one is about <strong>morality</strong> — what a film argues for, not what
-        kind of film it is. It steers what you are shown. Only you see it, and you can
-        change it whenever.
+        Your <strong>values</strong>, not your taste — what a film argues for, not
+        what kind of film it is. It steers what you are shown. Only you see it, and you
+        can change it whenever.
       </p>
 
       <ul className="stance-options">

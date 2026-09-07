@@ -58,16 +58,16 @@ export default function TastePage({ onBack, onAtlas }) {
         <div>
           <h1>What kind of film do people choose?</h1>
           <p className="atlas-note">
-            A second set of dimensions, found the same way as the moral ones but from a different
-            question: not what a film argues, but which films the same people enjoy. Derived from
-            162,000 outside raters who never saw any of this.
+            A second set of dimensions, found the same way as the values ones but from a
+            different question: not what a film argues for, but which films the same people enjoy.
+            Derived from 162,000 outside raters who never saw any of this.
           </p>
           <p className="atlas-note">
-            It is here as the comparison the moral axes have to survive — and they do not survive
-            it in the way you would expect.{' '}
+            It is here as the comparison the values axes have to survive — and they do not
+            survive it in the way you would expect.{' '}
             {onAtlas && (
               <button type="button" className="link-button" onClick={onAtlas}>
-                The moral axes are on the atlas →
+                The values axes are on the atlas →
               </button>
             )}
           </p>

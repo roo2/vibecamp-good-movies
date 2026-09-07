@@ -47,7 +47,7 @@ export default function TasteDimensions({ taste }) {
         </thead>
         <tbody>
           <tr>
-            <td>The moral axes</td>
+            <td>The values axes</td>
             <td className="n"><Fig from={found} name="pairwise_moral_one" /></td>
             <td className="n"><Fig from={found} name="pairwise_moral_two" /></td>
           </tr>
@@ -70,7 +70,7 @@ export default function TasteDimensions({ taste }) {
       </table>
 
       <p>
-        So the dimensions of taste were found the same way the moral ones were — nobody chose
+        So the dimensions of taste were found the same way the values ones were — nobody chose
         them, only what came back from independent halves of the raters was kept (
         <Fig from={found} name="replication_floor" /> and above), and names came last, from{' '}
         <Fig from={found} name="tag_vocab" /> human-assigned tags rather than from film titles.
@@ -103,7 +103,7 @@ export default function TasteDimensions({ taste }) {
         The largest fact about film taste is how good the film is held to be —{' '}
         <Fig from={found} name="quality_vs_imdb" /> against IMDb rating and{' '}
         <Fig from={found} name="quality_vs_tag" /> against the tag <em>surprisingly clever</em>,
-        from data the namer never saw. None of the fourteen is moral.
+        from data the namer never saw. None of the fourteen is about values.
       </p>
 
       {(unnamed.length > 0 || franchise.length > 0) && (
@@ -120,14 +120,14 @@ export default function TasteDimensions({ taste }) {
         </p>
       )}
 
-      <h3>What that does to the moral axes — and what it does not</h3>
+      <h3>What that does to the values axes — and what it does not</h3>
       <p>
         Taste accounts for <Fig from={found} name="taste_explains_axis1" suffix="%" /> of the
-        leading moral axis and almost none of the second. Morality accounts for essentially none
+        leading values axis and almost none of the second. Values account for essentially none
         of any taste dimension. The two spaces share{' '}
         <Fig from={found} name="shared_variance" suffix="%" /> of their variance —{' '}
         <Fig from={found} name="cca" /> against <Fig from={found} name="cca_null" /> on permuted
-        films — leaving three quarters of the moral signal invisible to preference.
+        films — leaving three quarters of the values signal invisible to preference.
       </p>
       <p>
         Which raises the suspicion that the axes were only ever taste. So every proposition's
@@ -167,7 +167,7 @@ export default function TasteDimensions({ taste }) {
         <Fig from={found} name="names_matched_positions_did_not" />.
       </p>
       <p className="taste-conclusion">
-        <em>Morality cannot rank films because it is orthogonal to taste, and is worth measuring
+        <em>Values cannot rank films because they are orthogonal to taste, and are worth measuring
         for the same reason.</em> The part invisible to preference data still separates lists built
         by Catholics from lists built by Satanists.
       </p>

@@ -76,10 +76,10 @@ function clampView(v) {
 
 // What each space actually plots, in the caption's own words.
 const CAPTION = {
-  moral: 'placed by what their dialogue argues.',
+  moral: 'placed by the values their dialogue argues for.',
   taste: 'placed by which films the same people enjoy.',
-  adjusted: 'placed by what their dialogue argues once the part taste predicts '
-    + 'is removed — so a film sits where it is MORE than its taste explains.',
+  adjusted: 'placed by their values once the part taste predicts is removed '
+    + '— so a film sits where it is MORE than its taste explains.',
 }
 
 export default function FilmPlane({

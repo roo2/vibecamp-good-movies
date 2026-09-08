@@ -160,8 +160,14 @@ def compute(scorer: str, variant: str, bank_version: str,
         return out
 
     # The control has to pass or nothing below can be read.
-    loved = {u: [1.0 if r == "loved_it" else 0.0 for _f, r in raw[u]
-                 if r in user_scores.SEEN_REACTIONS] for u in users}
+    #
+    # Read as liked-or-not rather than as `loved_it`-or-not: with four ratings
+    # instead of three, "liked it" is a person saying yes, and counting it with
+    # the two negatives would make the control measure how emphatic somebody is
+    # rather than which way they went.
+    liked = {u: [1.0 if user_scores.REACTION_WEIGHTS.get(r, 0.0) > 0 else 0.0
+                 for _f, r in raw[u] if r in user_scores.SEEN_REACTIONS] for u in users}
+    loved = liked
     control, _size = _icc([loved[u] for u in users if len(loved[u]) >= 2])
 
     out = []

@@ -10,7 +10,10 @@ from ..store import (Session, direct_session_films, extend_session_deck,
 from ..schemas import MovieRating, MovieRatingRequest
 
 router = APIRouter(prefix="/api/onboarding", tags=["onboarding"])
-VALID_MOVIE_REACTIONS = {"not_for_me", "neutral", "havent_seen", "loved_it"}
+# Four ratings and an absence. `neutral` is gone: every answer stored under it
+# was migrated to `not_for_me` (see `db.init_db`), and accepting it here would
+# let an old client keep writing rows in a vocabulary nothing reads.
+VALID_MOVIE_REACTIONS = {"hated_it", "not_for_me", "liked_it", "loved_it", "havent_seen"}
 
 
 @router.get("/films")

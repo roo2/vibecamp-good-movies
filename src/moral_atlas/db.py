@@ -666,6 +666,13 @@ def init_db() -> None:
         # draws no adjusted chart until `atlas taste-null` runs again.
         _add_column_if_missing(con, "null_test_adjusted", "source_fingerprint", "TEXT")
         _add_column_if_missing(con, "taste_dimensions", "profile_reliability", "REAL")
+        # The deck used to offer a shrug between liking and disliking, and now
+        # offers two degrees each way instead. Every answer given under the
+        # shrug is read as the milder negative — which is the side it already
+        # counted toward — rather than dropped: 126 of them exist in production
+        # and a dropped answer is a person's profile getting quietly thinner.
+        # Runs on every start; after the first it matches nothing.
+        con.execute("UPDATE movie_ratings SET reaction='not_for_me' WHERE reaction='neutral'")
         _add_column_if_missing(con, "latent_factors", "coherence", "REAL")
         _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
         _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")

@@ -115,7 +115,7 @@ def test_films_you_have_not_seen_say_nothing_about_your_morals():
 def test_only_the_latest_reaction_to_a_film_counts():
     """Ratings arrive newest first, and a person who changed their mind meant it."""
     prefs = us.rating_preferences([("vengeance", "not_for_me"), ("vengeance", "loved_it")])
-    assert prefs == [us.Preference("vengeance", -1.0, "rating", "not_for_me")]
+    assert prefs == [us.Preference("vengeance", -0.5, "rating", "not_for_me")]
 
 
 def test_a_blind_pair_pulls_toward_the_chosen_story_and_away_from_the_other():
@@ -581,25 +581,28 @@ def test_a_film_built_around_a_position_counts_for_more_than_one_that_mentions_i
     assert stances["passing"][0][0] == 0.5, "one that takes the position in passing sits halfway"
 
 
-def test_a_shrug_pushes_away_from_a_film_and_not_having_seen_it_does_nothing():
-    """Indifference is evidence; ignorance is not.
+def test_the_scale_is_two_degrees_each_way_and_ignorance_is_not_on_it():
+    """Four answers, symmetric, and an absence that is not one of them.
 
-    A film that argues hard for something and left you unmoved says something
-    about you — mildly, which is why the weight is about a third of disliking
-    it, so one film you loved outvotes one you shrugged at. Not having seen a
-    film says nothing at all, and must produce no pull in either direction.
+    The deck offers hate, dislike, like and love. Each side has a mild answer
+    and an emphatic one, the two sides mirror each other, and the emphatic
+    answer outweighs the mild one — so somebody who loved one film and merely
+    liked another is read as leaning toward the first. Not having seen a film
+    says nothing at all and must produce no pull in either direction.
     """
     from moral_atlas.analysis import user_scores
 
     prefs = {p.film_id: p.weight for p in user_scores.rating_preferences(
-        [("shrugged", "neutral"), ("loved", "loved_it"),
-         ("disliked", "not_for_me"), ("unseen", "havent_seen")])}
+        [("hated", "hated_it"), ("disliked", "not_for_me"),
+         ("liked", "liked_it"), ("loved", "loved_it"),
+         ("unseen", "havent_seen")])}
 
-    assert prefs["shrugged"] < 0, "a shrug counts against the film"
-    assert abs(prefs["shrugged"]) < abs(prefs["disliked"]), (
-        "but far less than actively disliking it")
-    assert prefs["loved"] + prefs["shrugged"] > 0, (
-        "one film you loved should outweigh one you shrugged at")
+    assert prefs["hated"] < prefs["disliked"] < 0, "both negatives push away, one harder"
+    assert 0 < prefs["liked"] < prefs["loved"], "both positives pull toward, one harder"
+    assert prefs["loved"] == -prefs["hated"], "the ends mirror each other"
+    assert prefs["liked"] == -prefs["disliked"], "and so does the middle pair"
+    assert prefs["loved"] + prefs["disliked"] > 0, (
+        "one film you loved outweighs one that was not for you")
     assert "unseen" not in prefs, "not having seen it is not an opinion"
 
 
@@ -623,7 +626,7 @@ def test_not_having_seen_a_film_cannot_erase_an_answer_about_it():
         ("apes", "not_for_me"),      # what the person actually said
         ("parasite", "loved_it"),
     ])
-    assert {p.film_id: p.weight for p in prefs} == {"apes": -1.0, "parasite": 1.0}
+    assert {p.film_id: p.weight for p in prefs} == {"apes": -0.5, "parasite": 1.0}
 
     # A real change of mind still wins, which is what newest-first is for.
     changed = rating_preferences([("apes", "loved_it"), ("apes", "not_for_me")])
@@ -715,3 +718,58 @@ def test_an_axis_the_corpus_is_not_centred_on_still_counts():
     # arbitrary zero that may itself be an extreme position.
     nobody = us.score_preferences([], dims, corpus, baseline=baseline)[0]
     assert nobody.score == 0.0 and nobody.leaning == "balanced"
+
+
+def test_the_shrug_that_was_dropped_is_read_as_the_milder_negative(monkeypatch, tmp_path):
+    """126 answers were given under a button that no longer exists.
+
+    The deck used to offer a shrug between liking and disliking. Dropping those
+    rows would make a person's profile quietly thinner than the answers they
+    actually gave, so they are migrated to the milder negative — which is the
+    side the shrug already counted toward. The migration runs on every start and
+    has to be safe to run again.
+    """
+    from dataclasses import replace
+
+    from moral_atlas import db
+    from moral_atlas.config import settings
+
+    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
+                            db_path=tmp_path / "atlas.sqlite")
+    monkeypatch.setattr(db, "settings", lambda: test_settings)
+    db.init_db()
+    with db.connect() as con:
+        con.execute("INSERT INTO users (user_id, name, created_at) VALUES ('u','A',?)", [db.now()])
+        con.execute("INSERT INTO films (film_id, title) VALUES ('f','A Film')")
+        con.executemany(
+            "INSERT INTO movie_ratings (rating_id, user_id, film_id, reaction, submitted_at) "
+            "VALUES (?,?,?,?,?)",
+            [("r1", "u", "f", "neutral", db.now()), ("r2", "u", "f", "loved_it", db.now())])
+
+    db.init_db()
+
+    with db.connect(read_only=True) as con:
+        rows = {r["rating_id"]: r["reaction"] for r in
+                con.execute("SELECT rating_id, reaction FROM movie_ratings")}
+    assert rows == {"r1": "not_for_me", "r2": "loved_it"}, (
+        "the shrug becomes a mild negative and nothing else is touched")
+
+    db.init_db()
+    with db.connect(read_only=True) as con:
+        again = {r["reaction"] for r in con.execute("SELECT reaction FROM movie_ratings")}
+    assert again == {"not_for_me", "loved_it"}, "and running it twice changes nothing"
+
+
+def test_every_reaction_the_deck_can_send_has_a_weight():
+    """The route's vocabulary and the scorer's have to be the same one.
+
+    They were not: `neutral` was accepted by the API for as long as it had a
+    weight, and an id in one list and not the other is a rating that saves and
+    then counts for nothing.
+    """
+    from moral_atlas.analysis import user_scores
+    from moral_atlas.web.routes.onboarding import VALID_MOVIE_REACTIONS
+
+    assert VALID_MOVIE_REACTIONS == set(user_scores.REACTION_WEIGHTS)
+    assert user_scores.SEEN_REACTIONS == {
+        r for r, w in user_scores.REACTION_WEIGHTS.items() if w != 0.0}

@@ -17,7 +17,7 @@ item-level verdicts of the films they were drawn to:
 
 Three things are doing work in that fraction.
 
-*Signs.* Loving a film pulls you toward what it asserts; `not_for_me` pushes you
+*Signs.* Loving a film pulls you toward what it asserts; disliking it pushes you
 away from it, which is a real signal and not a missing one. `havent_seen` is
 dropped: it says something about exposure, nothing about morals. A blind pair is
 a forced contrast, so the chosen story pulls and the rejected one pushes, each
@@ -92,19 +92,30 @@ MAIN_PASS = "main"
 
 # Reaction -> pull on the film's asserted positions.
 #
-# `neutral` pushes AWAY, gently. A film that argues hard for something and left
-# you unmoved is evidence about you: indifference to a conviction is a mild form
-# of not sharing it. Not the same evidence as disliking it, which is why the
-# weight is roughly a third — a shrug should be able to be outvoted by a single
-# film you loved.
+# Four strengths, two each way, symmetric about zero. The deck used to offer
+# three — loved it, not for me, and a shrug — which made the only way to say
+# "I liked this" the same button as "this is one of my favourites", and gave a
+# shrug a weight it had to earn by being interpreted. Two degrees on each side
+# say the same thing more honestly and let the middle disappear.
+#
+# `not_for_me` keeps its name because 330 answers were given under it, and it
+# is the milder of the two negatives — which is what those answers said. What
+# it does NOT keep is its old weight of -1.0: it was the strongest thing a
+# person could say against a film and is now the second strongest, so the same
+# stored answer now pulls half as hard. That reinterpretation is deliberate and
+# it is the price of adding a stronger option beneath it.
 #
 # `havent_seen` is the one reaction that stays at zero, and the distinction
 # matters: one is an answer, the other is the absence of one. Only the second
 # means we should deal more films.
-REACTION_WEIGHTS = {"loved_it": 1.0, "not_for_me": -1.0, "neutral": -0.35, "havent_seen": 0.0}
+REACTION_WEIGHTS = {
+    "loved_it": 1.0, "liked_it": 0.5,
+    "not_for_me": -0.5, "hated_it": -1.0,
+    "havent_seen": 0.0,
+}
 
 # Reactions that mean the person actually watched the film.
-SEEN_REACTIONS = {"loved_it", "not_for_me", "neutral"}
+SEEN_REACTIONS = {"loved_it", "liked_it", "not_for_me", "hated_it"}
 
 # A pair is one contrast, so its two halves together weigh the same as one rating.
 PAIR_WEIGHT = 0.5

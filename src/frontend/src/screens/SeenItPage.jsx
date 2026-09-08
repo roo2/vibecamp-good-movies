@@ -3,17 +3,29 @@ import FlowProgress from '../components/FlowProgress.jsx'
 import useSwipeDecision from '../hooks/useSwipeDecision.js'
 import { loadMoreOnboardingFilms, loadOnboardingFilms } from '../services/movieService.js'
 
-// Four answers, because three forced a lie. Somebody who watched a film and
-// felt nothing had to either overstate a reaction or claim they had not seen it,
-// and those are different facts: one is a real answer worth nothing, the other
-// is an absence of one.
-// A scale, read left to right, with the middle where it belongs: disliked,
-// indifferent, loved. Not having seen it is not a point on that scale, so it
-// sits underneath with room of its own.
+// Two degrees each way, and no middle.
+//
+// The deck used to offer disliked / shrugged / loved, which made one button do
+// two jobs — "I liked this" and "this is one of my favourites" are not the same
+// answer — and put a shrug where the scale's midpoint should be. A shrug is a
+// weak answer dressed as a neutral one, and it was the button people reached
+// for when they meant "it was fine, I suppose", which is a mild yes as often as
+// a mild no.
+//
+// So: hate, dislike, like, love. The two ends are bigger, because they are the
+// answers that carry the most about somebody and should be the easiest to hit;
+// the middle two are the same shape, smaller. Not having seen a film is not a
+// point on this scale at all, so it stays underneath with room of its own.
+//
+// The emoji IS the label. A face is read faster than a word at arm's length,
+// and these four faces are unambiguous in a way "It was fine" never was — but
+// every button still carries its words for a screen reader, and the word
+// appears under the emoji while an answer is saving.
 const reactions = [
-  { id: 'not_for_me', label: 'Not for me', icon: '×' },
-  { id: 'neutral', label: 'It was fine', icon: '≈' },
-  { id: 'loved_it', label: 'Loved it', icon: '♥' },
+  { id: 'hated_it', label: 'Hated it', emoji: '😡', size: 'strong' },
+  { id: 'not_for_me', label: 'Not for me', emoji: '🙁', size: 'mild' },
+  { id: 'liked_it', label: 'Liked it', emoji: '🙂', size: 'mild' },
+  { id: 'loved_it', label: 'Loved it', emoji: '😍', size: 'strong' },
 ]
 const SKIP = { id: 'havent_seen', label: "Haven't seen it", icon: '−' }
 
@@ -81,10 +93,16 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete, onAbandon }) {
   }
 
   const film = films[filmIndex]
+  // A swipe records the MILD negative and the emphatic positive, which is
+  // deliberate rather than an oversight: the gesture is the fast path, and the
+  // cost of a mis-swipe should be small on the side that pushes a profile away
+  // from a film. Saying you hated something is a claim worth a deliberate tap.
+  const swipeLeft = reactions[1]
+  const swipeRight = reactions[3]
   const swipe = useSwipeDecision({
     disabled: Boolean(selected),
-    onLeft: () => choose('not_for_me'),
-    onRight: () => choose('loved_it'),
+    onLeft: () => choose(swipeLeft.id),
+    onRight: () => choose(swipeRight.id),
   })
 
   if (error) return <main className="app-page"><p className="message">{error}</p></main>
@@ -97,14 +115,24 @@ function SeenItPage({ access, shareToken, onSubmit, onComplete, onAbandon }) {
         <div className="seen-it-heading"><p className="screen-label">Your half · {films.length} films</p><h1>Seen it? Did you like it?</h1></div>
         <div className="seen-it-content">
           <article className="movie-card swipe-card" {...swipe.handlers} style={{ ...(film.artwork_url ? { backgroundImage: `linear-gradient(0deg, rgba(23,19,16,.82), rgba(23,19,16,.08)), url(${film.artwork_url})` } : {}), ...swipe.style }}>
-            <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>× Not for me</span>
-            <span className="swipe-cue swipe-cue-right" aria-hidden="true" style={{ opacity: swipe.direction === 'right' ? swipe.strength : 0 }}>♥ Loved it</span>
+            {/* The cue shows the face the swipe will actually press, so the
+                gesture and the buttons under it cannot say different things. */}
+            <span className="swipe-cue swipe-cue-left" aria-hidden="true" style={{ opacity: swipe.direction === 'left' ? swipe.strength : 0 }}>{swipeLeft.emoji} {swipeLeft.label}</span>
+            <span className="swipe-cue swipe-cue-right" aria-hidden="true" style={{ opacity: swipe.direction === 'right' ? swipe.strength : 0 }}>{swipeRight.emoji} {swipeRight.label}</span>
             <div><h2>{film.title}</h2><p>{film.year || '—'} · {film.genre} · {film.runtime_min ? formatRuntime(film.runtime_min) : 'Runtime unavailable'}</p></div>
           </article>
           <div className="movie-reactions" aria-label={`Your reaction to ${film.title}`}>
             {reactions.map((reaction) => (
-              <button className={`movie-reaction ${reaction.id === 'loved_it' ? 'loved' : ''} ${reaction.id === 'neutral' ? 'neutral' : ''} ${selected === reaction.id ? 'selected' : ''}`} key={reaction.id} type="button" onClick={() => choose(reaction.id)} disabled={Boolean(selected) || swipe.committed}>
-                <strong aria-hidden="true">{reaction.icon}</strong><span>{selected === reaction.id ? 'Saving…' : reaction.label}</span>
+              <button
+                className={`movie-reaction ${reaction.size} ${selected === reaction.id ? 'selected' : ''}`}
+                key={reaction.id}
+                type="button"
+                aria-label={reaction.label}
+                title={reaction.label}
+                onClick={() => choose(reaction.id)}
+                disabled={Boolean(selected) || swipe.committed}>
+                <strong aria-hidden="true">{reaction.emoji}</strong>
+                {selected === reaction.id && <span>Saving…</span>}
               </button>
             ))}
             <button className={`movie-reaction unseen ${selected === SKIP.id ? 'selected' : ''}`} type="button" onClick={() => choose(SKIP.id)} disabled={Boolean(selected) || swipe.committed}>

@@ -24,7 +24,7 @@ which is exactly the recommendation two people should never be handed; the
 question this product asks is what everyone can live with, so the deck is sorted
 by the least-happy viewer. Where that ties, the mean breaks it.
 
-Films anyone has already reported seeing — `loved_it` or `not_for_me` — are out.
+Films anyone has already reported seeing — any of the four ratings — are out.
 `havent_seen` stays in: not having seen something is a qualification for tonight,
 not a disqualification.
 """
@@ -136,7 +136,7 @@ def _sampled_order(ranked: list[dict[str, Any]], variation: float) -> list[dict[
 
 # Anything the person watched, however they felt about it — recommending a
 # film back to somebody who has already seen it is the one obvious failure.
-SEEN_REACTIONS = {"loved_it", "not_for_me", "neutral"}
+SEEN_REACTIONS = {"loved_it", "liked_it", "not_for_me", "hated_it"}
 
 
 def _factor_bank() -> str:

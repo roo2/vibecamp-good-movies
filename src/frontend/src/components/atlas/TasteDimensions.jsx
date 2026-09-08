@@ -1,27 +1,16 @@
 import React from 'react'
+import Fig from './Fig.jsx'
 
-// The dimensions of taste, and what they did to the moral ones.
+// The dimensions of taste: what they are, how they were found, and which of
+// them can be named.
 //
-// Presented before the moral axes because the honest order of the argument runs
-// through it: the axes look weak the moment they are asked to predict what
-// anybody enjoys, and a reader shown only the axes never finds that out.
-//
-// Every figure quoted here comes from the `findings` table with its provenance,
-// rather than being typed in. A number that changes should change the page.
+// Taste ALONE. Everything holding it against the values axes — what predicts a
+// person's preference, how much of an axis taste explains, what survives having
+// it subtracted — moved to `TasteVersusValues`, behind the view that exists for
+// that question. This section had been about two subjects, and the second one
+// arrived halfway down under a heading that did not mention it.
 
 function pct(x) { return `${(x * 100).toFixed(1)}%` }
-
-// `display` when the raw number reads badly, the value otherwise. A missing
-// finding renders as an em dash rather than "undefined" or a stale literal.
-function Fig({ from, name, suffix = '' }) {
-  const f = from?.[name]
-  if (!f) return <b>—</b>
-  return (
-    <b title={[f.note, f.source].filter(Boolean).join(' · ')}>
-      {f.display ?? f.value}{suffix}
-    </b>
-  )
-}
 
 export default function TasteDimensions({ taste }) {
   const dims = taste?.dimensions || []
@@ -36,41 +25,7 @@ export default function TasteDimensions({ taste }) {
       <h2 id="taste">What people actually choose by</h2>
 
       <p>
-        The axes below are what films <em>argue</em>. They are not what people choose by. Shown a
-        film someone rated highly and one they rated poorly, across{' '}
-        <Fig from={found} name="ml_raters" /> outside raters:
-      </p>
-
-      <table className="figures">
-        <thead>
-          <tr><th>Ranked by</th><th>One person</th><th>Two people</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>The values axes</td>
-            <td className="n"><Fig from={found} name="pairwise_moral_one" /></td>
-            <td className="n"><Fig from={found} name="pairwise_moral_two" /></td>
-          </tr>
-          <tr>
-            <td>Ideological list membership</td>
-            <td className="n"><Fig from={found} name="pairwise_sets_one" /></td>
-            <td className="n"><Fig from={found} name="pairwise_sets_two" /></td>
-          </tr>
-          <tr className="lead">
-            <td>Which films are liked by the same people</td>
-            <td className="n"><Fig from={found} name="pairwise_cf_one" /></td>
-            <td className="n"><Fig from={found} name="pairwise_cf_two" /></td>
-          </tr>
-          <tr>
-            <td><em>chance</em></td>
-            <td className="n"><Fig from={found} name="pairwise_chance" /></td>
-            <td className="n"><Fig from={found} name="pairwise_chance" /></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <p>
-        So the dimensions of taste were found the same way the values ones were — nobody chose
+        The dimensions of taste were found the same way the values axes were — nobody chose
         them, only what came back from independent halves of the raters was kept (
         <Fig from={found} name="replication_floor" /> and above), and names came last, from{' '}
         <Fig from={found} name="tag_vocab" /> human-assigned tags rather than from film titles.
@@ -120,57 +75,6 @@ export default function TasteDimensions({ taste }) {
         </p>
       )}
 
-      <h3>What that does to the values axes — and what it does not</h3>
-      <p>
-        Taste accounts for <Fig from={found} name="taste_explains_axis1" suffix="%" /> of the
-        leading values axis and almost none of the second. Values account for essentially none
-        of any taste dimension. The two spaces share{' '}
-        <Fig from={found} name="shared_variance" suffix="%" /> of their variance —{' '}
-        <Fig from={found} name="cca" /> against <Fig from={found} name="cca_null" /> on permuted
-        films — leaving three quarters of the values signal invisible to preference.
-      </p>
-      <p>
-        Which raises the suspicion that the axes were only ever taste. So every proposition's
-        verdicts were replaced with what remains after its taste position is subtracted, and the
-        discovery was run again from those residuals, free to come out differently. The
-        propositions did regroup. The axes reassembled anyway.
-      </p>
-
-      <table className="figures">
-        <thead>
-          <tr>
-            <th>Rebuilt without taste, against the original</th>
-            <th>Deterministic pessimism</th><th>Divine order</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="lead">
-            <td>Redemptive hope <i aria-hidden="true">↔</i> Deterministic retribution</td>
-            <td className="n"><Fig from={found} name="rebuild_axis1" /></td><td className="n">0.11</td>
-          </tr>
-          <tr className="lead">
-            <td>Inherited order <i aria-hidden="true">↔</i> Self-determination</td>
-            <td className="n">0.15</td><td className="n"><Fig from={found} name="rebuild_axis2" /></td>
-          </tr>
-          <tr>
-            <td><em>shuffled films</em></td>
-            <td className="n"><Fig from={found} name="rebuild_null" /></td>
-            <td className="n"><Fig from={found} name="rebuild_null" /></td>
-          </tr>
-        </tbody>
-      </table>
-
-      <p>
-        The names came back independently and so did the placements — which is the distinction
-        that matters. This project has already believed two readings had replicated because their
-        <em> names</em> matched, when their positions agreed no better than{' '}
-        <Fig from={found} name="names_matched_positions_did_not" />.
-      </p>
-      <p className="taste-conclusion">
-        <em>Values cannot rank films because they are orthogonal to taste, and are worth measuring
-        for the same reason.</em> The part invisible to preference data still separates lists built
-        by Catholics from lists built by Satanists.
-      </p>
     </section>
   )
 }

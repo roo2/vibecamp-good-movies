@@ -6,6 +6,7 @@ import { axisPair, filmPositions, loadAtlas, plotAxes, setCentroid } from '../se
 import { loadMoralProfile } from '../services/profileService.js'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import TastePoles from '../components/atlas/TastePoles.jsx'
+import TasteVersusValues from '../components/atlas/TasteVersusValues.jsx'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
@@ -322,19 +323,25 @@ function AtlasPage({ onBack, access }) {
               )}
             </>
           )}
-          {space === 'taste'
-            ? taste && (
-              <>
-                <TasteDimensions taste={taste} />
-                <TastePoles taste={taste} />
-              </>
-            )
-            : (
-              <>
-                <AxisAdjustment data={factors} taste={taste} />
-                <Factors data={factors} />
-              </>
-            )}
+          {/* Three views, three readings underneath them. Taste is about taste;
+              the comparison between the two spaces belongs to the view that
+              exists for it, which is the one showing values with the part
+              taste predicts taken out; and plain values is the axes themselves,
+              with nothing about preference in the way. */}
+          {space === 'taste' && taste && (
+            <>
+              <TasteDimensions taste={taste} />
+              <TastePoles taste={taste} />
+            </>
+          )}
+          {space === 'adjusted' && (
+            <>
+              <TasteVersusValues taste={taste} />
+              <AxisAdjustment data={factors} taste={taste} />
+              <Factors data={factors} />
+            </>
+          )}
+          {space === 'moral' && <Factors data={factors} />}
         </>
       )}
 

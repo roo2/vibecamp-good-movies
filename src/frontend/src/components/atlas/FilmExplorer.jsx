@@ -19,6 +19,38 @@ import { axisPair, planePoints, tasteAxes } from '../../services/atlasService.js
 // match in place, so a reader sees WHERE the matches are before choosing one —
 // which a dropdown of titles cannot show.
 
+// What the reader is looking at, in the words of whichever space is showing.
+//
+// This replaced a paragraph that sat above the plot explaining that these axes
+// are values and that taste is elsewhere, with a link to go there. Two things
+// were wrong with it: it explained the page a reader had not looked at yet, and
+// it treated taste as a different page rather than as the switch sitting right
+// there. The switcher now changes the explanation with the plot, so whichever
+// space is showing is the one being described.
+const EXPLAINS = {
+  moral: (
+    <>
+      <b>Every dot is one film</b>, placed by the <em className="lit-values">values</em> its
+      dialogue argues for. Films near each other argue for similar things. Nobody chose the
+      axes — they are the questions films answer together.
+    </>
+  ),
+  taste: (
+    <>
+      <b>Every dot is one film</b>, placed by <em className="lit-taste">taste</em>: which films
+      the same people enjoy. Near each other means one audience, whatever those films argue
+      for. Read from 162,000 outside raters who never saw any of this.
+    </>
+  ),
+  adjusted: (
+    <>
+      <b>Every dot is one film</b>, placed by its <em className="lit-values">values</em> with
+      the part <em className="lit-taste">taste</em> predicts taken out — so a film sits where it
+      argues for something MORE than its kind of film explains.
+    </>
+  ),
+}
+
 export default function FilmExplorer({
   films, factors, taste, reading, selectedId, onSelect,
   sets, viewer, space = 'moral', onSpaceChange, pair = null, onPairChange, axes = [],
@@ -200,10 +232,7 @@ export default function FilmExplorer({
             bank={reading?.bank_version} taste={taste}
             onClose={() => onSelect(null)} />
         ) : (
-          <p className="atlas-note explorer-empty">
-            Every dot is one film, placed by the values its dialogue argues for. Films near each
-            other hold similar values.
-          </p>
+          <div className="atlas-note explorer-empty">{EXPLAINS[space] || EXPLAINS.moral}</div>
         )}
       </div>
     </section>

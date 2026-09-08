@@ -32,6 +32,9 @@ function AtlasPage({ onBack, access }) {
   const [filmSets, setFilmSets] = React.useState([])
   const [activeSets, setActiveSets] = React.useState(() => new Set())
   const [allSets, setAllSets] = React.useState(false)
+  // Which set's source card is pinned open. Hover still opens one where there
+  // is a pointer; this is how it opens on a phone, where there is not.
+  const [openTip, setOpenTip] = React.useState(null)
   const [factorsError, setFactorsError] = React.useState(null)
   const [corpus, setCorpus] = React.useState(null)
   const [selectedId, setSelectedId] = React.useState(filmParam)
@@ -62,8 +65,13 @@ function AtlasPage({ onBack, access }) {
   // `christian-answers` was missing from this list entirely and so fell to the
   // end with the era sets, which put the single best-separating ideological list
   // in the corpus below Marvel.
-  const SET_ORDER = ['christian-answers', 'catholic', 'christian-edifying',
-                     'conservative', 'red-pilled', 'church-of-satan',
+  //
+  // Two lists were dropped from the corpus rather than reordered here: an
+  // earnest Christian recommendation list and National Review's conservative
+  // one. Both sat between the sets that say something and the era controls
+  // that exist to be compared against, and neither did the first job.
+  const SET_ORDER = ['christian-answers', 'catholic',
+                     'red-pilled', 'church-of-satan',
                      'progressive-canon', 'feminist', 'glaad-lgbtq',
                      'naacp-antiracist', 'socialist',
                      'old-hollywood', 'new-hollywood', 'blockbuster-hollywood',
@@ -198,18 +206,6 @@ function AtlasPage({ onBack, access }) {
         </section>
       ) : (
         <>
-          {/* Taste has its own page now. It used to open this one, on the
-              argument that the axes look weak the moment they are asked to
-              predict what anybody enjoys and a reader shown only the axes never
-              finds that out. That is still true, and half a screen of
-              preference data before the first axis still made this page about
-              two subjects while leading with the weaker one. The link goes
-              first so the comparison is not hidden, and the plot still draws
-              taste as one of its three spaces. */}
-          <p className="atlas-note taste-pointer">
-            These axes are <em>values</em>. Taste is a different set of dimensions, and the harder
-            test of these — <a className="link-button" href="#/taste">the taste dimensions →</a>
-          </p>
           {factorsError && <p className="atlas-note">{factorsError}</p>}
           {!factors && !factorsError && <p className="message">Reading {selected?.scorer}…</p>}
           {/* Before the per-axis breakdown, because the shape of the whole
@@ -233,7 +229,8 @@ function AtlasPage({ onBack, access }) {
                     .filter((s) => allSets || SHORTLIST.includes(s.set_id)
                       || activeSets.has(s.set_id))
                     .map((s) => (
-                    <span key={s.set_id} className="set-chip-wrap">
+                    <span key={s.set_id}
+                          className={`set-chip-wrap${openTip === s.set_id ? ' open' : ''}`}>
                       <button
                         type="button"
                         className={`set-chip${activeSets.has(s.set_id) ? ' on' : ''}`}
@@ -250,6 +247,14 @@ function AtlasPage({ onBack, access }) {
                         })}>
                         <i style={{ background: s.colour }} />{s.name}
                         <small>{s.n}</small>
+                      </button>
+                      <button
+                        type="button"
+                        className="set-info"
+                        aria-label={`Where ${s.name} came from`}
+                        aria-expanded={openTip === s.set_id}
+                        onClick={() => setOpenTip((open) => (open === s.set_id ? null : s.set_id))}>
+                        i
                       </button>
                       <span className="set-tip" id={`set-tip-${s.set_id}`} role="tooltip">
                         <b style={{ color: s.colour }}>{s.name}</b>

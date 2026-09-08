@@ -819,7 +819,7 @@
 .cloud-note { margin: 8px 0 0; color: #7e766c; font-size: 11.5px; line-height: 1.5; max-inline-size: 62ch; }
 .cloud-note em { color: #b3aa9e; font-style: normal; }
 
-.set-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
+.set-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0 10px; }
 .set-picker-label {
   color: #7e766c; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
   margin-inline-end: 6px;
@@ -843,7 +843,7 @@
    Hidden until the chip is hovered or focused — `focus-within` so it opens on
    keyboard too, and the chip keeps `title` so the source is reachable with no
    pointer and no focus at all. */
-.set-chip-wrap { position: relative; display: inline-flex; }
+.set-chip-wrap { position: relative; display: inline-flex; align-items: center; gap: 4px; }
 .set-tip {
   position: absolute; inset-block-start: calc(100% + 7px); inset-inline-start: 0;
   z-index: 30; inline-size: max-content; max-inline-size: min(38ch, 80vw);
@@ -853,8 +853,26 @@
   color: #b3aa9e; font-size: 11.5px; line-height: 1.5; text-align: start;
   pointer-events: none;
 }
-.set-chip-wrap:hover .set-tip,
-.set-chip-wrap:focus-within .set-tip { display: flex; }
+.set-chip-wrap:focus-within .set-tip,
+.set-chip-wrap.open .set-tip { display: flex; }
+@media (hover: hover) {
+  .set-chip-wrap:hover .set-tip { display: flex; }
+}
+/* The card is a tap target on a phone, so it cannot be pointer-transparent
+   there — a link to the source inside it has to be reachable. */
+.set-chip-wrap.open .set-tip { pointer-events: auto; }
+/* Opens the source card where there is no hover to open it with. Its own
+   control rather than a long-press or a second tap on the chip, because the
+   chip's tap already means "highlight these films" and one gesture cannot
+   mean two things. */
+.set-info {
+  display: inline-flex; align-items: center; justify-content: center;
+  inline-size: 18px; block-size: 18px; margin-inline-start: -4px;
+  border: 1px solid #3a312a; border-radius: 50%;
+  background: transparent; color: #7e766c;
+  font-size: 10px; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.set-info:hover, .set-chip-wrap.open .set-info { border-color: #eda36b; color: #eda36b; }
 .set-tip b { font-size: 12px; font-weight: 600; }
 .set-tip-desc { color: #968c7f; }
 .set-tip-src { color: #6a6158; }
@@ -865,11 +883,10 @@
 .set-picker .set-chip-wrap:nth-last-child(-n+3) .set-tip {
   inset-inline-start: auto; inset-inline-end: 0;
 }
-@media (hover: none) {
-  /* No hover to open it with, and a card that appeared on tap would fight the
-     tap that toggles the set. The chip's own title is the fallback. */
-  .set-tip { display: none !important; }
-}
+/* No `@media (hover: none)` suppression any more: the card used to be hidden
+   outright on a phone, on the reasoning that a tap could not open it without
+   fighting the tap that toggles the set. That left every source unreadable on
+   the device most people are holding. The ⓘ control is the second gesture. */
 
 /* --- the film plane, and the taste section ------------------------------- */
 
@@ -953,14 +970,26 @@
   text-align: center; margin-top: 6px; min-height: 1.4em;
 }
 
-.plane-axis-pick { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
-.plane-axis-pick button {
-  font-family: var(--sans, system-ui); font-size: 13px; padding: 5px 11px;
-  border-radius: 999px; border: 1px solid var(--rule, #d9dce4);
-  background: transparent; color: var(--muted, #5b6373); cursor: pointer;
+/* The one control that changes what the whole plot MEANS, so it is built as a
+   switch rather than as three outlined pills of the same weight — a reader had
+   to notice that one of the three was slightly brighter to know which was on.
+   The track makes it one object with a position; the raised segment says where
+   the position is. It also changes the explanation beside the plot. */
+.plane-axis-pick {
+  display: inline-flex; gap: 4px; flex-wrap: wrap; margin: 0 0 14px;
+  padding: 4px; border: 1px solid #2d251f; border-radius: 999px;
+  background: #14100e;
 }
+.plane-axis-pick button {
+  font-family: var(--sans, system-ui); font-size: 13px; padding: 7px 15px;
+  border-radius: 999px; border: 0;
+  background: transparent; color: #8a8074; cursor: pointer;
+}
+.plane-axis-pick button:hover { color: #f5efe6; }
+.plane-axis-pick button:focus-visible { outline: 2px solid #eda36b; outline-offset: 1px; }
 .plane-axis-pick button.on {
-  border-color: currentColor; color: var(--ink, #191d27); font-weight: 600;
+  background: #2d251f; color: #f5efe6; font-weight: 650;
+  box-shadow: inset 0 0 0 1px #3a312a;
 }
 
 .taste-how ol { padding-left: 1.1em; }
@@ -989,8 +1018,14 @@
 
 .film-explorer {
   display: grid; grid-template-columns: minmax(300px, 760px) minmax(0, 1fr);
-  gap: 30px; align-items: start; margin: 26px 0 10px;
+  gap: 30px; align-items: start; margin: 14px 0 10px;
 }
+/* `.atlas-page section` gives every section 56px of air, which is right when a
+   section is a new subject and wrong here: the set row and the plot are one
+   thing, and the row is a control FOR the plot. Stated as the relationship
+   rather than as a lower number on the explorer, so an explorer that opens
+   without a set row still gets the section spacing. */
+.set-picker + .film-explorer { margin-top: 14px; }
 .explorer-plot { position: sticky; top: 18px; }
 .explorer-plot .atlas-search { width: 100%; margin: 0 0 8px; }
 .explorer-matches { margin: 0 0 10px; }

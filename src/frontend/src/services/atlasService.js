@@ -170,14 +170,20 @@ export function plotAxes(factors) {
 // they answer different questions: `plotAxes` says which axes the product
 // reads, this says which pair the reader is currently looking at.
 //
-// The default is the first two, which is the support order — margin over the
-// null first. Deliberately NOT the two that separate ideological lists best:
-// this project reports that those lists separate, and picking the axes for
-// doing so would make the finding a consequence of the choice.
+// The default is the FIRST and THIRD axes — Redemption across, Divine order up.
+//
+// It was the first two, which is the support order and needs no defending. The
+// pair drawn now is a deliberate editorial choice: the third axis is the one
+// ideological lists actually separate on, and a plot that opens on it shows a
+// reader something rather than a cloud. The caveat that choice carries has to
+// be stated rather than designed away — this project reports that those lists
+// separate, and the axes it opens on were picked knowing that. The finding is
+// measured on all three regardless of which two are drawn, and every axis is
+// one selector away.
 export function axisPair(axes, pair) {
   const list = axes || []
   if (list.length < 2) return list
-  if (!pair) return list.slice(0, 2)
+  if (!pair) return list.length > 2 ? [list[0], list[2]] : list.slice(0, 2)
   const find = (id) => list.find((f) => f.factor_id === id)
   const x = find(pair[0]) || list[0]
   const y = find(pair[1]) || list.find((f) => f !== x) || list[1]

@@ -163,24 +163,28 @@ def test_a_share_token_that_is_not_yours_reorders_nothing():
     assert out["reordered"] is False      # somebody else's deck does not move
 
 
-def test_every_position_has_a_picture_and_says_which_kind_it_is():
+def test_every_position_draws_something_and_says_which_kind_it_is():
     """Something to draw, and the truth about what it is.
 
-    The screen asks which PERSON speaks to somebody, and two of the three show
-    one. The third cannot: Wikipedia holds no free image of that character, so
-    it carries its film's poster instead — and it has to SAY so, because the
-    flag is what decides between fitting the image whole and cropping it. A
-    poster fitted whole is a title treatment in a 62px box.
+    A character portrait is a figure and must be fitted whole; a poster is a
+    composition and has to be cropped, or the tile is title treatment in a 62px
+    box. `shows_character` is what chooses between those two, so it has to
+    survive from the seed rather than be inferred over the top of it — the flag
+    used to be `bool(image_url)`, which made every supplied URL a portrait and
+    left no way to say "this one is a poster".
 
-    The assertion is on the flag rather than on the URLs, so swapping a face
-    does not break the test. Losing a picture altogether does.
+    Asserted against the seed rather than against particular URLs, so swapping
+    a picture does not break the test. Losing one does.
     """
-    from moral_atlas.web.stances import catalogue
+    from moral_atlas.web.stances import catalogue, definitions
 
     rows = {row["stance_id"]: row for row in catalogue()}
-    assert all(row["artwork_url"] for row in rows.values()), "all three draw something"
-    assert sum(row["shows_character"] for row in rows.values()) >= 2, (
-        "and most of them draw a person")
+    assert rows, "there are positions to choose between"
+    assert all(row["artwork_url"] for row in rows.values()), "every one draws something"
+    for seed in definitions():
+        stated = seed.get("shows_character", bool(seed.get("image_url")))
+        assert rows[seed["stance_id"]]["shows_character"] == stated, (
+            f"{seed['stance_id']} is drawn as the kind of picture it says it is")
     # Independent of the film row: this database holds none of these films, so
     # anything falling back to a poster would have come back empty.
     assert all(row["film_title"] is None for row in rows.values())

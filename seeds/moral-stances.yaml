@@ -105,7 +105,11 @@ stances:
     character: Patrick Bateman
     film_id: american-psycho-2000
     line: The world runs on power, and pretending otherwise is the lie.
-    image_url: https://upload.wikimedia.org/wikipedia/en/5/52/American-psycho-patrick-bateman.jpg
+    # The poster rather than the character still. The still is a wide frame of a
+    # room with him small and dark in it, and letterboxed into a 62px portrait
+    # box it was mostly black; the poster is his face, upright, and lit.
+    image_url: https://upload.wikimedia.org/wikipedia/en/0/0c/American_Psycho.png
+    shows_character: false
     sets: [red-pilled]
     colour_from: red-pilled
 

@@ -1,11 +1,18 @@
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f5efe6; background: #171310; font-synthesis: none; }
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
-body { min-width: 320px; min-height: 100dvh; margin: 0; background: #171310; }
+body { min-width: 320px; min-height: 100svh; margin: 0; background: #171310; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 
-.app-page { min-height: 100dvh; display: grid; place-items: center; background: radial-gradient(80% 65% at 50% 0%, #2a211b 0%, #171310 72%); }
+/* svh, to agree with the column inside it.
+   The page asked for 100dvh while `.phone-screen` asked for 100svh, and on iOS
+   those are two different numbers while the address bar is expanded: the page
+   lays out taller than the area actually showing, and Safari displays that
+   scaled down until the first scroll — which is what "everything is soft until
+   I touch it" looks like. One unit for both, and the layout is the size of the
+   thing it is being shown in. */
+.app-page { min-height: 100svh; display: grid; place-items: center; background: radial-gradient(80% 65% at 50% 0%, #2a211b 0%, #171310 72%); }
 .phone-screen { width: min(100%, 390px); min-height: min(844px, 100svh); display: flex; flex-direction: column; padding: clamp(24px, 6vh, 52px) 24px clamp(18px, 3.5vh, 28px); overflow: visible; background: #171310; }
 .brand { display: flex; align-items: center; gap: 8px; color: #b3aa9e; font-size: 12px; font-weight: 650; letter-spacing: .22em; text-transform: uppercase; }
 .brand-mark { color: #eda36b; font-size: 22px; line-height: 1; }
@@ -310,10 +317,14 @@ button { cursor: pointer; }
    button and a line saying what it is rather than a link in the footer. */
 .start-choices { display: grid; gap: 10px; margin-top: 16px; }
 .start-choices .peach-button { margin-top: 0; }
-.start-secondary { display: grid; gap: 2px; width: 100%; min-height: 54px; padding: 9px 18px; border: 1px solid #3a312a; border-radius: 27px; color: #d5ccc1; background: transparent; font-size: 15px; font-weight: 650; }
-.start-secondary:hover:not(:disabled) { border-color: #766254; background: #1c1713; }
+/* The other way in, not a footnote to the first. It was a hairline outline on
+   the page's own ground, which at a glance read as disabled next to a filled
+   amber button — and going alone is a first-class choice here. It keeps the
+   outline rather than a second fill, because two filled buttons argue. */
+.start-secondary { display: grid; gap: 2px; width: 100%; min-height: 56px; padding: 9px 18px; border: 1.5px solid #7a6047; border-radius: 28px; color: #f5efe6; background: #1c1713; font-size: 15px; font-weight: 650; }
+.start-secondary:hover:not(:disabled) { border-color: #eda36b; color: #f5efe6; background: #241d18; }
 .start-secondary:disabled { opacity: .6; }
-.start-secondary small { color: #7e766c; font-size: 11.5px; font-weight: 400; }
+.start-secondary small { color: #b3aa9e; font-size: 11.5px; font-weight: 400; }
 
 
 /* The way out of the app and into the method behind it. */

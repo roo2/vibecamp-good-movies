@@ -140,7 +140,11 @@ export default function FilmExplorer({
             <button type="button" role="tab" aria-selected={space === 'adjusted'}
                     className={space === 'adjusted' ? 'on' : undefined}
                     onClick={() => onSpaceChange('adjusted')}>
-              <em className="lit-values">Values</em>, <em className="lit-taste">taste</em> removed
+              {/* Plain, unlike the other two. This is not a third subject
+                  standing beside values and taste — it is the values view with
+                  a correction applied, and colouring its words the same way
+                  offered a reader three choices where there are two. */}
+              Values, taste removed
             </button>
           </div>
         )}

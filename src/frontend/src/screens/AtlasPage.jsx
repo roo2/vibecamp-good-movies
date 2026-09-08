@@ -5,6 +5,7 @@ import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import { axisPair, filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
+import TastePoles from '../components/atlas/TastePoles.jsx'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
@@ -322,7 +323,12 @@ function AtlasPage({ onBack, access }) {
             </>
           )}
           {space === 'taste'
-            ? taste && <TasteDimensions taste={taste} />
+            ? taste && (
+              <>
+                <TasteDimensions taste={taste} />
+                <TastePoles taste={taste} />
+              </>
+            )
             : (
               <>
                 <AxisAdjustment data={factors} taste={taste} />

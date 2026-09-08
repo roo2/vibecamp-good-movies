@@ -1,5 +1,6 @@
 import React from 'react'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
+import TastePoles from '../components/atlas/TastePoles.jsx'
 import { loadTaste } from '../services/factorService.js'
 
 // Taste, on its own page.
@@ -22,14 +23,6 @@ function pct(x) { return `${(x * 100).toFixed(1)}%` }
 
 // The four films furthest along a dimension, each way. Positions come from the
 // same payload the plot uses, so a film named here is a film the plot places.
-function poles(films, dimId, take = 4) {
-  const rows = films
-    .map((f) => ({ title: f.title, at: f.position?.[String(dimId)] }))
-    .filter((f) => typeof f.at === 'number')
-    .sort((a, b) => b.at - a.at)
-  return { high: rows.slice(0, take), low: rows.slice(-take).reverse() }
-}
-
 export default function TastePage({ onBack, onAtlas }) {
   const [taste, setTaste] = React.useState(null)
   const [error, setError] = React.useState(null)
@@ -132,33 +125,7 @@ export default function TastePage({ onBack, onAtlas }) {
             </p>
           </section>
 
-          <section className="taste">
-            <h2>The films at each end</h2>
-            <p>
-              Nothing above can be checked by eye. This can: for each named dimension, the films
-              the data puts furthest along it, in both directions. The names were written from
-              1,128 human-assigned tags and never from titles — so if the titles look right, that
-              is a check the naming could have failed.
-            </p>
-            {named.map((d) => {
-              const { high, low } = poles(taste.films || [], d.dim_id)
-              return (
-                <div className="taste-poles" key={d.dim_id}>
-                  <h3>{d.pole_low} <i aria-hidden="true">↔</i> {d.pole_high}</h3>
-                  <div className="taste-poles-row">
-                    <div>
-                      <span className="taste-pole-label">{d.pole_low}</span>
-                      <ul>{low.map((f) => <li key={f.title}>{f.title}</li>)}</ul>
-                    </div>
-                    <div>
-                      <span className="taste-pole-label">{d.pole_high}</span>
-                      <ul>{high.map((f) => <li key={f.title}>{f.title}</li>)}</ul>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </section>
+          <TastePoles taste={taste} />
         </>
       )}
       </div>

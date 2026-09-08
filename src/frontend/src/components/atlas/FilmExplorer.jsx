@@ -121,12 +121,15 @@ export default function FilmExplorer({
             <button type="button" role="tab" aria-selected={space === 'moral'}
                     className={space === 'moral' ? 'on' : undefined}
                     onClick={() => onSpaceChange('moral')}>
-              Values
+              {/* The two names keep their colours here too, so the switch is
+                  read as "which of those two words" rather than as three
+                  unrelated buttons. */}
+              <em className="lit-values">Values</em>
             </button>
             <button type="button" role="tab" aria-selected={space === 'taste'}
                     className={space === 'taste' ? 'on' : undefined}
                     onClick={() => onSpaceChange('taste')}>
-              Taste
+              <em className="lit-taste">Taste</em>
             </button>
             {/* The moral position with the part taste predicts taken out. Its
                 own view rather than the default, because it is a DIFFERENT
@@ -137,7 +140,7 @@ export default function FilmExplorer({
             <button type="button" role="tab" aria-selected={space === 'adjusted'}
                     className={space === 'adjusted' ? 'on' : undefined}
                     onClick={() => onSpaceChange('adjusted')}>
-              Values, taste removed
+              <em className="lit-values">Values</em>, <em className="lit-taste">taste</em> removed
             </button>
           </div>
         )}

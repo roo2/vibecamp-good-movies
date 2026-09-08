@@ -520,11 +520,13 @@
 .distribution-open li { font-size: 12px; }
 .distribution-open li b { color: #f5efe6; font-weight: 500; }
 .distribution-open li em { color: #b3aa9e; font-style: normal; font-variant-numeric: tabular-nums; }
-.distribution-mid { position: absolute; inset-block: 0; inset-inline-start: 50%; inline-size: 1px; background: #5cc3c0; text-decoration: none; }
+/* The midline belongs to neither end, so it takes the rule colour rather
+   than one pole's. It was the low pole's teal on every axis. */
+.distribution-mid { position: absolute; inset-block: 0; inset-inline-start: 50%; inline-size: 1px; background: #3a312a; text-decoration: none; }
 .distribution-scale { display: flex; justify-content: space-between; margin-top: 5px; color: #574f47; font-size: 11px; }
 .distribution-mean { color: #b3aa9e; font-variant-numeric: tabular-nums; }
 .distribution-split { margin: 8px 0 0; color: #7e766c; font-size: 11.5px; line-height: 1.5; }
-.distribution-split em { color: #eda36b; font-style: normal; }
+.distribution-split em { color: var(--high, #eda36b); font-style: normal; }
 
 .anchors { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 14px 0; }
 .anchors-label { color: #7e766c; font-size: 10.5px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
@@ -591,8 +593,8 @@
 .film-factor-poles .pole.here { color: #b3aa9e; }
 .film-factor-poles .pole.low.here { border-inline-start-color: var(--low, #5cc3c0); }
 .film-factor-poles .pole.high.here { border-inline-start-color: var(--high, #eda36b); }
-.film-factor-poles .pole.low.here b { color: #5cc3c0; }
-.film-factor-poles .pole.high.here b { color: #eda36b; }
+.film-factor-poles .pole.low.here b { color: var(--low, #5cc3c0); }
+.film-factor-poles .pole.high.here b { color: var(--high, #eda36b); }
 .film-factor-thin { margin: 12px 0 0; color: #968c7f; font-size: 11.5px; line-height: 1.45; font-variant-numeric: tabular-nums; }
 .film-factor > button:disabled { cursor: default; opacity: .5; }
 .film-factor-name { color: #f5efe6; font-size: 12.5px; }
@@ -760,12 +762,16 @@
   font-size: 10.5px; font-weight: 600; color: #8d8478;
   font-variant-numeric: tabular-nums; letter-spacing: .01em;
 }
-.verdicts li.adds .verdict-measure > b { color: #eda36b; }
-.verdicts li.subtracts .verdict-measure > b { color: #5cc3c0; }
+/* The score and the bar beside it, in the pole's colour like everything else
+   in the row. These two were the last pair still hardcoded, so a film's
+   verdicts read in the right colours until you looked at the number, which was
+   teal on every axis. */
+.verdicts li.adds .verdict-measure > b { color: var(--high, #eda36b); }
+.verdicts li.subtracts .verdict-measure > b { color: var(--low, #5cc3c0); }
 .verdict-weight { display: block; flex: 1 1 auto; block-size: 2px; background: #241e19; border-radius: 1px; max-inline-size: 120px; }
 .verdict-weight i { display: block; block-size: 2px; border-radius: 1px; opacity: .8; }
-.verdicts li.adds .verdict-weight i { background: #eda36b; }
-.verdicts li.subtracts .verdict-weight i { background: #5cc3c0; }
+.verdicts li.adds .verdict-weight i { background: var(--high, #eda36b); }
+.verdicts li.subtracts .verdict-weight i { background: var(--low, #5cc3c0); }
 .verdict-evidence { color: #8d8478; font-size: 11.5px; line-height: 1.45; }
 
 

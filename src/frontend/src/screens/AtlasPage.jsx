@@ -4,6 +4,7 @@ import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
 import AxisAdjustment from '../components/atlas/AxisAdjustment.jsx'
 import { axisPair, filmPositions, loadAtlas, plotAxes, setCentroid } from '../services/atlasService.js'
 import { loadMoralProfile } from '../services/profileService.js'
+import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
@@ -183,16 +184,36 @@ function AtlasPage({ onBack, access }) {
       <div className="atlas-wrap">
       <header className="atlas-header">
         {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
+        {/* The headline and the breakdown follow the switch, because they are
+            about whichever space is showing. Taste used to be a separate page
+            reached by a link; the switch is where a reader actually asks for
+            it, so asking there brings the whole subject rather than the plot
+            alone. `adjusted` keeps the values copy: it IS values, with the part
+            taste predicts taken out. */}
         <div>
-          <h1>What do these films value?</h1>
-          {/* One sentence. Everything the page used to say up here — how many
-              films, which models, what a permutation null is — is evidence, and
-              evidence belongs below the thing it is evidence for. */}
-          <p className="atlas-note">
-            Films answer propositions about values, written from their own dialogue, and an axis
-            is a set of propositions films answer together. Nobody chose them, or how many there
-            are.
-          </p>
+          {space === 'taste' ? (
+            <>
+              <h1>What kind of film do people choose?</h1>
+              <p className="atlas-note">
+                A second set of dimensions, found the same way as the{' '}
+                <em className="lit-values">values</em> ones but from a different question: not
+                what a film argues for, but which films the same people enjoy. Derived from
+                162,000 outside raters who never saw any of this.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1>What do these films value?</h1>
+              {/* One sentence. Everything the page used to say up here — how many
+                  films, which models, what a permutation null is — is evidence, and
+                  evidence belongs below the thing it is evidence for. */}
+              <p className="atlas-note">
+                Films answer propositions about <em className="lit-values">values</em>, written
+                from their own dialogue, and an axis is a set of propositions films answer
+                together. Nobody chose them, or how many there are.
+              </p>
+            </>
+          )}
         </div>
       </header>
 
@@ -300,8 +321,14 @@ function AtlasPage({ onBack, access }) {
               )}
             </>
           )}
-          <AxisAdjustment data={factors} taste={taste} />
-          <Factors data={factors} />
+          {space === 'taste'
+            ? taste && <TasteDimensions taste={taste} />
+            : (
+              <>
+                <AxisAdjustment data={factors} taste={taste} />
+                <Factors data={factors} />
+              </>
+            )}
         </>
       )}
 

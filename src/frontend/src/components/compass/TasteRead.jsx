@@ -36,15 +36,13 @@ const SHOWN = 5
 // because they differ in lightness as well as hue.
 const HUES = ['#eda36b', '#5cc3c0', '#b58ce0', '#e0899a', '#93c56b']
 
-// "78th percentile" is precise and unreadable. What a person wants to know is
-// which end they are at and how far, which is three words.
-function lean(percentile) {
-  const distance = Math.abs(percentile - 50)
-  if (distance < 8) return 'right in the middle'
-  if (distance < 20) return 'leans'
-  if (distance < 35) return 'clearly'
-  return 'strongly'
-}
+// No sentence over each row any more.
+//
+// "You lean toward silly fun." sat directly above two labels reading Silly fun
+// and Serious storytelling with a marker nearer the first — three ways of
+// saying one thing, and the wordiest of the three led. What is left is the two
+// names and the position between them, which was always the whole reading; the
+// names are large enough now to BE the row rather than caption it.
 
 export default function TasteRead({ taste, companions = [] }) {
   const rows = (taste || []).slice(0, SHOWN)
@@ -57,8 +55,6 @@ export default function TasteRead({ taste, companions = [] }) {
       <ul className="taste-axes">
         {rows.map((row, index) => {
           const high = row.percentile >= 50
-          const label = high ? row.pole_high : row.pole_low
-          const strength = lean(row.percentile)
           // Every companion who has been read on this same dimension.
           const others = companions
             .map((c) => ({
@@ -68,16 +64,6 @@ export default function TasteRead({ taste, companions = [] }) {
             .filter((c) => c.row)
           return (
             <li key={row.dim_id} className="taste-axis" style={{ '--hue': HUES[index % HUES.length] }}>
-              {/* The colour marks the pole and nothing else. "between" and
-                  "and" were inside the same emphasis, so a row that named two
-                  ends lit the sentence's joinery along with them and the eye
-                  could not pick out what the dimension was actually called. */}
-              <p className="taste-axis-read">
-                {strength === 'right in the middle'
-                  ? <>You sit between <b>{row.pole_low.toLowerCase()}</b> and{' '}
-                      <b>{row.pole_high.toLowerCase()}</b>.</>
-                  : <>You {strength === 'leans' ? 'lean toward' : ''}{strength === 'clearly' ? 'clearly prefer' : ''}{strength === 'strongly' ? 'strongly prefer' : ''} <b>{label.toLowerCase()}</b>.</>}
-              </p>
               <span className="taste-axis-poles">
                 <span className={high ? '' : 'lit'}>{row.pole_low}</span>
                 <span className={high ? 'lit' : ''}>{row.pole_high}</span>

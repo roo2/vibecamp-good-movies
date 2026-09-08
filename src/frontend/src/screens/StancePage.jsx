@@ -29,12 +29,7 @@ export default function StancePage({ access, shareToken, onContinue }) {
     <main className="app-page">
       <section className="phone-screen stance-screen">
         <p className="screen-label">Your values</p>
-        <StancePicker
-          access={access}
-          shareToken={shareToken}
-          onClose={onContinue}
-          closeLabel="Continue"
-        />
+        <StancePicker access={access} shareToken={shareToken} onClose={onContinue} />
       </section>
     </main>
   )

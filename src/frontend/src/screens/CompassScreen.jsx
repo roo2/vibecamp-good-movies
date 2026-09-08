@@ -46,7 +46,9 @@ function CompassScreen({ access, shareToken, onContinue }) {
           <span className="compass-view-label">{profile.evidence.films_used} films read</span>
         </header>
 
-        <h1>What you are drawn to.</h1>
+        {/* The word carries the colour it carries everywhere else, so the
+            page names the half of the reading it is showing. */}
+        <h1>Your <em className="lit-taste">taste</em> in films.</h1>
         {/* One line at 390px, deliberately: the count of films read is already
             in the header above it, and this sentence wrapping to two was the
             difference between the five rows fitting a phone and not. */}

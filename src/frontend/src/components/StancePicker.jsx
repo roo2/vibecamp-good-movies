@@ -44,9 +44,7 @@ const DEFAULT_WEIGHT = 0.5
 // A tap answers and moves on. There is nothing else to ask — the amount is
 // settled, and the tiles say everything they are going to say before they are
 // touched, so there is nothing to be discovered by selecting one and looking.
-export default function StancePicker({
-  access, shareToken = null, onChange, onClose, closeLabel = 'Done',
-}) {
+export default function StancePicker({ access, shareToken = null, onChange, onClose }) {
   const [data, setData] = React.useState(null)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState(null)
@@ -93,9 +91,9 @@ export default function StancePicker({
     <div className="stance-picker">
       <h2>Where do you stand?</h2>
       <p className="stance-note">
-        Your <strong>values</strong>, not your taste — what a film argues for, not
-        what kind of film it is. It steers what you are shown. Only you see it, and you
-        can change it whenever.
+        Your <strong className="lit-values">values</strong>, not your taste — what a film
+        argues for, not what kind of film it is. It steers what you are shown. Only you see
+        it, and you can change it whenever.
       </p>
 
       <ul className="stance-options">
@@ -106,6 +104,10 @@ export default function StancePicker({
               className={stance.stance_id === chosen ? 'chosen' : ''}
               aria-pressed={stance.stance_id === chosen}
               disabled={saving}
+              // The colour of the list this position is the centroid of, from
+              // the same place the atlas draws its chips — so somebody who
+              // meets Progressive as a pink chip there meets it in pink here.
+              style={stance.colour ? { '--stance': stance.colour } : undefined}
               onClick={() => commit(stance.stance_id, DEFAULT_WEIGHT)
                 .then((ok) => ok && onClose?.())}
             >
@@ -138,7 +140,7 @@ export default function StancePicker({
                 the same shape rather than a shorter one pretending to be. */}
             <span className="stance-blank" aria-hidden="true" />
             <span className="stance-words">
-              <strong>No position</strong>
+              <strong>Don&apos;t care</strong>
               <q>Just show me good films.</q>
             </span>
           </button>
@@ -147,9 +149,6 @@ export default function StancePicker({
 
 
       {error && <p className="message">{error}</p>}
-      {onClose && (
-        <button type="button" className="stance-done" onClick={onClose}>{closeLabel}</button>
-      )}
     </div>
   )
 }

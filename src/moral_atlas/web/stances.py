@@ -36,11 +36,25 @@ def definitions() -> list[dict[str, Any]]:
     return list(data.get("stances", []))
 
 
+def _set_colours() -> dict[str, str]:
+    """set_id -> colour, from the film sets themselves.
+
+    A stance is the centroid of the lists named in its `sets`, so it wears the
+    colour of the list it is named for rather than a hex of its own. One home
+    for the colour: change the set on the atlas and the picker follows.
+    """
+    with db.connect(read_only=True) as con:
+        return {r["set_id"]: r["colour"] for r in
+                con.execute("SELECT set_id, colour FROM film_sets WHERE colour IS NOT NULL")}
+
+
 def catalogue() -> list[dict[str, Any]]:
     """What the picker shows: a face, a claim, and something to draw."""
     out = []
+    colours = _set_colours()
     for row in definitions():
         film = db.get_film(row["film_id"])
+        named = row.get("colour_from") or next(iter(row.get("sets") or []), None)
         # The character where there is one, the poster where there is not. The
         # screen asks which PERSON speaks to somebody and a poster is mostly
         # title treatment, so the fallback is a compromise rather than the plan.
@@ -53,6 +67,7 @@ def catalogue() -> list[dict[str, Any]]:
             "film_title": (film or {}).get("title"),
             "artwork_url": row.get("image_url") or (film or {}).get("artwork_url"),
             "shows_character": bool(row.get("image_url")),
+            "colour": colours.get(named),
         })
     return out
 

@@ -81,7 +81,11 @@ stances:
     film_id: the-lion-king-1994
     line: There is an order to things, and your place in it is real.
     image_url: https://upload.wikimedia.org/wikipedia/en/a/a0/Mufasa_promotional_image.webp
-    sets: [catholic, christian-answers, christian-edifying]
+    sets: [catholic, christian-answers]
+    # Whose colour this position wears. Named as a SET rather than as a hex,
+    # so the colour has one home: a reader who meets Conservative Christian as
+    # a green chip on the atlas meets Traditional in the same green here.
+    colour_from: christian-answers
 
   - stance_id: self
     label: Progressive
@@ -90,6 +94,7 @@ stances:
     line: Nobody else gets to decide what your life is for.
     image_url: https://upload.wikimedia.org/wikipedia/en/1/17/Ellen_ripley.jpg
     sets: [feminist]
+    colour_from: progressive-canon
   - stance_id: ruin
     label: Cynical
     character: Michael Corleone
@@ -97,4 +102,5 @@ stances:
     line: The world runs on power, and pretending otherwise is the lie.
     image_url: https://upload.wikimedia.org/wikipedia/en/d/df/Michaelcoreleone.jpg
     sets: [red-pilled]
+    colour_from: red-pilled
 

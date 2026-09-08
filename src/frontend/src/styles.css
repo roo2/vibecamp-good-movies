@@ -371,7 +371,7 @@ button { cursor: pointer; }
 .taste-axes { margin: 0; padding: 0; list-style: none; }
 .taste-axis {
   --hue: #eda36b;
-  padding: 11px 0 12px; border-top: 1px solid #241e19;
+  padding: 13px 0 14px; border-top: 1px solid #241e19;
 }
 .taste-axis:first-child { border-top: 0; padding-top: 0; }
 
@@ -383,9 +383,12 @@ button { cursor: pointer; }
 }
 .taste-axis-read b { color: var(--hue); font-weight: 650; }
 
+/* The names ARE the row now, so they carry its weight. They were 11.5px under
+   a 14px sentence that said the same thing; the sentence is gone and they take
+   its size. */
 .taste-axis-poles {
-  display: flex; justify-content: space-between; gap: 14px; margin-bottom: 7px;
-  color: #6f675e; font-size: 11.5px; font-weight: 600; line-height: 1.3;
+  display: flex; justify-content: space-between; gap: 14px; margin-bottom: 9px;
+  color: #7d746a; font-size: 14.5px; font-weight: 600; line-height: 1.3;
 }
 .taste-axis-poles span { flex: 1; }
 .taste-axis-poles span:last-child { text-align: right; }
@@ -500,8 +503,21 @@ button { cursor: pointer; }
 .stance-note { margin: 0 0 22px; color: #7e766c; font-size: 13px; line-height: 1.5; }
 .stance-note strong { color: #b3aa9e; font-weight: 650; }
 .stance-options { display: grid; gap: 10px; margin: 0 0 10px; padding: 0; list-style: none; }
-.stance-options button { display: flex; width: 100%; align-items: center; gap: 14px; padding: 12px; border: 1px solid #3a312a; border-radius: 14px; color: #f5efe6; background: transparent; text-align: left; }
-.stance-options button.chosen { border-color: #eda36b; background: #241c15; }
+/* The outline is the position's own colour — the same one its list wears on
+   the atlas — so the three are told apart before a word is read, and the
+   colour a reader learns here means the same thing there. `--stance` is set
+   per tile; the fourth answer sets none and falls back to the plain rule. */
+.stance-options button {
+  display: flex; width: 100%; align-items: center; gap: 14px; padding: 12px;
+  border: 1px solid var(--stance, #3a312a); border-radius: 14px;
+  color: #f5efe6; background: transparent; text-align: left;
+}
+.stance-options button.chosen {
+  border-color: var(--stance, #eda36b);
+  box-shadow: 0 0 0 1px var(--stance, #eda36b) inset;
+  background: color-mix(in srgb, var(--stance, #eda36b) 12%, transparent);
+}
+.stance-options button.chosen .stance-words strong { color: var(--stance, #eda36b); }
 .stance-options img { width: 62px; height: 80px; flex: 0 0 auto; border-radius: 10px; background: #241c15; }
 .stance-options img.is-poster { object-fit: cover; object-position: center 22%; }
 .stance-options img.is-character { object-fit: contain; padding: 3px; }
@@ -523,7 +539,9 @@ button { cursor: pointer; }
      one, which is the truth. */
   background: linear-gradient(155deg, #33302b 0%, #1f1a16 100%);
 }
-.stance-done { width: 100%; min-height: 48px; margin-top: 18px; border: 0; border-radius: 24px; color: #171310; background: #eda36b; font-weight: 700; }
+/* No Continue button: a tap on any of the four answers and moves on, and a
+   button that only ever meant "I have finished tapping" implied there was a
+   second step. */
 
 /* The way out of the quiz. Sized and coloured to be findable rather than
    offered — it sits under the reactions, below the note, in the dimmest text on

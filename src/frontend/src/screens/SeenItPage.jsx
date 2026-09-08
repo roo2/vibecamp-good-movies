@@ -22,10 +22,10 @@ import { loadMoreOnboardingFilms, loadOnboardingFilms } from '../services/movieS
 // every button still carries its words for a screen reader, and the word
 // appears under the emoji while an answer is saving.
 const reactions = [
-  { id: 'hated_it', label: 'Hated it', emoji: '😡', size: 'strong' },
+  { id: 'hated_it', label: 'Hated it', emoji: '😡', size: 'strong hated' },
   { id: 'not_for_me', label: 'Not for me', emoji: '🙁', size: 'mild' },
   { id: 'liked_it', label: 'Liked it', emoji: '🙂', size: 'mild' },
-  { id: 'loved_it', label: 'Loved it', emoji: '😍', size: 'strong' },
+  { id: 'loved_it', label: 'Loved it', emoji: '😍', size: 'strong loved' },
 ]
 const SKIP = { id: 'havent_seen', label: "Haven't seen it", icon: '−' }
 

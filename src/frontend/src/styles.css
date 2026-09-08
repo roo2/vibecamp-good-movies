@@ -60,27 +60,49 @@ button { cursor: pointer; }
    two easiest to hit, and the milder pair sit between them looking milder.
    Centred rather than stretched, because a row of circles that fills the width
    stops reading as one control. */
+/* The row rides UP over the bottom of the poster rather than sitting under it.
+   The card and its answer are one object — you look at a film and press a face
+   — and a gap between them made the buttons read as page furniture the card
+   happened to be above. The negative margin is what does it; the z-index keeps
+   them above the card while it is mid-swipe. */
 .movie-reactions {
+  position: relative; z-index: 2; margin-top: -34px;
   display: flex; align-items: center; justify-content: center;
-  flex-wrap: wrap; gap: 12px;
+  flex-wrap: wrap; gap: 12px 2.5%;
 }
+/* Sized as a share of the column, not in pixels. Four circles at fixed widths
+   fit a 390px phone and wrap onto two rows on anything narrower — which is
+   what they did — and the column is capped at 390px, so a viewport-based size
+   is wrong on a desktop for the same reason. A percentage basis is measured
+   against the row itself and is right everywhere: 25 + 21 + 21 + 25 with three
+   2.5% gaps comes to 99.5% of whatever the column happens to be. */
 .movie-reaction {
   display: flex; align-items: center; justify-content: center; gap: 7px;
-  inline-size: 62px; block-size: 62px; padding: 0;
+  flex: 0 0 21%; aspect-ratio: 1; inline-size: auto; block-size: auto; padding: 0;
   border: 1px solid #3a312a; border-radius: 50%;
   color: #d5ccc1; background: #1c1713;
+  /* They sit over the poster, so they need to be objects on it rather than
+     holes in it. */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .45);
 }
-.movie-reaction.strong { inline-size: 76px; block-size: 76px; }
-.movie-reaction.strong strong { font-size: 34px; }
-.movie-reaction.mild strong { font-size: 26px; }
+.movie-reaction.strong { flex: 0 0 25%; }
+.movie-reaction.strong strong { font-size: clamp(26px, 9vw, 38px); }
+.movie-reaction.mild strong { font-size: clamp(21px, 7vw, 30px); }
+/* The two emphatic answers carry a colour as well as a size, because they are
+   the two that say the most: coral against, amber for. The mild pair stay on
+   the plain ground — a scale where every step is coloured has no steps. */
+.movie-reaction.hated { border-color: #8f4a4e; background: #2a1a1a; }
+.movie-reaction.hated:hover:not(:disabled) { border-color: #e0797f; background: #351f1f; }
+.movie-reaction.loved { border-color: #8a6039; background: #2a2018; }
+.movie-reaction.loved:hover:not(:disabled) { border-color: #eda36b; background: #35281c; }
 .movie-reaction:hover:not(:disabled) { border-color: #766254; background: #241d18; }
 .movie-reaction strong { font-size: 21px; font-weight: 400; line-height: 1; }
 .movie-reaction span { font-weight: 650; line-height: 1.2; }
 /* Not a point on the scale above it, so it gets its own row — and the space to
    be pressed without aiming, which is what it was short of before. */
 .movie-reaction.unseen {
-  inline-size: 100%; block-size: auto; min-height: 50px; margin-top: 4px;
-  border-radius: 25px; color: #b3aa9e; background: transparent;
+  flex: 0 0 100%; aspect-ratio: auto; block-size: auto; min-height: 50px;
+  border-radius: 25px; color: #b3aa9e; background: transparent; box-shadow: none;
 }
 .movie-reaction.unseen strong { font-size: 15px; }
 .movie-reaction span { font-size: 15px; }
@@ -213,11 +235,8 @@ button { cursor: pointer; }
   .seen-it-heading h1, .fork-heading h1, .compass-screen h1 { font-size: 26px; }
   .movie-card { height: clamp(210px, 40svh, 280px); padding: 18px; }
   .movie-card h2 { font-size: 32px; }
-  .movie-reaction { inline-size: 56px; block-size: 56px; }
-  .movie-reaction.strong { inline-size: 68px; block-size: 68px; }
-  .movie-reaction.strong strong { font-size: 30px; }
-  .movie-reaction.mild strong { font-size: 23px; }
-  .movie-reaction.unseen { inline-size: 100%; block-size: auto; min-height: 46px; }
+  .movie-reactions { margin-top: -26px; }
+  .movie-reaction.unseen { min-height: 46px; }
   .seen-it-note { margin-top: 10px; padding: 10px 12px; }
   .choice-stack { gap: 8px; }
   .story-choice { min-height: 104px; padding: 14px; gap: 7px; }
@@ -507,18 +526,32 @@ button { cursor: pointer; }
    the atlas — so the three are told apart before a word is read, and the
    colour a reader learns here means the same thing there. `--stance` is set
    per tile; the fourth answer sets none and falls back to the plain rule. */
+/* Light cards on a dark page. Everything else here is ink on a dark ground, so
+   four pale tiles read as objects to pick up rather than as regions of the
+   screen — which is what choosing between them is. The colour stays: it is the
+   edge and the rule under the label, against a paper the text can be dark on. */
 .stance-options button {
   display: flex; width: 100%; align-items: center; gap: 14px; padding: 12px;
-  border: 1px solid var(--stance, #3a312a); border-radius: 14px;
-  color: #f5efe6; background: transparent; text-align: left;
+  border: 1px solid var(--stance, #3a312a);
+  border-inline-start: 4px solid var(--stance, #3a312a);
+  border-radius: 14px;
+  color: #241c15; background: #ece5d9; text-align: left;
 }
+.stance-options button:hover:not(:disabled) { background: #f5efe6; }
 .stance-options button.chosen {
-  border-color: var(--stance, #eda36b);
-  box-shadow: 0 0 0 1px var(--stance, #eda36b) inset;
-  background: color-mix(in srgb, var(--stance, #eda36b) 12%, transparent);
+  background: color-mix(in srgb, var(--stance, #eda36b) 22%, #f5efe6);
+  box-shadow: 0 0 0 2px var(--stance, #eda36b);
 }
-.stance-options button.chosen .stance-words strong { color: var(--stance, #eda36b); }
-.stance-options img { width: 62px; height: 80px; flex: 0 0 auto; border-radius: 10px; background: #241c15; }
+.stance-options .stance-words q { color: #4a4038; }
+.stance-options .stance-words small { color: #6f665c; }
+.stance-options .stance-words strong { color: #171310; }
+/* The card is paper now, so what sits behind a transparent character has to be
+   paper too — Mufasa's cutout on the old dark panel read as a hole punched in
+   the tile. A poster brings its own ground and covers this anyway. */
+.stance-options img {
+  width: 62px; height: 80px; flex: 0 0 auto; border-radius: 10px;
+  background: #ddd4c4;
+}
 .stance-options img.is-poster { object-fit: cover; object-position: center 22%; }
 .stance-options img.is-character { object-fit: contain; padding: 3px; }
 .stance-words { display: grid; gap: 4px; min-width: 0; }
@@ -532,6 +565,13 @@ button { cursor: pointer; }
    recommended. It was a thin line under the options, which made the correct
    answer the smallest thing on the screen. It inherits the tile from
    `.stance-options button`; only the empty image column is its own. */
+/* Not a position, so not a card: the fourth answer keeps the page's own ground
+   and reads as the way past the three rather than as a fourth one. */
+.stance-decline { color: #f5efe6 !important; background: transparent !important; }
+.stance-decline:hover:not(:disabled) { background: #1c1713 !important; }
+.stance-decline.chosen { background: #241c15 !important; box-shadow: 0 0 0 2px #eda36b; }
+.stance-decline .stance-words strong { color: #f5efe6; }
+.stance-decline .stance-words q { color: #b3aa9e; }
 .stance-blank {
   width: 62px; height: 80px; flex: 0 0 auto; border-radius: 10px;
   /* A quiet panel, not a dashed outline. Dashes read as an image that failed

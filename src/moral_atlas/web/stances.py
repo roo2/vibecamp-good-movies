@@ -66,7 +66,11 @@ def catalogue() -> list[dict[str, Any]]:
             "film_id": row["film_id"],
             "film_title": (film or {}).get("title"),
             "artwork_url": row.get("image_url") or (film or {}).get("artwork_url"),
-            "shows_character": bool(row.get("image_url")),
+            # Stated where it matters, inferred otherwise. A character portrait
+            # is a figure and must not be cropped; a poster is a composition and
+            # has to be, or the tile is mostly title treatment — and one of these
+            # positions has only a poster to draw.
+            "shows_character": row.get("shows_character", bool(row.get("image_url"))),
             "colour": colours.get(named),
         })
     return out

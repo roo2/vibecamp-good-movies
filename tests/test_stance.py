@@ -163,21 +163,27 @@ def test_a_share_token_that_is_not_yours_reorders_nothing():
     assert out["reordered"] is False      # somebody else's deck does not move
 
 
-def test_every_face_is_a_character_not_a_poster():
-    """The screen asks which PERSON speaks to somebody, so it shows one.
+def test_every_position_has_a_picture_and_says_which_kind_it_is():
+    """Something to draw, and the truth about what it is.
 
-    All three carry a character image now. The assertion is on the flag rather
-    than on the URLs, so swapping a face does not break the test — but losing one
-    to a poster fallback does, which is the regression worth catching.
+    The screen asks which PERSON speaks to somebody, and two of the three show
+    one. The third cannot: Wikipedia holds no free image of that character, so
+    it carries its film's poster instead — and it has to SAY so, because the
+    flag is what decides between fitting the image whole and cropping it. A
+    poster fitted whole is a title treatment in a 62px box.
+
+    The assertion is on the flag rather than on the URLs, so swapping a face
+    does not break the test. Losing a picture altogether does.
     """
     from moral_atlas.web.stances import catalogue
 
     rows = {row["stance_id"]: row for row in catalogue()}
-    assert all(row["shows_character"] for row in rows.values())
+    assert all(row["artwork_url"] for row in rows.values()), "all three draw something"
+    assert sum(row["shows_character"] for row in rows.values()) >= 2, (
+        "and most of them draw a person")
     # Independent of the film row: this database holds none of these films, so
     # anything falling back to a poster would have come back empty.
     assert all(row["film_title"] is None for row in rows.values())
-    assert all(row["artwork_url"] for row in rows.values())
 
 
 def test_the_weight_cannot_reach_the_top_of_its_range(isolated_web_database):

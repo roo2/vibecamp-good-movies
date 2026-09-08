@@ -79,7 +79,7 @@ stances:
     label: Traditional
     character: Mufasa
     film_id: the-lion-king-1994
-    line: There is an order to things, and your place in it is real.
+    line: You must take your place in the circle of life.
     image_url: https://upload.wikimedia.org/wikipedia/en/a/a0/Mufasa_promotional_image.webp
     sets: [catholic, christian-answers]
     # Whose colour this position wears. Named as a SET rather than as a hex,
@@ -89,18 +89,23 @@ stances:
 
   - stance_id: self
     label: Progressive
-    character: Ellen Ripley
-    film_id: aliens-1986
-    line: Nobody else gets to decide what your life is for.
-    image_url: https://upload.wikimedia.org/wikipedia/en/1/17/Ellen_ripley.jpg
+    character: Barbie
+    film_id: barbie-2023
+    line: The most beautiful thing you can be is yourself.
+    # The poster, not a character portrait: Wikipedia has no free image of this
+    # character, and `shows_character` says so explicitly rather than being
+    # inferred from whether a URL is present — a poster shrunk to fit a 62px
+    # box is mostly title treatment, so it has to be cropped instead.
+    image_url: https://upload.wikimedia.org/wikipedia/en/0/0b/Barbie_2023_poster.jpg
+    shows_character: false
     sets: [feminist]
     colour_from: progressive-canon
   - stance_id: ruin
     label: Cynical
-    character: Michael Corleone
-    film_id: the-godfather-1972
+    character: Patrick Bateman
+    film_id: american-psycho-2000
     line: The world runs on power, and pretending otherwise is the lie.
-    image_url: https://upload.wikimedia.org/wikipedia/en/d/df/Michaelcoreleone.jpg
+    image_url: https://upload.wikimedia.org/wikipedia/en/5/52/American-psycho-patrick-bateman.jpg
     sets: [red-pilled]
     colour_from: red-pilled
 

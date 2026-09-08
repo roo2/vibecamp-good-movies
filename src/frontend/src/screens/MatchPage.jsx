@@ -55,7 +55,11 @@ export default function MatchPage({ access, shareToken, films: initial, solo = f
           {openId === film.id && (
             <div className="match-detail">
               {film.description && <p>{film.description}</p>}
-              <FilmAxisStrip filmId={film.id} />
+              {/* Two taste rows, the same as the deck card, because the space
+                  is reserved whether or not a film fills it — and three rows
+                  of held-open space above the watch button is more hole than
+                  a film with one thing to say is worth. */}
+              <FilmAxisStrip filmId={film.id} tasteLimit={2} />
               <a className="peach-button" href={`https://www.justwatch.com/au/search?q=${encodeURIComponent(film.title)}`}
                  target="_blank" rel="noreferrer">See where to watch <span aria-hidden="true">↗</span></a>
             </div>

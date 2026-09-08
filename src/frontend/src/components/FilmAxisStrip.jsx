@@ -145,6 +145,36 @@ function Axis({ factor, open, onToggle, index, expandable = true }) {
   )
 }
 
+// A row of the same shape as a real one, with nothing in it.
+//
+// The strip arrives in two pieces over the network — the film's axes, and the
+// taste table — so a card drawn before they land grows twice underneath the
+// reader, and the buttons under it move while they are aiming at them. Films
+// also differ in how many rows they have to show, so even a loaded card jumps
+// as the deck advances.
+//
+// Reserved with the row's own markup rather than a min-height in pixels: a
+// hardcoded height is a guess that goes stale the moment the type changes, and
+// this is exact by construction. `visibility: hidden` keeps the space and
+// paints nothing; `aria-hidden` keeps it out of the reading.
+function PlaceholderRow({ kind }) {
+  const inner = (
+    <>
+      <span className="axis-strip-name">&nbsp;<em>&nbsp;</em></span>
+      <span className="axis-strip-track" />
+    </>
+  )
+  return kind === 'taste'
+    ? <li className="axis-strip-placeholder" aria-hidden="true">{inner}</li>
+    : (
+      <li className="axis-strip-row axis-strip-placeholder" aria-hidden="true">
+        <span className="axis-strip-fixed">{inner}</span>
+      </li>
+    )
+}
+
+const padded = (rows, to) => Array.from({ length: Math.max(0, to - rows.length) })
+
 // Three moral axes, because three is what the reading supports and showing two
 // of them left a reader wondering which one was missing and why. Taste follows,
 // because a card recommending a film should say what KIND of film it is — the
@@ -153,8 +183,12 @@ function Axis({ factor, open, onToggle, index, expandable = true }) {
 // card's height, and a card that changes height either overflows the screen or
 // needs a scroll container — and a scroll container inside a swipe target eats
 // the swipe, which is what it did.
+//
+// `reserve` holds the full height from the first frame, whether or not the data
+// has arrived and whether or not this film has that much to say. Off only where
+// the strip sits in something that is already sized around it.
 export default function FilmAxisStrip({
-  filmId, limit = 3, tasteLimit = 3, expandable = true,
+  filmId, limit = 3, tasteLimit = 3, expandable = true, reserve = true,
 }) {
   const [factors, setFactors] = React.useState(null)
   const [taste, setTaste] = React.useState(null)
@@ -182,7 +216,7 @@ export default function FilmAxisStrip({
   const tasteRows = React.useMemo(
     () => tasteRowsFor(taste, filmId, tasteLimit), [taste, filmId, tasteLimit])
 
-  if (!factors?.length && !tasteRows.length) return null
+  if (!reserve && !factors?.length && !tasteRows.length) return null
 
   return (
     <div className="axis-strip">
@@ -190,7 +224,10 @@ export default function FilmAxisStrip({
         {expandable ? 'Where it stands · tap for why' : 'Where it stands'}
       </span>
       <ul>
-        {factors.map((factor, index) => (
+        {/* `factors` is null until the request lands, and reserving the space
+            means rendering before it does — so the list has to tolerate not
+            having one yet. It used to be unreachable behind an early return. */}
+        {(factors || []).map((factor, index) => (
           <Axis
             key={factor.factor_id}
             factor={factor}
@@ -200,8 +237,11 @@ export default function FilmAxisStrip({
             onToggle={() => setOpenId(openId === factor.factor_id ? null : factor.factor_id)}
           />
         ))}
+        {reserve && padded(factors || [], limit).map((_, i) => (
+          <PlaceholderRow key={`hold-${i}`} kind="moral" />
+        ))}
       </ul>
-      {tasteRows.length > 0 && (
+      {(reserve || tasteRows.length > 0) && (
         <div className="axis-strip-taste">
           <span className="axis-strip-label">And what kind of film</span>
           <ul>
@@ -222,6 +262,9 @@ export default function FilmAxisStrip({
                 </li>
               )
             })}
+            {reserve && padded(tasteRows, tasteLimit).map((_, i) => (
+              <PlaceholderRow key={`hold-${i}`} kind="taste" />
+            ))}
           </ul>
         </div>
       )}

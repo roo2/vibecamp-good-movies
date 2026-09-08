@@ -1,5 +1,6 @@
 import React from 'react'
 import { FactorDistribution, FactorPropositions, FilmAnchors } from './FactorDistribution.jsx'
+import { polePair } from './polePalette.js'
 import { CLEAR_MARGIN, isClear } from '../../services/factorService.js'
 
 const pct = (value) => `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`
@@ -34,12 +35,18 @@ function Scree({ eigenvalues, thresholds }) {
   )
 }
 
-function Factor({ factor, reading }) {
+function Factor({ factor, reading, index = 0 }) {
   const [open, setOpen] = React.useState(false)
   const clear = isClear(factor)
+  // This axis's two colours, set once here so everything the expansion contains
+  // — the pole sentences, the proposition bars, a film's verdict chips — agrees
+  // with the plot and with the film cards about which colour means which end.
+  // They were hardcoded one pair deep, so the second axis wore the first one's.
+  const pair = polePair('moral', index)
 
   return (
-    <li className={`factor ${clear ? 'clear' : 'marginal'} ${factor.coherent === false ? 'incoherent' : ''}`}>
+    <li className={`factor ${clear ? 'clear' : 'marginal'} ${factor.coherent === false ? 'incoherent' : ''}`}
+        style={{ '--low': pair.low, '--high': pair.high }}>
       <button type="button" className="factor-head" onClick={() => setOpen(!open)} aria-expanded={open}>
         <span className="factor-name">{factor.name}</span>
         <span className="factor-meta">
@@ -210,8 +217,8 @@ export function Factors({ data }) {
         <h2 id="axes">The axes {data.scorer} found</h2>
         {named.length ? (
           <ul className="factors">
-            {named.map((factor) => (
-              <Factor key={factor.factor_id} factor={factor}
+            {named.map((factor, index) => (
+              <Factor key={factor.factor_id} factor={factor} index={index}
                       reading={{ scorer: data.scorer, variant: data.variant,
                                  bank_version: data.bank_version }} />
             ))}

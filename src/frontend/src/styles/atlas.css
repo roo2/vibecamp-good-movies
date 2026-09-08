@@ -459,12 +459,17 @@
 .factor-detail { display: grid; gap: 8px; margin-top: 10px; }
 .factor-pole { margin: 0 0 4px; color: #b3aa9e; font-size: 12.5px; line-height: 1.45; }
 .factor-pole b { display: block; color: #7e766c; font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .1em; }
-/* Teal denies, orange affirms — the same pairing the bars, the verdict labels
-   and the film rows use, so the direction survives without reading a word. */
-.factor-pole.low { border-inline-start: 2px solid #5cc3c0; padding-inline-start: 8px; }
-.factor-pole.high { border-inline-start: 2px solid #eda36b; padding-inline-start: 8px; }
-.factor-pole.low b { color: #5cc3c0; }
-.factor-pole.high b { color: #eda36b; }
+/* THE POLE'S OWN COLOUR, handed down from the palette on the factor itself.
+   These were one hardcoded pair — teal for every low end, amber for every high
+   end — so the second axis drew its poles in the first axis's colours, and the
+   propositions and verdicts underneath repeated the mistake. A reader who
+   learnt on the plot that Redemption is amber and Sacred life is coral found
+   both of them amber here. Now every end of every axis is the colour it is
+   everywhere else. */
+.factor-pole.low { border-inline-start: 2px solid var(--low, #5cc3c0); padding-inline-start: 8px; }
+.factor-pole.high { border-inline-start: 2px solid var(--high, #eda36b); padding-inline-start: 8px; }
+.factor-pole.low b { color: var(--low, #5cc3c0); }
+.factor-pole.high b { color: var(--high, #eda36b); }
 .factor-examples-label { margin: 6px 0 0; color: #7e766c; font-size: 11px; }
 .factor-examples { margin: 0; padding-left: 18px; color: #8a8074; font-size: 12px; line-height: 1.5; }
 .factor-headline { margin: 6px 0 14px; color: #b3aa9e; font-size: 14px; }
@@ -481,26 +486,31 @@
 .film-list span { color: #574f47; }
 
 /* --- Where every film sits on one axis ----------------------------------- */
+/* Every colour below reads --low and --high off the axis it belongs to (set on
+   .factor and on .film-factor). Before, the histogram, its scale, the split
+   counts, the opened bin and the anchor lists all carried the same hardcoded
+   teal-and-amber, so on the second axis the bars said one thing and the pole
+   sentences directly above them said another. */
 .distribution { margin: 14px 0 10px; }
 .distribution-bars { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 68px; padding: 0 2px; border-bottom: 1px solid #2d251f; }
 .distribution-bin { flex: 1; display: flex; align-items: flex-end; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .distribution-bin:disabled { cursor: default; }
-.distribution-bin i { display: block; inline-size: 100%; min-block-size: 1px; border-radius: 2px 2px 0 0; background: #eda36b; transition: filter .12s; }
-.distribution-bin.low i { background: #5cc3c0; }
+.distribution-bin i { display: block; inline-size: 100%; min-block-size: 1px; border-radius: 2px 2px 0 0; background: var(--high, #eda36b); transition: filter .12s; }
+.distribution-bin.low i { background: var(--low, #5cc3c0); }
 .distribution-bin.mid i { background: #7e766c; }
 .distribution-bin:hover:not(:disabled) i { filter: brightness(1.25); }
 .distribution-bin.open i { outline: 1px solid #f5efe6; outline-offset: 1px; }
-.distribution-scale .scale-low { color: #5cc3c0; }
-.distribution-scale .scale-high { color: #eda36b; }
+.distribution-scale .scale-low { color: var(--low, #5cc3c0); }
+.distribution-scale .scale-high { color: var(--high, #eda36b); }
 .distribution-split b { font-weight: 650; }
-.distribution-split b.low { color: #5cc3c0; }
-.distribution-split b.high { color: #eda36b; }
+.distribution-split b.low { color: var(--low, #5cc3c0); }
+.distribution-split b.high { color: var(--high, #eda36b); }
 .distribution-hint { margin: 8px 0 0; color: #574f47; font-size: 11px; }
 /* The films behind one bar. Opened rather than always shown: the shape is the
    point, and 197 titles under it would bury the thing they explain. */
 .distribution-open { margin: 10px 0 0; padding: 9px 11px; border-radius: 5px; background: #171310; border-inline-start: 2px solid #7e766c; }
-.distribution-open.low { border-inline-start-color: #5cc3c0; }
-.distribution-open.high { border-inline-start-color: #eda36b; }
+.distribution-open.low { border-inline-start-color: var(--low, #5cc3c0); }
+.distribution-open.high { border-inline-start-color: var(--high, #eda36b); }
 .distribution-open-label { display: block; color: #b3aa9e; font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
 /* Sized in viewport units, because this list can now be opened. 232px was
    fine for a column of titles and became a letterbox the moment a film
@@ -521,10 +531,10 @@
 .anchors ul { margin: 6px 0 0; padding: 0; list-style: none; }
 .anchors li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 12px; }
 .anchors b { color: #f5efe6; font-weight: 500; }
-.anchors em { color: #eda36b; font-style: normal; font-variant-numeric: tabular-nums; }
-.anchors-side.low em { color: #5cc3c0; }
-.anchors-side.high .anchors-label { color: #eda36b; }
-.anchors-side.low .anchors-label { color: #5cc3c0; }
+.anchors em { color: var(--high, #eda36b); font-style: normal; font-variant-numeric: tabular-nums; }
+.anchors-side.low em { color: var(--low, #5cc3c0); }
+.anchors-side.high .anchors-label { color: var(--high, #eda36b); }
+.anchors-side.low .anchors-label { color: var(--low, #5cc3c0); }
 .anchors-pole { margin: 4px 0 0; color: #7e766c; font-family: Georgia, serif; font-size: 11.5px; font-style: italic; line-height: 1.4; }
 .anchors span { color: #574f47; font-size: 10.5px; }
 
@@ -553,10 +563,13 @@
   font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
   font-variant-numeric: tabular-nums; font-size: 11.5px;
 }
-.prop-strength.adds .prop-bar i { background: #eda36b; }
-.prop-strength.adds .prop-num { color: #eda36b; }
-.prop-strength.subtracts .prop-bar i { background: #5cc3c0; }
-.prop-strength.subtracts .prop-num { color: #5cc3c0; }
+/* A proposition is coloured by the END it pushes a film toward, in that end's
+   own colour — so the bar beside a sentence and the pole it argues for are the
+   same colour on the plot, in the pole sentences above, and on a film's card. */
+.prop-strength.adds .prop-bar i { background: var(--high, #eda36b); }
+.prop-strength.adds .prop-num { color: var(--high, #eda36b); }
+.prop-strength.subtracts .prop-bar i { background: var(--low, #5cc3c0); }
+.prop-strength.subtracts .prop-num { color: var(--low, #5cc3c0); }
 
 /* --- One film against every axis ----------------------------------------- */
 .film-factors { margin: 8px 0 0; padding: 0; list-style: none; }
@@ -720,8 +733,8 @@
   border-radius: 5px; font-family: ui-monospace, monospace; font-size: 14px;
   font-weight: 700; line-height: 1;
 }
-.verdicts li.adds .verdict-sign { color: #171310; background: #eda36b; }
-.verdicts li.subtracts .verdict-sign { color: #171310; background: #5cc3c0; }
+.verdicts li.adds .verdict-sign { color: #171310; background: var(--high, #eda36b); }
+.verdicts li.subtracts .verdict-sign { color: #171310; background: var(--low, #5cc3c0); }
 .verdict-body { display: grid; gap: 5px; }
 .verdict-text { color: #d5ccc1; font-size: 13.5px; line-height: 1.5; }
 .verdict-effect {
@@ -731,8 +744,8 @@
 .verdict-effect b { color: #968c7f; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
 .verdict-effect i { font-style: normal; color: #6b645d; }
 .verdict-effect em { font-style: normal; font-weight: 600; }
-.verdicts li.adds .verdict-effect em { color: #eda36b; }
-.verdicts li.subtracts .verdict-effect em { color: #5cc3c0; }
+.verdicts li.adds .verdict-effect em { color: var(--high, #eda36b); }
+.verdicts li.subtracts .verdict-effect em { color: var(--low, #5cc3c0); }
 .verdict-effect u {
   text-decoration: none; color: #968c7f; font-size: 10px; font-weight: 650;
   letter-spacing: .07em; text-transform: uppercase;
@@ -806,15 +819,17 @@
 .cloud-note { margin: 8px 0 0; color: #7e766c; font-size: 11.5px; line-height: 1.5; max-inline-size: 62ch; }
 .cloud-note em { color: #b3aa9e; font-style: normal; }
 
-.set-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; }
+.set-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 18px; }
 .set-picker-label {
   color: #7e766c; font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
-  margin-inline-end: 2px;
+  margin-inline-end: 6px;
 }
+/* A chip is a tap target as well as a label, and 4px of vertical padding made
+   it neither comfortably tappable nor visually separate from its neighbour. */
 .set-chip {
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  padding: 4px 9px; font-size: 11.5px; color: #b3aa9e;
-  background: #1d1815; border: 1px solid #3a312a; border-radius: 12px;
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  padding: 7px 13px; font-size: 11.5px; color: #b3aa9e;
+  background: #1d1815; border: 1px solid #3a312a; border-radius: 14px;
 }
 .set-chip i { inline-size: 7px; block-size: 7px; border-radius: 50%; opacity: .55; }
 .set-chip small { color: #6a6158; font-size: 10px; font-variant-numeric: tabular-nums; }
@@ -1061,10 +1076,23 @@
    space so it reads as a doorway rather than as a footnote to the paragraph
    above it — the comparison it leads to is load-bearing for the whole page. */
 .taste-pointer {
-  margin: 22px 0 30px; padding: 14px 0 0;
+  margin: 22px 0 30px; padding: 16px 0 0;
   border-top: 1px solid var(--rule, #2d251f); max-width: 70ch;
 }
-.taste-pointer .link-button { font-size: inherit; white-space: nowrap; }
+/* It was a muted underline at the end of a sentence, which is where a reader's
+   eye is already leaving. As the one link on the page that goes to the test
+   these axes have to survive, it gets the weight of a control. */
+.taste-pointer .link-button {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-inline-start: 4px; padding: 6px 13px;
+  border: 1px solid #7a5a3a; border-radius: 15px;
+  color: #eda36b; font-size: inherit; font-weight: 600;
+  text-decoration: none; white-space: nowrap;
+}
+.taste-pointer .link-button:hover,
+.taste-pointer .link-button:focus-visible {
+  border-color: #eda36b; background: rgba(237, 163, 107, .1);
+}
 
 /* Films at each end of a taste dimension: the one part of that page a reader
    can check against what they already know. Two columns so the poles are read

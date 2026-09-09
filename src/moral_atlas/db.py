@@ -584,6 +584,22 @@ CREATE TABLE IF NOT EXISTS findings (
     measured_at TEXT
 );
 
+-- The document the atlas page draws, kept so it does not have to be made twice.
+--
+-- It is derived, wholly reproducible, and expensive in exactly the wrong place:
+-- a thousand-permutation null test, three seconds on a laptop and forty on the
+-- small machine that serves it. Held in memory it was rebuilt on every restart,
+-- and dynos restart daily — so the first person to open the atlas each day paid
+-- for it. Held here, the first process to build it is the last one that has to.
+--
+-- `cache_key` is the store's own counts. A corpus that has not changed reads
+-- the same document; one that has cannot, because the key moved with it.
+CREATE TABLE IF NOT EXISTS atlas_documents (
+    cache_key TEXT PRIMARY KEY,
+    payload   TEXT NOT NULL,   -- JSON
+    built_at  TEXT NOT NULL
+);
+
 -- The same permutation test the atlas draws, run again on verdicts with the
 -- taste-predictable part subtracted out. Stored rather than computed on demand:
 -- it is two hundred permutations over a residualised matrix, which is far too
@@ -688,6 +704,7 @@ PRIMARY_KEYS: dict[str, tuple[str, ...]] = {
     "taste_dimensions": ("dim_id",),
     "film_taste": ("film_id", "dim_id"),
     "findings": ("key",),
+    "atlas_documents": ("cache_key",),
     "axis_placement": ("scorer", "variant", "bank_version"),
     "null_test_adjusted": ("scorer", "variant", "bank_version"),
     "film_moral_adjusted": ("scorer", "variant", "bank_version", "film_id", "dim_id"),

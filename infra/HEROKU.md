@@ -142,12 +142,13 @@ running thirty of them per request queues the whole site behind whichever client
 last died mid-transaction. That is not hypothetical; it is what the first real
 request against Postgres did.
 
-**The atlas document is built at boot, not on request.** `/api/atlas` runs a
-thousand-permutation null test, which is 3 seconds of arithmetic on a laptop and
-about 20 on a dyno — against a router that hangs up at 30. It is built in a
-background thread at startup (`ATLAS_WARM_CACHE=1`) and cached against the
-store's counts, so the only person who can wait for it is one who opens the
-atlas page in the twenty seconds after a restart, and dynos restart daily. Look
+**The atlas document is built once, not per process.** `/api/atlas` runs a
+thousand-permutation null test — 3 seconds of arithmetic on a laptop, forty on a
+dyno, against a router that hangs up at 30. It is kept in `atlas_documents`,
+keyed on the store's own counts, so a restart reads it rather than making it
+again; a sweep changes the counts and the next request rebuilds. On top of that
+it is built in a background thread at startup (`ATLAS_WARM_CACHE=1`), which
+covers the one case the table cannot: the first boot after a corpus push. Look
 for `atlas document built and cached` in the log.
 
 **A killed client can hold a lock.** If the site stops answering and nothing

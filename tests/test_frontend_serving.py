@@ -109,8 +109,10 @@ def test_the_atlas_document_is_built_once_under_concurrency():
     """
     import threading
 
+    from moral_atlas import db
     from moral_atlas.web.routes import atlas
 
+    db.init_db()
     builds = []
     atlas._cache["key"] = None
 
@@ -134,3 +136,58 @@ def test_the_atlas_document_is_built_once_under_concurrency():
         atlas._cache["key"] = None
 
     assert len(builds) == 1, f"built {len(builds)} times, wanted once"
+
+
+def test_the_document_survives_the_process_that_built_it():
+    """A restart must not mean building it again.
+
+    Held only in memory it was rebuilt on every boot, and the machine it runs on
+    takes forty seconds over it — so the first person to open the atlas after
+    the daily restart paid for the whole thing. The store outlives the process.
+    """
+    from moral_atlas import db
+    from moral_atlas.web.routes import atlas
+
+    db.init_db()
+    atlas._cache["key"] = None
+    build_count = []
+
+    original_build, original_totals = atlas.dataset_mod.build, atlas.dataset_mod.totals
+    atlas.dataset_mod.build = lambda *_: (build_count.append(1), {"films": ["a"]})[1]
+    atlas.dataset_mod.totals = lambda *_: {"films": 1}
+    try:
+        first = atlas._payload("d1", "b1")
+        atlas._cache["key"] = None          # what a restart looks like from here
+        second = atlas._payload("d1", "b1")
+    finally:
+        atlas.dataset_mod.build, atlas.dataset_mod.totals = original_build, original_totals
+        atlas._cache["key"] = None
+
+    assert first == second
+    assert len(build_count) == 1, "the second process should have read it, not made it"
+
+
+def test_a_document_built_against_an_older_corpus_is_not_served():
+    """The stored copy is keyed on the counts, so a sweep invalidates it."""
+    from moral_atlas import db
+    from moral_atlas.web.routes import atlas
+
+    db.init_db()
+    atlas._cache["key"] = None
+    totals = {"films": 1}
+
+    original_build, original_totals = atlas.dataset_mod.build, atlas.dataset_mod.totals
+    atlas.dataset_mod.build = lambda *_: {"films": totals["films"]}
+    atlas.dataset_mod.totals = lambda *_: dict(totals)
+    try:
+        assert atlas._payload("d1", "b1") == {"films": 1}
+        totals["films"] = 2                 # a sweep landed
+        atlas._cache["key"] = None
+        assert atlas._payload("d1", "b1") == {"films": 2}
+
+        with db.connect(read_only=True) as con:
+            kept = con.execute("SELECT COUNT(*) AS n FROM atlas_documents").fetchone()["n"]
+        assert kept == 1, "and the superseded one is dropped rather than piling up"
+    finally:
+        atlas.dataset_mod.build, atlas.dataset_mod.totals = original_build, original_totals
+        atlas._cache["key"] = None

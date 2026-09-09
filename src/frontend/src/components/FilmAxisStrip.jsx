@@ -243,7 +243,14 @@ export default function FilmAxisStrip({
       </ul>
       {(reserve || tasteRows.length > 0) && (
         <div className="axis-strip-taste">
-          <span className="axis-strip-label">And what kind of film</span>
+          {/* The heading goes invisible with its rows rather than disappearing:
+              a film with nothing distinctive to say about its kind was showing
+              "AND WHAT KIND OF FILM" over two rows of held-open space, which
+              reads as something that failed to load. Hidden, not removed, so
+              the height it reserves is the height it always reserves. */}
+          <span className={`axis-strip-label${tasteRows.length ? '' : ' axis-strip-placeholder'}`}>
+            And what kind of film
+          </span>
           <ul>
             {tasteRows.map(({ dim, at, index }) => {
               const pair = polePair('taste', index)

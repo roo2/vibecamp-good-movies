@@ -43,7 +43,12 @@ function LandingPage({ onStart, joining = false }) {
             : <>Find a film by your<br /><em className="lit-taste">taste</em> and <em className="lit-values">values</em>.</>}</h1>
           <p className="screen-copy">{joining
             ? 'They are already answering. You will each answer on your own — neither of you sees the other’s answers until the end.'
-            : 'Ninety seconds on films you already know. We read both out of what you liked, then find what matches.'}</p>
+            /* What was done, and what it costs you. The premise it replaced —
+               "every film argues for something" — explained the idea before
+               saying there was anything on offer. The corpus runs 1920 to 2024
+               and the raters are the 162,265 of MovieLens, who never saw any of
+               this; "both" is the two words in the headline above. */
+            : 'A hundred years of Hollywood read by AI, against 162,000 raters. Ninety seconds on films you already know, and we match you on both.'}</p>
         </div>
 
         {error && <p className="message" role="alert">{error}</p>}

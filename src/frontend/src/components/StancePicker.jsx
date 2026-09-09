@@ -90,10 +90,16 @@ export default function StancePicker({ access, shareToken = null, onChange, onCl
   return (
     <div className="stance-picker">
       <h2>Where do you stand?</h2>
+      {/* The quarter million is the verdicts behind the axes these three sit on:
+          273,015 answers, one film against one proposition, from the scorer the
+          product reads. Rounded rather than quoted exactly because the number
+          moves whenever the corpus does, and a figure on a screen nobody
+          rebuilds is a figure that goes quietly wrong. */}
       <p className="stance-note">
-        Your <strong className="lit-values">values</strong>, not your taste — what a film
-        argues for, not what kind of film it is. It steers what you are shown. Only you see
-        it, and you can change it whenever.
+        Three clear positions, found in a quarter of a million answers films gave about right
+        and wrong. Choose the one that sounds most like you and we will match you with films
+        that share your <strong className="lit-values">values</strong>. Only you see this, and
+        you can change it whenever.
       </p>
 
       <ul className="stance-options">

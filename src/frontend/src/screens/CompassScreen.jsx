@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import TasteRead from '../components/compass/TasteRead.jsx'
 import { loadMoralProfile, loadSessionMoralProfiles } from '../services/profileService.js'
 
@@ -13,6 +13,25 @@ function CompassScreen({ access, shareToken, onContinue }) {
   const [profile, setProfile] = useState(null)
   const [companions, setCompanions] = useState([])
   const [error, setError] = useState(null)
+  const bodyRef = useRef(null)
+  const [more, setMore] = useState(false)
+
+  // Whether the reading runs past the bottom of its own region, so the page can
+  // say so. Without it a short phone shows four scales of five and looks
+  // finished — the list has to admit it is cut, or it is quietly lying about
+  // how many there are.
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return undefined
+    const check = () => setMore(el.scrollTop + el.clientHeight < el.scrollHeight - 4)
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      el.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [profile, companions])
 
   useEffect(() => {
     if (!access) return
@@ -41,6 +60,17 @@ function CompassScreen({ access, shareToken, onContinue }) {
   return (
     <main className="app-page">
       <section className="phone-screen compass-screen">
+        {/* The reading scrolls; the way onward does not.
+
+            This screen is the one page whose height depends on what it found —
+            five taste rows, some with labels that wrap to two lines, plus a
+            provisional note when there is one — and on a short phone that came
+            to more than the viewport. The button sat below the fold on a page
+            with no visible sign that it scrolled, so it read as a screen with
+            no way off it, and the fix people found by accident was to swipe.
+            Bounding this region means the action is on screen whatever the
+            reading turns out to be. */}
+        <div className={more ? 'compass-body has-more' : 'compass-body'} ref={bodyRef}>
         <header className="compass-header">
           <span>Your compass</span>
           <span className="compass-view-label">{profile.evidence.films_used} films read</span>
@@ -68,6 +98,7 @@ function CompassScreen({ access, shareToken, onContinue }) {
             less, and meaning it, beats a confident sentence about somebody's
             morals drawn from twelve films they have seen. */}
         <TasteRead taste={profile.taste} companions={companions} />
+        </div>
 
         <div className="compass-action">
           <button className="peach-button" type="button" onClick={onContinue}>

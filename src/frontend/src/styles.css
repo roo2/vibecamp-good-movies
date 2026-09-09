@@ -193,6 +193,17 @@ button { cursor: pointer; }
 .compass-lede { margin: 0; color: #7e766c; font-size: 13px; line-height: 1.5; }
 .compass-lede strong { color: #b3aa9e; font-weight: 500; }
 .compass-screen { height: auto; overflow: visible; padding-top: clamp(20px, 3.5vh, 32px); }
+/* Never taller than the screen it is on, so `.compass-action` below cannot be
+   pushed past the bottom of it. What gives instead is `.compass-body`, which
+   scrolls — five taste rows are a list, and a list that is one row too long for
+   a small phone should lose a row off the bottom of itself rather than take the
+   only button with it. On anything tall enough this changes nothing: the body
+   is shorter than the space it is given and never scrolls. */
+.compass-screen { max-height: 100svh; }
+.compass-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+/* Only while there is something below the fold of it — a permanent fade would
+   dim the last scale on every screen big enough not to need one. */
+.compass-body.has-more { -webkit-mask-image: linear-gradient(#000 calc(100% - 30px), transparent); mask-image: linear-gradient(#000 calc(100% - 30px), transparent); }
 /* A line, not a panel. It sits directly under the provenance line and says the
    same kind of thing — how much to trust the rows — so a boxed callout gave it
    more weight than it has, and 30px of height this screen cannot spare. */

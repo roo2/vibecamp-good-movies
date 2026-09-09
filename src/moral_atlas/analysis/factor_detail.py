@@ -44,7 +44,7 @@ def _verdicts(scorer: str, bank_version: str, variant: str) -> list[Any]:
     with db.connect(read_only=True) as con:
         return con.execute(
             "SELECT film_id, item_id, value FROM model_verdicts "
-            "WHERE scorer=? AND bank_version=? AND variant=?",
+            "WHERE scorer=%s AND bank_version=%s AND variant=%s",
             [scorer, bank_version, variant],
         ).fetchall()
 
@@ -70,8 +70,8 @@ def _taste_adjusted(scorer: str, bank_version: str, variant: str):
         with db.connect(read_only=True) as con:
             for row in con.execute(
                     "SELECT film_id, dim_id, score, taste_explained "
-                    "FROM film_moral_adjusted WHERE scorer=? AND variant=? "
-                    "AND bank_version=?", [scorer, variant, bank_version]):
+                    "FROM film_moral_adjusted WHERE scorer=%s AND variant=%s "
+                    "AND bank_version=%s", [scorer, variant, bank_version]):
                 out[(row["film_id"], row["dim_id"])] = row["score"]
                 explained[row["dim_id"]] = row["taste_explained"]
     except Exception:
@@ -302,8 +302,8 @@ def film_justification(
     vectors = vectors or {}
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT item_id, value, evidence FROM model_verdicts WHERE scorer=? "
-            "AND bank_version=? AND variant=? AND film_id=?",
+            "SELECT item_id, value, evidence FROM model_verdicts WHERE scorer=%s "
+            "AND bank_version=%s AND variant=%s AND film_id=%s",
             [scorer, bank_version, variant, film_id],
         ).fetchall()
 

@@ -253,7 +253,7 @@ def session_member_ids(share_token: str, viewer_user_id: str) -> list[str] | Non
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT m.user_id FROM session_members m "
-            "JOIN group_sessions s ON s.session_id=m.session_id WHERE s.share_token=? "
+            "JOIN group_sessions s ON s.session_id=m.session_id WHERE s.share_token=%s "
             "ORDER BY m.joined_at", [share_token],
         ).fetchall()
     members = [row["user_id"] for row in rows]
@@ -305,11 +305,19 @@ def ranked_shortlist(
         if stance_id and weight:
             stance_profiles[user_id] = stances_module.centroid(stance_id, stances, baseline)
 
+    # The corpus in one read. This was `db.get_film(film_id)` inside the loop,
+    # which is 674 queries — and, because every call opens its own connection,
+    # 674 connections. Against a SQLite file in the same process that was free.
+    # Against Postgres it was the endpoint: two thirds of the request was spent
+    # in connection setup, and on a database that is a network hop away rather
+    # than a socket away it would have been most of a minute.
+    corpus = {film["film_id"]: film for film in db.list_films()}
+
     ranked = []
     for film_id, film_stances in stances.items():
         if film_id in seen:
             continue
-        film = db.get_film(film_id)
+        film = corpus.get(film_id)
         if film is None:
             continue
         # A recommendation is a card with a poster on it. The research corpus is

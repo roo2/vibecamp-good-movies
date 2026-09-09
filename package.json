@@ -1,0 +1,11 @@
+{
+  "name": "moral-atlas",
+  "private": true,
+  "description": "Root package.json so Heroku's Node buildpack builds the interface. The application itself is Python; the front end lives in src/frontend.",
+  "scripts": {
+    "heroku-postbuild": "npm --prefix src/frontend ci && npm --prefix src/frontend run build"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

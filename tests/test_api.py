@@ -19,7 +19,6 @@ def isolated_web_database(monkeypatch, tmp_path):
 
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "web.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
@@ -107,7 +106,7 @@ def test_session_direct_deck_uses_only_films_with_artwork(isolated_web_database)
         con.execute("UPDATE films SET artwork_url=NULL")
         for film in eligible:
             con.execute(
-                "UPDATE films SET artwork_url=? WHERE film_id=?",
+                "UPDATE films SET artwork_url=%s WHERE film_id=%s",
                 [f"https://example.test/posters/{film['film_id']}.jpg", film["film_id"]],
             )
 
@@ -124,7 +123,7 @@ def test_session_deck_needs_enough_eligible_films(isolated_web_database):
     with isolated_web_database.connect() as con:
         con.execute("UPDATE films SET artwork_url=NULL")
         for film in films[:MIN_CARDS - 1]:
-            con.execute("UPDATE films SET artwork_url=? WHERE film_id=?",
+            con.execute("UPDATE films SET artwork_url=%s WHERE film_id=%s",
                         ["https://example.test/p.jpg", film["film_id"]])
 
     assert build_session_deck() == {"direct": [], "pairs": []}
@@ -194,7 +193,7 @@ def test_group_session_tracks_members_and_unlocks_when_everyone_completes(isolat
     assert revised.status_code == 201
     with isolated_web_database.connect(read_only=True) as con:
         assert con.execute(
-            "SELECT count(*) FROM test_results WHERE user_id=? AND session_share_token=?",
+            "SELECT count(*) FROM test_results WHERE user_id=%s AND session_share_token=%s",
             [guest["user"]["id"], share_token],
         ).fetchone()[0] == 1
 
@@ -216,7 +215,7 @@ def test_host_can_continue_after_waiting_ten_minutes_with_incomplete_members(iso
     assert client.post(f"/api/sessions/{share_token}/continue", headers=host_headers).status_code == 403
     with isolated_web_database.connect() as con:
         con.execute(
-            "UPDATE group_sessions SET waiting_started_at=? WHERE share_token=?",
+            "UPDATE group_sessions SET waiting_started_at=%s WHERE share_token=%s",
             [(datetime.now(timezone.utc) - timedelta(minutes=11)).isoformat(), share_token],
         )
     continued = client.post(f"/api/sessions/{share_token}/continue", headers=host_headers)
@@ -305,10 +304,10 @@ def test_a_removed_yes_takes_a_film_back_off_the_shortlist(isolated_web_database
         })
 
     with isolated_web_database.connect() as con:
-        session_id = con.execute("SELECT session_id FROM group_sessions WHERE share_token=?",
+        session_id = con.execute("SELECT session_id FROM group_sessions WHERE share_token=%s",
                                  [share_token]).fetchone()["session_id"]
         assert _agreed_films(con, session_id) == [film_id]
-        con.execute("DELETE FROM shortlist_reactions WHERE session_id=? AND user_id=?",
+        con.execute("DELETE FROM shortlist_reactions WHERE session_id=%s AND user_id=%s",
                     [session_id, guest["user"]["id"]])
         assert _agreed_films(con, session_id) == []
 
@@ -475,11 +474,11 @@ def _reading(db, bank, scorer="deepseek"):
     with db.connect() as con:
         con.execute(
             "INSERT INTO model_verdicts (scorer, model, film_id, item_id, bank_version, "
-            "variant, value) VALUES (?,?,?,?,?,?,?)",
+            "variant, value) VALUES (%s,%s,%s,%s,%s,%s,%s)",
             [scorer, "m", "film-0", "I001", bank, "subs", 1])
         con.execute(
             "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
-            "n_items, eigenvalue, margin) VALUES (?,?,?,?,?,?,?,?)",
+            "n_items, eigenvalue, margin) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
             [scorer, "subs", bank, 0, "An axis", 5, 2.0, 0.5])
 
 
@@ -674,7 +673,7 @@ def test_a_stale_adjusted_null_test_is_withheld_rather_than_drawn(isolated_web_d
         con.execute(
             "INSERT INTO null_test_adjusted (scorer, variant, bank_version, films, "
             "eigenvalues, thresholds, control_eigen, control_thresh, source_fingerprint) "
-            "VALUES (?,?,?,?,?,?,?,?,?)", [*row, current])
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", [*row, current])
 
     assert taste_null.load("m", "subs", "b")["films"] == 543
 
@@ -691,6 +690,8 @@ def test_the_fingerprint_moves_when_the_taste_placements_do(isolated_web_databas
     db = isolated_web_database
     before = taste_null.fingerprint("m", "subs", "b")
     with db.connect() as con:
+        con.execute("INSERT INTO taste_dimensions (dim_id, variance, replication, "
+                    "evidence, status) VALUES (1, 0.2, 0.9, 0.5, 'unnamed')")
         con.execute("INSERT INTO film_taste VALUES ('film-0', 1, 0.5)")
     assert taste_null.fingerprint("m", "subs", "b") != before
 

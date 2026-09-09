@@ -187,8 +187,7 @@ def _tmp_db(monkeypatch, tmp_path):
     from dataclasses import replace
     from moral_atlas import db as db_mod
     from moral_atlas.config import settings as real_settings
-    s = replace(real_settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-                db_path=tmp_path / "t.sqlite")
+    s = replace(real_settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",)
     monkeypatch.setattr(db_mod, "settings", lambda: s)
     db_mod.init_db()
     return db_mod
@@ -259,7 +258,7 @@ def test_the_bank_records_the_model_that_wrote_it(monkeypatch, tmp_path):
             "SELECT text, model, prompt_version, run_id FROM item_bank "
             "WHERE bank_version='btest'").fetchall()
         run = con.execute(
-            "SELECT stage, model FROM runs WHERE run_id=?", [result["run_id"]]).fetchone()
+            "SELECT stage, model FROM runs WHERE run_id=%s", [result["run_id"]]).fetchone()
     assert len(rows) == 5
     assert rows[0]["text"].startswith("Canonical")
     assert {r["model"] for r in rows} == {"some-other-model-9"}
@@ -279,7 +278,7 @@ def test_a_bank_cut_without_a_model_says_so_rather_than_going_blank(monkeypatch,
 
     assert result["model"] is None
     with db_mod.connect(read_only=True) as con:
-        run = con.execute("SELECT stage, params FROM runs WHERE run_id=?",
+        run = con.execute("SELECT stage, params FROM runs WHERE run_id=%s",
                           [result["run_id"]]).fetchone()
     assert run["stage"] == "bank"
     assert '"canonicalised": false' in run["params"]
@@ -315,7 +314,7 @@ def test_provenance_reports_a_layer_built_by_two_models(monkeypatch, tmp_path):
         for index, model in enumerate(("claude-opus-5", "claude-sonnet-5")):
             con.execute("INSERT INTO scores (film_id, item_id, bank_version, variant, "
                         "run_id, value, model, prompt_version) "
-                        "VALUES (?,?,'b1','spine',?,1,?,'p1')",
+                        "VALUES (%s,%s,'b1','spine',%s,1,%s,'p1')",
                         [f"f{index}", "I1", f"run-{index}", model])
     rows = db_mod.provenance()
     scoring = {row["model"] for row in rows if row["table"] == "scores"}
@@ -350,11 +349,15 @@ def test_list_columns_round_trip_through_json(monkeypatch, tmp_path):
 def test_read_only_connect_refuses_writes(monkeypatch, tmp_path):
     """Analysis paths open read-only so a stray write cannot corrupt a store
     that took real money to fill."""
-    import pytest, sqlite3
+    import psycopg
+    import pytest
     db_mod = _tmp_db(monkeypatch, tmp_path)
     db_mod.upsert_film({"film_id": "y-2000", "title": "Y", "year": 2000})
     with db_mod.connect(read_only=True) as con:
-        with pytest.raises(sqlite3.OperationalError):
+        # Postgres refuses this in the server rather than in a file mode, so the
+        # guarantee is real for every path rather than for the ones that
+        # remembered to open the file the right way.
+        with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
             con.execute("DELETE FROM films")
 
 
@@ -478,8 +481,7 @@ def test_rebuilding_a_bank_discards_what_was_measured_against_the_old_one(tmp_pa
     from moral_atlas.analysis import bank as bank_module
     from moral_atlas.config import settings
 
-    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "c",
-                            db_path=tmp_path / "b.sqlite")
+    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "c",)
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
 

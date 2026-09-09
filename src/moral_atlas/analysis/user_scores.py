@@ -170,7 +170,7 @@ def load_dimensions(dim_version: str = DEFAULT_DIM_VERSION) -> list[dict[str, An
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT dim_id, name, question, pole_high, pole_low FROM dimensions "
-            "WHERE dim_version=? ORDER BY dim_id", [dim_version],
+            "WHERE dim_version=%s ORDER BY dim_id", [dim_version],
         ).fetchall()
     return [dict(row) for row in rows]
 
@@ -191,12 +191,12 @@ def film_stances(
             row["item_id"]: (row["dim_id"], row["polarity"])
             for row in con.execute(
                 "SELECT item_id, dim_id, polarity FROM item_dimensions "
-                "WHERE dim_version=? AND bank_version=? AND pass_name=?",
+                "WHERE dim_version=%s AND bank_version=%s AND pass_name=%s",
                 [dim_version, bank_version, MAIN_PASS],
             )
         }
         score_rows = con.execute(
-            "SELECT film_id, item_id, variant, value FROM scores WHERE bank_version=?",
+            "SELECT film_id, item_id, variant, value FROM scores WHERE bank_version=%s",
             [bank_version],
         ).fetchall()
 
@@ -459,8 +459,8 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
             # silently inert; the same omission here would put the axes in a
             # different order from every other screen.
             "pole_low_label, eigenvalue, n_items, margin FROM latent_factors "
-            "WHERE scorer=? AND variant=? AND bank_version=? "
-            "AND n_items>=? "
+            "WHERE scorer=%s AND variant=%s AND bank_version=%s "
+            "AND n_items>=%s "
             # An axis the namer would not call coherent should not be handed to
             # somebody as a reading of what they believe. It stays in the atlas,
             # where the warning beside it is the point.
@@ -554,13 +554,13 @@ def factor_stances(
         assignments = {}
         for r in con.execute(
                 "SELECT item_id, factor_id, loading, loadings FROM latent_factor_items "
-                "WHERE scorer=? AND variant=? AND bank_version=?",
+                "WHERE scorer=%s AND variant=%s AND bank_version=%s",
                 [scorer, variant, bank_version]):
             every = json.loads(r["loadings"]) if r["loadings"] else None
             assignments[r["item_id"]] = (r["factor_id"], r["loading"], every)
         rows = con.execute(
-            "SELECT film_id, item_id, value FROM model_verdicts WHERE scorer=? "
-            "AND variant=? AND bank_version=?", [scorer, variant, bank_version],
+            "SELECT film_id, item_id, value FROM model_verdicts WHERE scorer=%s "
+            "AND variant=%s AND bank_version=%s", [scorer, variant, bank_version],
         ).fetchall()
 
     # EVERY PROPOSITION COUNTS ON EVERY AXIS IT SPEAKS TO, in proportion to how

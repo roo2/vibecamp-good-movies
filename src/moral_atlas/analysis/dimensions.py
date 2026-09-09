@@ -148,7 +148,7 @@ def bank_items(bank_version: str) -> list[dict[str, Any]]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, text, cluster_id FROM item_bank "
-            "WHERE bank_version=? AND active=1 ORDER BY item_id",
+            "WHERE bank_version=%s AND active=1 ORDER BY item_id",
             [bank_version],
         ).fetchall()
     return [dict(r) for r in rows]
@@ -175,7 +175,7 @@ def item_source_films(bank_version: str, threshold: float = 0.45) -> dict[str, s
     by_cluster = {c["cluster_id"]: {m[1] for m in c["members"]} for c in clusters}
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT item_id, cluster_id FROM item_bank WHERE bank_version=?",
+            "SELECT item_id, cluster_id FROM item_bank WHERE bank_version=%s",
             [bank_version],
         ).fetchall()
     return {r["item_id"]: by_cluster.get(r["cluster_id"], set()) for r in rows}
@@ -185,7 +185,7 @@ def load_dimensions(dim_version: str) -> list[dict[str, Any]]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT dim_id, name, question, pole_high, pole_low FROM dimensions "
-            "WHERE dim_version=? ORDER BY dim_id", [dim_version],
+            "WHERE dim_version=%s ORDER BY dim_id", [dim_version],
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -195,7 +195,7 @@ def load_assignments(dim_version: str, bank_version: str,
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, dim_id, polarity, fit FROM item_dimensions "
-            "WHERE dim_version=? AND bank_version=? AND pass_name=?",
+            "WHERE dim_version=%s AND bank_version=%s AND pass_name=%s",
             [dim_version, bank_version, pass_name],
         ).fetchall()
     return {r["item_id"]: dict(r) for r in rows}
@@ -205,7 +205,7 @@ def list_passes(dim_version: str, bank_version: str) -> list[tuple[str, str, int
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT pass_name, model, COUNT(*) n FROM item_dimensions "
-            "WHERE dim_version=? AND bank_version=? GROUP BY pass_name, model "
+            "WHERE dim_version=%s AND bank_version=%s GROUP BY pass_name, model "
             "ORDER BY pass_name", [dim_version, bank_version],
         ).fetchall()
     return [(r["pass_name"], r["model"], r["n"]) for r in rows]
@@ -250,12 +250,12 @@ def derive(
     if persist:
         run_id = db.new_run_id("dimensions")
         with db.connect() as con:
-            con.execute("DELETE FROM dimensions WHERE dim_version=?", [dim_version])
+            con.execute("DELETE FROM dimensions WHERE dim_version=%s", [dim_version])
             for d in dims:
                 con.execute(
                     "INSERT INTO dimensions (dim_version, dim_id, name, question, "
                     "pole_high, pole_low, n_dims, source, run_id, model, "
-                    "prompt_version, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                    "prompt_version, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                     [dim_version, d["dim_id"], d["name"], d["question"],
                      d["pole_high"], d["pole_low"], len(dims), source, run_id,
                      client.model, PROMPT_VERSION, db.now()],
@@ -327,14 +327,14 @@ def assign(
         run_id = db.new_run_id("dimensions")
         with db.connect() as con:
             con.execute(
-                "DELETE FROM item_dimensions WHERE dim_version=? AND bank_version=? "
-                "AND pass_name=?", [dim_version, bank_version, pass_name],
+                "DELETE FROM item_dimensions WHERE dim_version=%s AND bank_version=%s "
+                "AND pass_name=%s", [dim_version, bank_version, pass_name],
             )
             for a in out:
                 con.execute(
                     "INSERT INTO item_dimensions (dim_version, bank_version, item_id, "
                     "dim_id, polarity, fit, pass_name, run_id, model, created_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                     [dim_version, bank_version, a["item_id"], a["dim_id"],
                      a["polarity"], a["fit"], pass_name, run_id, client.model,
                      db.now()],
@@ -407,7 +407,7 @@ def _packets(
     variants: Iterable[str] | None = None,
 ) -> dict[tuple[str, str], list[tuple[str, int]]]:
     """{(film, variant): [(item_id, value)]} for items that carry an assignment."""
-    q = "SELECT film_id, variant, item_id, value FROM scores WHERE bank_version=?"
+    q = "SELECT film_id, variant, item_id, value FROM scores WHERE bank_version=%s"
     args: list[Any] = [bank_version]
     with db.connect(read_only=True) as con:
         rows = con.execute(q, args).fetchall()

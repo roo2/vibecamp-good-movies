@@ -610,13 +610,13 @@ def persist(
     )
     with db.connect() as con:
         for table in ("latent_factors", "latent_factor_items"):
-            con.execute(f"DELETE FROM {table} WHERE scorer=? AND variant=? AND bank_version=?",
+            con.execute(f"DELETE FROM {table} WHERE scorer=%s AND variant=%s AND bank_version=%s",
                         [alias, variant, bank_version])
         con.executemany(
             "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, name, "
             "question, pole_high, pole_low, pole_high_label, pole_low_label, coherent, "
             "estimator, n_items, eigenvalue, margin, model, run_id, created_at, "
-            "coherence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "coherence) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             [(alias, variant, bank_version, f["factor_id"], f["name"], f["question"],
               f["pole_high"], f["pole_low"], f.get("pole_high_label"), f.get("pole_low_label"),
               int(bool(f.get("coherent", True))), estimator, f["n_items"], f["eigenvalue"],
@@ -629,8 +629,9 @@ def persist(
         # first, weight now comes from the second.
         every = report.get("loadings") or {}
         con.executemany(
-            "INSERT OR REPLACE INTO latent_factor_items (scorer, variant, bank_version, "
-            "item_id, factor_id, loading, loadings) VALUES (?,?,?,?,?,?,?)",
+            db.upsert("latent_factor_items", ["scorer", "variant", "bank_version",
+                                              "item_id", "factor_id", "loading",
+                                              "loadings"]),
             [(alias, variant, bank_version, item, factor, loadings.get(item),
               json.dumps(every[item]) if item in every else None)
              for item, factor in report["groups"].items()],
@@ -690,7 +691,7 @@ def load(alias: str, variant: str = "subs", bank_version: str = "b1",
             "pole_low_label, coherent, estimator, n_items, eigenvalue, margin, model, "
             "coherence "
             "FROM latent_factors "
-            "WHERE scorer=? AND variant=? AND bank_version=? ORDER BY factor_id",
+            "WHERE scorer=%s AND variant=%s AND bank_version=%s ORDER BY factor_id",
             [alias, variant, bank_version],
         ).fetchall()
     factors = sorted([_with_labels(dict(r)) for r in rows], key=by_support)
@@ -727,7 +728,7 @@ def _with_labels(factor: dict[str, Any]) -> dict[str, Any]:
 def bank_texts(bank_version: str = "b1") -> dict[str, str]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT item_id, text FROM item_bank WHERE bank_version=? AND active=1",
+            "SELECT item_id, text FROM item_bank WHERE bank_version=%s AND active=1",
             [bank_version],
         ).fetchall()
     return {r["item_id"]: r["text"] for r in rows}
@@ -744,7 +745,7 @@ def estimator_for(alias: str, variant: str = "subs", bank_version: str = "b1") -
     db.init_db()
     with db.connect(read_only=True) as con:
         row = con.execute(
-            "SELECT estimator FROM latent_factors WHERE scorer=? AND variant=? "
-            "AND bank_version=? LIMIT 1", [alias, variant, bank_version],
+            "SELECT estimator FROM latent_factors WHERE scorer=%s AND variant=%s "
+            "AND bank_version=%s LIMIT 1", [alias, variant, bank_version],
         ).fetchone()
     return (row["estimator"] if row and row["estimator"] else "dense")

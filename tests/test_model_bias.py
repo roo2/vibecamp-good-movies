@@ -89,37 +89,36 @@ def two_scorers(monkeypatch, tmp_path):
     from moral_atlas import db
     from moral_atlas.config import settings
 
-    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-                            db_path=tmp_path / "bias.sqlite")
+    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",)
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
 
     with db.connect() as con:
         con.execute(
             "INSERT INTO dimensions (dim_version, dim_id, name, question, pole_high, "
-            "pole_low, n_dims, source, created_at) VALUES ('d1',1,'Payback or Mercy','?','h','l',1,'test',?)",
+            "pole_low, n_dims, source, created_at) VALUES ('d1',1,'Payback or Mercy','?','h','l',1,'test',%s)",
             [db.now()],
         )
         for item in range(10):
             con.execute(
                 "INSERT INTO item_bank (item_id, bank_version, text, cluster_id, active) "
-                "VALUES (?,'b1',?,?,1)", [f"I{item}", f"proposition {item}", item])
+                "VALUES (%s,'b1',%s,%s,1)", [f"I{item}", f"proposition {item}", item])
             con.execute(
                 "INSERT INTO item_dimensions (dim_version, bank_version, item_id, dim_id, "
-                "polarity, fit, pass_name, created_at) VALUES ('d1','b1',?,1,1,0.9,'main',?)",
+                "polarity, fit, pass_name, created_at) VALUES ('d1','b1',%s,1,1,0.9,'main',%s)",
                 [f"I{item}", db.now()])
         for film in ("film-a", "film-b"):
             for item in range(10):
                 # Incumbent: everything affirms.
                 con.execute(
                     "INSERT INTO scores (film_id, item_id, bank_version, variant, run_id, "
-                    "value, confidence) VALUES (?,?, 'b1','spine','run-opus',1,0.9)",
+                    "value, confidence) VALUES (%s,%s, 'b1','spine','run-opus',1,0.9)",
                     [film, f"I{item}"])
                 # Challenger: denies every third item.
                 con.execute(
                     "INSERT INTO model_verdicts (scorer, model, film_id, item_id, bank_version, "
                     "variant, run_id, value, confidence, created_at) "
-                    "VALUES ('grok','grok-4',?,?,'b1','spine','run-grok',?,0.9,?)",
+                    "VALUES ('grok','grok-4',%s,%s,'b1','spine','run-grok',%s,0.9,%s)",
                     [film, f"I{item}", -1 if item % 3 == 0 else 1, db.now()])
     return db
 
@@ -155,7 +154,7 @@ def test_a_refusal_is_reported_rather_than_lost(two_scorers):
     with two_scorers.connect() as con:
         con.execute(
             "INSERT INTO model_refusals (scorer, model, film_id, variant, run_id, detail, "
-            "created_at) VALUES ('grok','grok-4','film-a','spine','run-grok','declined',?)",
+            "created_at) VALUES ('grok','grok-4','film-a','spine','run-grok','declined',%s)",
             [two_scorers.now()])
     assert model_bias.report("b1", "d1")["scorers"]["grok"]["refusals"] == 1
 

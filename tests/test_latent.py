@@ -539,15 +539,14 @@ def test_an_axis_lists_its_propositions_strongest_first(monkeypatch, tmp_path):
     from moral_atlas.config import settings
 
     monkeypatch.setattr(db, "settings", lambda: replace(
-        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "isolated.sqlite"))
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",))
     db.init_db()
     with db.connect() as con:
-        con.executemany("INSERT INTO films (film_id, title) VALUES (?,?)",
+        con.executemany("INSERT INTO films (film_id, title) VALUES (%s,%s)",
                         [("f1", "One"), ("f2", "Two"), ("f3", "Three")])
         con.executemany(
             "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
-            "bank_version, variant, value) VALUES (?,?,?,?,?,?,?)",
+            "bank_version, variant, value) VALUES (%s,%s,%s,%s,%s,%s,%s)",
             [("x", "m", film, item, "b", "v", value)
              for film in ("f1", "f2", "f3")
              for item, value in (("I1", 1), ("I2", -1), ("I3", 1))])
@@ -583,14 +582,13 @@ def test_a_films_position_is_the_sum_of_the_propositions_shown_under_it(monkeypa
     from moral_atlas.config import settings
 
     monkeypatch.setattr(db, "settings", lambda: replace(
-        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "isolated.sqlite"))
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",))
     db.init_db()
     with db.connect() as con:
         con.execute("INSERT INTO films (film_id, title) VALUES ('f', 'A Film')")
         con.executemany(
             "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
-            "bank_version, variant, value) VALUES (?,?,?,?,?,?,?)",
+            "bank_version, variant, value) VALUES (%s,%s,%s,%s,%s,%s,%s)",
             [("x", "m", "f", "I1", "b", "v", 2),     # affirmed hard
              ("x", "m", "f", "I2", "b", "v", -1),    # denied gently
              ("x", "m", "f", "I3", "b", "v", 1)])    # affirms a reverse-keyed one
@@ -632,14 +630,13 @@ def test_a_propositions_strength_is_signed(monkeypatch, tmp_path):
     from moral_atlas.config import settings
 
     monkeypatch.setattr(db, "settings", lambda: replace(
-        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "isolated.sqlite"))
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",))
     db.init_db()
     with db.connect() as con:
         con.execute("INSERT INTO films (film_id, title) VALUES ('f', 'A Film')")
         con.executemany(
             "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
-            "bank_version, variant, value) VALUES (?,?,?,?,?,?,?)",
+            "bank_version, variant, value) VALUES (%s,%s,%s,%s,%s,%s,%s)",
             [("x", "m", "f", "I1", "b", "v", 1), ("x", "m", "f", "I2", "b", "v", 1)])
 
     loadings = {"I1": 0.80, "I2": -0.55}

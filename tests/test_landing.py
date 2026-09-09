@@ -49,14 +49,19 @@ def test_root_renders_on_an_empty_store(client, monkeypatch):
     assert "Nothing scored yet" in r.text
 
 
-def test_snapshot_survives_a_missing_database(monkeypatch, tmp_path):
-    """No database at all must read as zeroes, not as a 500."""
-    from moral_atlas import config
+def test_snapshot_survives_a_missing_database(monkeypatch, empty_schema):
+    """An empty database must read as zeroes, not as a 500.
 
-    config.settings.cache_clear()
-    monkeypatch.setenv("HOME", str(tmp_path))
-    real = config.Settings()
-    object.__setattr__(real, "db_path", tmp_path / "nope.sqlite")
+    This was "a database file that is not there", which is not a state Postgres
+    has. What a fresh deployment actually looks like is a database with no
+    tables in it yet — an empty schema — so that is what it is tested against.
+    """
+    from dataclasses import replace
+
+    from moral_atlas import config, db
+
+    real = replace(config.settings(), db_schema=empty_schema)
+    monkeypatch.setattr(db, "settings", lambda: real)
     monkeypatch.setattr(landing, "settings", lambda: real)
     snap = landing._snapshot()
     assert snap["films"] == 0 and snap["dimensions"] == [] and not snap["ready"]

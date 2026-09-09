@@ -1,12 +1,22 @@
-name: deploy
+name: deploy (aws, frozen)
 
-# A push to main publishes the interface. It also updates the stack, or the
-# checkout on the runner, but only when those actually changed — most pushes
-# touch neither, and replacing an EC2 instance because someone edited a design
-# file is not a thing anyone wants to explain.
+# FROZEN. This deployed the AWS stack, and it must not run again as things
+# stand: the runner holds a SQLite file and an installed copy of this project,
+# and the project now expects Postgres. A push that reached the runner would
+# reinstall code that cannot talk to the database it has, and take the live demo
+# down in the process.
+#
+# The stack keeps serving what it is already serving. `heroku.yml` deploys the
+# real one. When the Heroku app has been watched long enough to replace this,
+# delete the stack (`aws cloudformation delete-stack`) and delete this file.
+#
+# Left runnable by hand rather than deleted, because a frozen environment you
+# cannot touch is worse than one you can — if the demo needs an emergency
+# republish of the OLD interface, this is how, from the last SQLite commit.
+#
+# What it used to say: a push to main publishes the interface, and updates the
+# stack or the checkout on the runner, but only when those actually changed.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       deploy_stack:
@@ -71,11 +81,32 @@ jobs:
   test:
     name: tests
     runs-on: ubuntu-latest
+
+    # The suite needs a real Postgres now. There is no in-process substitute:
+    # the point of the move was that the store enforces its own foreign keys and
+    # refuses its own read-only writes, and a fake that did neither would pass
+    # the tests that exist to check exactly that.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ATLAS_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      ATLAS_TEST_URL: postgresql://postgres:postgres@localhost:5432/moral_atlas_test
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - run: pip install -e . pytest
       - run: pytest -q
 

@@ -29,7 +29,7 @@ def _verdicts(scorer: str, bank_version: str, variant: str,
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, value, confidence, evidence FROM model_verdicts "
-            "WHERE scorer=? AND bank_version=? AND variant=? AND film_id=?",
+            "WHERE scorer=%s AND bank_version=%s AND variant=%s AND film_id=%s",
             [scorer, bank_version, variant, film_id],
         ).fetchall()
     return {r["item_id"]: {"value": r["value"], "confidence": r["confidence"],
@@ -47,9 +47,9 @@ def compare(film_id: str, scorers: list[str], bank_version: str,
     """
     with db.connect(read_only=True) as con:
         texts = {r["item_id"]: r["text"] for r in con.execute(
-            "SELECT item_id, text FROM item_bank WHERE bank_version=? AND active=1",
+            "SELECT item_id, text FROM item_bank WHERE bank_version=%s AND active=1",
             [bank_version])}
-        title_row = con.execute("SELECT title, year FROM films WHERE film_id=?",
+        title_row = con.execute("SELECT title, year FROM films WHERE film_id=%s",
                                 [film_id]).fetchone()
 
     read = {s: _verdicts(s, bank_version, variant, film_id) for s in scorers}
@@ -91,6 +91,6 @@ def films_scored_by_all(scorers: list[str], bank_version: str,
         sets = []
         for scorer in scorers:
             sets.append({r["film_id"] for r in con.execute(
-                "SELECT DISTINCT film_id FROM model_verdicts WHERE scorer=? "
-                "AND bank_version=? AND variant=?", [scorer, bank_version, variant])})
+                "SELECT DISTINCT film_id FROM model_verdicts WHERE scorer=%s "
+                "AND bank_version=%s AND variant=%s", [scorer, bank_version, variant])})
     return sorted(set.intersection(*sets))

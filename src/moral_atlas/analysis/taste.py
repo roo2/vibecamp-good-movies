@@ -316,9 +316,9 @@ def store(axes: Axes, ratings: movielens.Ratings,
         con.executemany(
             "INSERT INTO taste_dimensions (dim_id, pole_high, pole_low, variance, "
             "replication, evidence, tags_high, tags_low, status, source, created_at, "
-            "profile_reliability) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", dims)
+            "profile_reliability) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", dims)
         con.executemany(
-            "INSERT INTO film_taste (film_id, dim_id, position) VALUES (?,?,?)",
+            "INSERT INTO film_taste (film_id, dim_id, position) VALUES (%s,%s,%s)",
             places)
 
     if progress:

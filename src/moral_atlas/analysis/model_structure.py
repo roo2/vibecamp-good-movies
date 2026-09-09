@@ -94,13 +94,13 @@ def harvest(
             # same film silently doubles its harvest rather than replacing it —
             # and a doubled harvest quietly reweights every axis derived from it.
             con.execute(
-                "DELETE FROM model_propositions WHERE scorer=? AND film_id=? AND variant=?",
+                "DELETE FROM model_propositions WHERE scorer=%s AND film_id=%s AND variant=%s",
                 [alias, p.film_id, variant],
             )
             con.executemany(
-                "INSERT OR REPLACE INTO model_propositions (scorer, model, prop_id, film_id, "
-                "variant, run_id, text, stance, prompt_version, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                db.upsert("model_propositions", ["scorer", "model", "prop_id", "film_id",
+                                                 "variant", "run_id", "text", "stance",
+                                                 "prompt_version", "created_at"]),
                 [(alias, scorer.model, uuid.uuid4().hex[:16], p.film_id, variant, run_id,
                   prop.text, prop.stance, PROMPT_VERSION, db.now())
                  for prop in harvested.propositions],
@@ -128,7 +128,7 @@ def _user_block(p) -> str:
 def own_propositions(alias: str) -> list[tuple[str, str]]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT film_id, text FROM model_propositions WHERE scorer=? ORDER BY prop_id",
+            "SELECT film_id, text FROM model_propositions WHERE scorer=%s ORDER BY prop_id",
             [alias],
         ).fetchall()
     return [(r["film_id"], r["text"]) for r in rows]
@@ -162,12 +162,12 @@ def derive_axes(
          "from_propositions": len(texts)},
     )
     with db.connect() as con:
-        con.execute("DELETE FROM model_axes WHERE scorer=? AND dim_version=?",
+        con.execute("DELETE FROM model_axes WHERE scorer=%s AND dim_version=%s",
                     [alias, dim_version])
         con.executemany(
             "INSERT INTO model_axes (scorer, model, dim_version, dim_id, name, question, "
             "pole_high, pole_low, n_dims, source, run_id, prompt_version, created_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
             [(alias, scorer.model, dim_version, d["dim_id"], d["name"], d["question"],
               d["pole_high"], d["pole_low"], len(dims), f"own:{len(texts)}props",
               run_id, PROMPT_VERSION, db.now()) for d in dims],
@@ -200,7 +200,7 @@ def load_axes(alias: str, dim_version: str) -> list[dict[str, Any]]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT dim_id, name, question, pole_high, pole_low FROM model_axes "
-            "WHERE scorer=? AND dim_version=? ORDER BY dim_id", [alias, dim_version],
+            "WHERE scorer=%s AND dim_version=%s ORDER BY dim_id", [alias, dim_version],
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -251,11 +251,12 @@ def assign_shared(
     known = {it["item_id"] for it in items}
     kept = [row for row in kept if row[3] in known]
     with db.connect() as con:
-        con.execute("DELETE FROM model_axis_items WHERE scorer=? AND dim_version=? "
-                    "AND bank_version=?", [alias, dim_version, bank_version])
+        con.execute("DELETE FROM model_axis_items WHERE scorer=%s AND dim_version=%s "
+                    "AND bank_version=%s", [alias, dim_version, bank_version])
         con.executemany(
-            "INSERT OR REPLACE INTO model_axis_items (scorer, dim_version, bank_version, "
-            "item_id, dim_id, polarity, fit, run_id, created_at) VALUES (?,?,?,?,?,?,?,?,?)",
+            db.upsert("model_axis_items", ["scorer", "dim_version", "bank_version",
+                                           "item_id", "dim_id", "polarity", "fit",
+                                           "run_id", "created_at"]),
             kept,
         )
     db.finish_run(run_id, client.usage.as_dict())
@@ -275,7 +276,7 @@ def partitions(
     with db.connect(read_only=True) as con:
         for row in con.execute(
             "SELECT scorer, item_id, dim_id FROM model_axis_items "
-            "WHERE dim_version=? AND bank_version=?", [dim_version, bank_version],
+            "WHERE dim_version=%s AND bank_version=%s", [dim_version, bank_version],
         ):
             out[row["scorer"]][row["item_id"]] = row["dim_id"]
 
@@ -286,8 +287,8 @@ def partitions(
         incumbent = _incumbent_version(con, dim_version)
         if incumbent:
             for row in con.execute(
-                "SELECT item_id, dim_id FROM item_dimensions WHERE dim_version=? "
-                "AND bank_version=? AND pass_name=?",
+                "SELECT item_id, dim_id FROM item_dimensions WHERE dim_version=%s "
+                "AND bank_version=%s AND pass_name=%s",
                 [incumbent, bank_version, dim_mod.MAIN_PASS],
             ):
                 out[INCUMBENT][row["item_id"]] = row["dim_id"]
@@ -308,6 +309,6 @@ def _incumbent_version(con, dim_version: str) -> str | None:
         return None
     row = con.execute(
         "SELECT dim_version FROM dimensions GROUP BY dim_version "
-        "HAVING COUNT(*)=? ORDER BY dim_version LIMIT 1", [int(dim_version[1:])],
+        "HAVING COUNT(*)=%s ORDER BY dim_version LIMIT 1", [int(dim_version[1:])],
     ).fetchone()
     return row["dim_version"] if row else None

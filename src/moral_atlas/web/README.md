@@ -1,6 +1,6 @@
 # Web API
 
-This API shares the SQLite file with the atlas, but keeps its product-facing
+This API shares the store with the atlas, but keeps its product-facing
 tables and route modules separate from the research pipeline.
 
 Run it from the repository root:
@@ -18,8 +18,9 @@ Endpoints:
   store) plus a live read of what the pipeline has produced so far. It renders
   on an empty store too, so a fresh clone gets told what to run rather than a
   500. Point the doors somewhere else with `ATLAS_FRONTEND_URL`,
-  `ATLAS_DATASETTE_URL` and `ATLAS_SQLITEWEB_URL`.
-- `POST /api/access` — creates a SQLite-backed name-only user and session.
+  `ATLAS_DATASETTE_URL` and `ATLAS_SQLITEWEB_URL`. Served at `/internal`
+  when this process is also serving the interface, and at `/` when it is not.
+- `POST /api/access` — creates a name-only user and session in the store.
 - `GET /api/access/me` — returns the current persisted user.
 - `GET /api/test/questions` — serves mock test questions.
 - `POST /api/test/results` — captures answers using `X-Session-Token`.
@@ -41,11 +42,11 @@ Endpoints:
   per film and only wanted for the film someone opened. The static site serves
   the same documents from `/data/atlas/<film_id>.json`.
 
-Users, sessions, movie reactions, and test results are stored in SQLite. The
+Users, sessions, movie reactions, and test results are stored in Postgres. The
 user record is intentionally limited to `id` and `name`; an SSO identity can be
 added later without altering the existing response tables.
 
-Movie cards are read from the existing SQLite `films` table. Seed the curated
+Movie cards are read from the existing `films` table. Seed the curated
 40-film deck without any external calls before using the onboarding API:
 
 ```powershell

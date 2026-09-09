@@ -30,7 +30,6 @@ def isolated_web_database(monkeypatch, tmp_path):
 
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "web.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
@@ -207,5 +206,5 @@ def test_the_weight_cannot_reach_the_top_of_its_range(isolated_web_database):
     from moral_atlas import db as real_db
     user_id = client.get("/api/access/me", headers=headers).json()["id"]
     with real_db.connect() as con:
-        con.execute("UPDATE users SET moral_weight=1.0 WHERE user_id=?", [user_id])
+        con.execute("UPDATE users SET moral_weight=1.0 WHERE user_id=%s", [user_id])
     assert moral_stance(user_id)[1] == MAX_MORAL_WEIGHT

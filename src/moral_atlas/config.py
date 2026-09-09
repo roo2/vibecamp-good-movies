@@ -2,13 +2,38 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[2]
+def _root() -> Path:
+    """The project directory: where `.env`, `data/` and the front-end build are.
+
+    Two ends up in the same place while the project is installed editable, which
+    it is on every developer machine: `src/moral_atlas/config.py` is inside the
+    checkout, so walking up three levels lands on it.
+
+    A deploy installs it properly, into site-packages, and then walking up lands
+    in `lib/python3.12` — which is how the first Heroku release came up with no
+    interface at all and a 503 on `/`, having built one perfectly well two
+    directories away. So: look up, and if that is not a project, look at where
+    the process was started, which on a dyno is the app itself.
+    """
+    override = os.environ.get("ATLAS_ROOT", "").strip()
+    if override:
+        return Path(override)
+    beside = Path(__file__).resolve().parents[2]
+    if (beside / "pyproject.toml").exists():
+        return beside
+    here = Path.cwd()
+    if (here / "pyproject.toml").exists():
+        return here
+    return beside
+
+
+ROOT = _root()
 load_dotenv(ROOT / ".env")
 
 # Every derived row is stamped with the prompt version that produced it, so a
@@ -28,11 +53,28 @@ class Settings:
     root: Path = ROOT
     data_dir: Path = ROOT / "data"
     cache_dir: Path = ROOT / "data" / "cache"
-    # ATLAS_DB points every reader at another store. infra/export-corpus.sh
-    # already used that name for the same idea; the Python side did not honour
-    # it, so analysing a pulled production snapshot meant copying it over the
-    # working database and hoping to remember which one was which.
-    db_path: Path = Path(os.environ.get("ATLAS_DB", str(ROOT / "data" / "atlas.sqlite")))
+    # Which schema inside that database. `public` everywhere real; the test
+    # suite points each test at a scratch schema of its own, which is how 300
+    # tests that used to get a SQLite file each still get isolation from one
+    # another without 300 databases.
+    db_schema: str = field(default_factory=lambda: _clean("ATLAS_DB_SCHEMA") or "public")
+
+    # Where the store is. DATABASE_URL is what Heroku sets and what every
+    # Postgres tool already understands, so it is the name used everywhere;
+    # locally it points at a database on the machine's own server.
+    #
+    # ATLAS_DB survives as an alias because the deploy scripts, the runbooks and
+    # half the comments in this repo say ATLAS_DB, and it already meant "point
+    # every reader at another store".
+    #
+    # Both are read when a Settings is BUILT rather than when this module is
+    # imported. A bare default is evaluated once, at class definition, so an
+    # environment set after the first import — which is exactly what the test
+    # session does — was silently ignored, and every test ran against whatever
+    # database the developer happened to have configured.
+    database_url: str = field(default_factory=lambda: (
+        _clean("DATABASE_URL") or _clean("ATLAS_DB") or "postgresql:///moral_atlas"
+    ))
     # Where the MovieLens ml-25m extract sits, and where the arrays derived from
     # it are cached. Both live under data/, which is git-ignored whole: ml-25m is
     # licensed for non-commercial research and may NOT be redistributed, so
@@ -118,6 +160,36 @@ class Settings:
     frontend_url: str = os.environ.get("ATLAS_FRONTEND_URL", "http://localhost:5173")
     datasette_url: str = os.environ.get("ATLAS_DATASETTE_URL", "http://localhost:8001")
     sqliteweb_url: str = os.environ.get("ATLAS_SQLITEWEB_URL", "http://localhost:8002")
+
+    # How many connections this process keeps open to the store.
+    #
+    # A ceiling, not a target: the pool opens one and grows to this under load.
+    # It exists because the database has its own limit — Heroku's smallest plan
+    # allows twenty across every process, dynos and `atlas` runs alike — and a
+    # process that helps itself to all of them locks everything else out.
+    db_pool_size: int = field(default_factory=lambda: int(
+        _clean("ATLAS_DB_POOL_SIZE") or "5"))
+
+    # Whether to build the atlas document at startup rather than on the first
+    # request for it. Off in a checkout, where a three-second wait once is
+    # nothing and starting `uvicorn` should not pin a core.
+    warm_on_start: bool = field(default_factory=lambda: (
+        (_clean("ATLAS_WARM_CACHE") or "").lower() in ("1", "true", "yes")))
+
+    # Whether this process also serves the built interface.
+    #
+    # On AWS it never did: CloudFront served the SPA out of a bucket and sent
+    # only /api/* to the box. One Heroku dyno serves both, which is a saving in
+    # moving parts and the reason the interface and the API can no longer
+    # disagree about which commit they are on.
+    #
+    # Off by default, so a developer running `uvicorn` still gets the pipeline
+    # landing page at `/` and Vite still owns port 5173. On, `/` is the product
+    # and the landing page moves to `/internal`.
+    serve_frontend: bool = field(default_factory=lambda: (
+        (_clean("ATLAS_SERVE_FRONTEND") or "").lower() in ("1", "true", "yes")))
+    frontend_dist: Path = field(default_factory=lambda: Path(
+        _clean("ATLAS_FRONTEND_DIST") or str(ROOT / "src" / "frontend" / "dist")))
 
     @property
     def factor_bank(self) -> str:

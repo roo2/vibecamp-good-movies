@@ -11,9 +11,14 @@ from moral_atlas.sources import seed
 
 
 def isolated_store(monkeypatch, tmp_path):
+    """This test's own directories. The schema it writes to is automatic.
+
+    It used to be a SQLite file in tmp_path; it is a Postgres schema now, made
+    and dropped by the `fresh_schema` fixture in conftest and inherited here
+    through `settings()`.
+    """
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "atlas.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
 

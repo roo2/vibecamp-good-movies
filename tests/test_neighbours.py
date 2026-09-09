@@ -26,7 +26,6 @@ def isolated_database(monkeypatch, tmp_path):
 
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "atlas.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
@@ -85,10 +84,12 @@ def test_pairs_measured_on_too_few_people_are_refused(isolated_database):
     point on it, and it is stored with its support precisely so it can be
     excluded here."""
     db = isolated_database
+    for film_id in ("a", "b", "c"):
+        db.upsert_film({"film_id": film_id, "title": film_id.upper()})
     with db.connect() as con:
         con.executemany(
             "INSERT INTO film_neighbours (film_id, neighbour_id, similarity, support) "
-            "VALUES (?,?,?,?)",
+            "VALUES (%s,%s,%s,%s)",
             [("a", "b", 0.9, 5), ("a", "c", 0.4, 5000)])
 
     graph = neighbours.load()

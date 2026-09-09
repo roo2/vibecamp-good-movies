@@ -1,0 +1,8 @@
+# Heroku's Python buildpack looks for this file, and only this file, to decide
+# what to install. The dependencies themselves live in pyproject.toml, where
+# they belong; this installs the project from there, which also puts the `atlas`
+# command on PATH for the release phase.
+#
+# `pip install -r requirements.txt` locally does the same thing as
+# `pip install -e .` — the difference is only that this one is not editable.
+.

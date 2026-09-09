@@ -168,12 +168,12 @@ def _dimensions(con, dim_version: str, bank_version: str) -> list[dict[str, Any]
     """The named axes, each carrying how much of the bank actually lands on it."""
     dims = con.execute(
         "SELECT dim_id, name, question, pole_high, pole_low FROM dimensions "
-        "WHERE dim_version=? ORDER BY dim_id", [dim_version],
+        "WHERE dim_version=%s ORDER BY dim_id", [dim_version],
     ).fetchall()
     counts = {
         r["dim_id"]: (r["n"], r["fit"]) for r in con.execute(
             "SELECT dim_id, COUNT(*) n, AVG(fit) fit FROM item_dimensions "
-            "WHERE dim_version=? AND bank_version=? AND pass_name='main' "
+            "WHERE dim_version=%s AND bank_version=%s AND pass_name='main' "
             "GROUP BY dim_id", [dim_version, bank_version])
     }
     return [
@@ -202,11 +202,11 @@ def _profiles(con, dim_version: str, bank_version: str) -> dict[str, list[dict[s
     assignments = {
         r["item_id"]: (r["dim_id"], r["polarity"]) for r in con.execute(
             "SELECT item_id, dim_id, polarity FROM item_dimensions "
-            "WHERE dim_version=? AND bank_version=? AND pass_name='main'",
+            "WHERE dim_version=%s AND bank_version=%s AND pass_name='main'",
             [dim_version, bank_version])
     }
     rows = con.execute(
-        "SELECT film_id, item_id, variant, value FROM scores WHERE bank_version=?",
+        "SELECT film_id, item_id, variant, value FROM scores WHERE bank_version=%s",
         [bank_version],
     ).fetchall()
 
@@ -281,9 +281,9 @@ def _film_axes(con, film_id: str, dim_version: str, bank_version: str) -> list[d
         "FROM scores s "
         "JOIN item_dimensions d ON d.item_id = s.item_id "
         "     AND d.bank_version = s.bank_version AND d.pass_name = 'main' "
-        "     AND d.dim_version = ? "
+        "     AND d.dim_version = %s "
         "JOIN item_bank b ON b.item_id = s.item_id AND b.bank_version = s.bank_version "
-        "WHERE s.film_id = ? AND s.bank_version = ?",
+        "WHERE s.film_id = %s AND s.bank_version = %s",
         [dim_version, film_id, bank_version],
     ).fetchall()
     if not rows:
@@ -340,13 +340,13 @@ def film_evidence(film_id: str, dim_version: str = "d1",
     """
     with db.connect(read_only=True) as con:
         film = con.execute(
-            "SELECT film_id, title, year FROM films WHERE film_id=?", [film_id],
+            "SELECT film_id, title, year FROM films WHERE film_id=%s", [film_id],
         ).fetchone()
         if film is None:
             return None
         rows = con.execute(
             "SELECT layer, content, source_url, word_count FROM evidence "
-            "WHERE film_id=?", [film_id],
+            "WHERE film_id=%s", [film_id],
         ).fetchall()
         axes = _film_axes(con, film_id, dim_version, bank_version)
 
@@ -380,16 +380,16 @@ def _reduction(con, bank_version: str, n_dimensions: int) -> dict[str, Any]:
     source_films = con.execute(
         "SELECT COUNT(DISTINCT film_id) n FROM propositions_raw").fetchone()["n"]
     bank_total = con.execute(
-        "SELECT COUNT(*) n FROM item_bank WHERE bank_version=?", [bank_version],
+        "SELECT COUNT(*) n FROM item_bank WHERE bank_version=%s", [bank_version],
     ).fetchone()["n"]
     bank_active = con.execute(
-        "SELECT COUNT(*) n FROM item_bank WHERE bank_version=? AND active=1",
+        "SELECT COUNT(*) n FROM item_bank WHERE bank_version=%s AND active=1",
         [bank_version]).fetchone()["n"]
     scored = con.execute(
-        "SELECT COUNT(*) n FROM scores WHERE bank_version=?", [bank_version],
+        "SELECT COUNT(*) n FROM scores WHERE bank_version=%s", [bank_version],
     ).fetchone()["n"]
     placed = con.execute(
-        "SELECT COUNT(*) n FROM item_dimensions WHERE bank_version=? AND pass_name='main'",
+        "SELECT COUNT(*) n FROM item_dimensions WHERE bank_version=%s AND pass_name='main'",
         [bank_version]).fetchone()["n"]
 
     # Only statements belong on this ladder. The scoring pass is a much larger
@@ -428,7 +428,7 @@ def _per_axis_agreement(con, dim_version: str, bank_version: str) -> dict[int, d
         "LEFT JOIN item_dimensions r "
         "  ON r.item_id = m.item_id AND r.dim_version = m.dim_version "
         "     AND r.bank_version = m.bank_version AND r.pass_name != 'main' "
-        "WHERE m.dim_version=? AND m.bank_version=? AND m.pass_name='main'",
+        "WHERE m.dim_version=%s AND m.bank_version=%s AND m.pass_name='main'",
         [dim_version, bank_version],
     ).fetchall()
 
@@ -641,15 +641,15 @@ def totals(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, int]:
         return {
             "films": con.execute("SELECT COUNT(*) n FROM films").fetchone()["n"],
             "bank_items": con.execute(
-                "SELECT COUNT(*) n FROM item_bank WHERE bank_version=? AND active=1",
+                "SELECT COUNT(*) n FROM item_bank WHERE bank_version=%s AND active=1",
                 [bank_version]).fetchone()["n"],
             "scores": con.execute(
-                "SELECT COUNT(*) n FROM scores WHERE bank_version=?",
+                "SELECT COUNT(*) n FROM scores WHERE bank_version=%s",
                 [bank_version]).fetchone()["n"],
             "propositions": con.execute(
                 "SELECT COUNT(*) n FROM propositions_raw").fetchone()["n"],
             "dimensions": con.execute(
-                "SELECT COUNT(*) n FROM dimensions WHERE dim_version=?",
+                "SELECT COUNT(*) n FROM dimensions WHERE dim_version=%s",
                 [dim_version]).fetchone()["n"],
         }
 
@@ -675,10 +675,10 @@ def build(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, Any]:
                 1 for s in skeletons.values() if s["_variant"] == "full"),
             "films_profiled": len(profiles),
             "bank_items": con.execute(
-                "SELECT COUNT(*) n FROM item_bank WHERE bank_version=? AND active=1",
+                "SELECT COUNT(*) n FROM item_bank WHERE bank_version=%s AND active=1",
                 [bank_version]).fetchone()["n"],
             "scores": con.execute(
-                "SELECT COUNT(*) n FROM scores WHERE bank_version=?",
+                "SELECT COUNT(*) n FROM scores WHERE bank_version=%s",
                 [bank_version]).fetchone()["n"],
             "dimensions": len(dimensions),
             "propositions": con.execute(

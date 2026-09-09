@@ -78,9 +78,9 @@ def model_propositions(scorer: str, variant: str | None = None) -> list[Any]:
     clustering, the representative choice, the inversion split — works on either
     pool without knowing which it was handed.
     """
-    where, args = ["scorer=?"], [scorer]
+    where, args = ["scorer=%s"], [scorer]
     if variant:
-        where.append("variant=?")
+        where.append("variant=%s")
         args.append(variant)
     with db.connect(read_only=True) as con:
         return con.execute(
@@ -355,20 +355,24 @@ def _write_items(bank_version: str, items: list[dict[str, Any]],
         # than about any particular item, and it carries no bank_version to
         # match on anyway.
         for table in ("model_verdicts", "latent_factors", "latent_factor_items"):
-            count = con.execute(f"SELECT COUNT(*) n FROM {table} WHERE bank_version=?",
+            count = con.execute(f"SELECT COUNT(*) n FROM {table} WHERE bank_version=%s",
                                 [bank_version]).fetchone()["n"]
             if count:
                 removed[table] = count
-                con.execute(f"DELETE FROM {table} WHERE bank_version=?", [bank_version])
-        con.execute("DELETE FROM item_bank WHERE bank_version=?", [bank_version])
+                con.execute(f"DELETE FROM {table} WHERE bank_version=%s", [bank_version])
+        con.execute("DELETE FROM item_bank WHERE bank_version=%s", [bank_version])
         for it in items:
             con.execute(
                 "INSERT INTO item_bank (item_id, bank_version, text, cluster_id, "
                 "support, active, note, model, prompt_version, run_id, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                # `active` is an INTEGER column and this is a Python bool.
+                # SQLite took either; Postgres knows the difference, and the
+                # column stays an integer because half the readers compare it
+                # to 1.
                 [it["item_id"], bank_version, it["text"], it["cluster_id"],
-                 it["support"], it["active"], it["note"], model, PROMPT_VERSION,
-                 run_id, db.now()],
+                 it["support"], int(bool(it["active"])), it["note"], model,
+                 PROMPT_VERSION, run_id, db.now()],
             )
     return removed
 
@@ -384,7 +388,7 @@ def export_bank(bank_version: str, path: str) -> int:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, text, support, active, note, model FROM item_bank "
-            "WHERE bank_version=? ORDER BY support DESC, item_id",
+            "WHERE bank_version=%s ORDER BY support DESC, item_id",
             [bank_version],
         ).fetchall()
 
@@ -412,8 +416,8 @@ def import_bank(bank_version: str, path: str) -> int:
                 continue
             rec = json.loads(line)
             con.execute(
-                "UPDATE item_bank SET text=?, active=?, note=? "
-                "WHERE bank_version=? AND item_id=?",
+                "UPDATE item_bank SET text=%s, active=%s, note=%s "
+                "WHERE bank_version=%s AND item_id=%s",
                 [rec["text"], rec.get("active", True), rec.get("note", ""),
                  bank_version, rec["item_id"]],
             )

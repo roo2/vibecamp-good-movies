@@ -120,13 +120,13 @@ def _write(film_id: str, record: dict[str, Any]) -> int:
         values = record.get(name) or []
         if not values:
             continue
-        sets.append(f"{name}=?")
+        sets.append(f"{name}=%s")
         args.append(json.dumps(values) if name in LIST_FIELDS else values[0])
     if not sets:
         return 0
     args.append(film_id)
     with db.connect() as con:
-        con.execute(f"UPDATE films SET {','.join(sets)} WHERE film_id=?", args)
+        con.execute(f"UPDATE films SET {','.join(sets)} WHERE film_id=%s", args)
     return len(sets)
 
 

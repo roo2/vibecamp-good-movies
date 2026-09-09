@@ -199,14 +199,14 @@ def scan(
             # re-scored film silently became a mixture of two runs. Measured on
             # a six-film trial: 162 of 570 rows were survivors of the run before.
             con.execute(
-                "DELETE FROM model_verdicts WHERE scorer=? AND film_id=? "
-                "AND bank_version=? AND variant=?",
+                "DELETE FROM model_verdicts WHERE scorer=%s AND film_id=%s "
+                "AND bank_version=%s AND variant=%s",
                 [alias, p.film_id, bank_version, variant],
             )
             con.executemany(
-                "INSERT OR REPLACE INTO model_verdicts (scorer, model, film_id, item_id, "
-                "bank_version, variant, run_id, value, confidence, evidence, created_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows,
+                db.upsert("model_verdicts", ["scorer", "model", "film_id", "item_id",
+                                             "bank_version", "variant", "run_id", "value",
+                                             "confidence", "evidence", "created_at"]), rows,
             )
         stats["scored"] += 1
         if not rows:
@@ -220,7 +220,7 @@ def scan(
         with db.connect() as con:
             con.execute(
                 "INSERT INTO model_refusals (scorer, model, film_id, variant, run_id, "
-                "detail, created_at) VALUES (?,?,?,?,?,?,?)",
+                "detail, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s)",
                 [alias, scorer.model, p.film_id, variant, run_id,
                  f"{type(error).__name__}: {error}"[:500], db.now()],
             )
@@ -237,7 +237,7 @@ def scan(
 def _bank(bank_version: str) -> list[dict[str, Any]]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT item_id, text FROM item_bank WHERE bank_version=? AND active "
+            "SELECT item_id, text FROM item_bank WHERE bank_version=%s AND active "
             "ORDER BY item_id", [bank_version],
         ).fetchall()
     return [{"item_id": r["item_id"], "text": r["text"]} for r in rows]
@@ -263,12 +263,12 @@ def verdicts(bank_version: str = "b1") -> dict[str, dict[tuple[str, str], int]]:
     out: dict[str, dict[tuple[str, str], int]] = defaultdict(dict)
     with db.connect(read_only=True) as con:
         for row in con.execute(
-            "SELECT scorer, film_id, item_id, value FROM model_verdicts WHERE bank_version=?",
+            "SELECT scorer, film_id, item_id, value FROM model_verdicts WHERE bank_version=%s",
             [bank_version],
         ):
             out[row["scorer"]][(row["film_id"], row["item_id"])] = row["value"]
         for row in con.execute(
-            "SELECT film_id, item_id, value FROM scores WHERE bank_version=?", [bank_version],
+            "SELECT film_id, item_id, value FROM scores WHERE bank_version=%s", [bank_version],
         ):
             out[INCUMBENT].setdefault((row["film_id"], row["item_id"]), row["value"])
     return dict(out)

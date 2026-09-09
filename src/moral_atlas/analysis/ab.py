@@ -30,10 +30,10 @@ from .. import db
 
 def _score_map(bank_version: str, run_id: str | None = None) -> dict[str, dict[str, dict[str, int]]]:
     """{film_id: {variant: {item_id: value}}} for the most recent scoring run."""
-    q = ("SELECT film_id, variant, item_id, value FROM scores WHERE bank_version=?")
+    q = ("SELECT film_id, variant, item_id, value FROM scores WHERE bank_version=%s")
     args: list[Any] = [bank_version]
     if run_id:
-        q += " AND run_id=?"
+        q += " AND run_id=%s"
         args.append(run_id)
 
     out: dict[str, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(dict))
@@ -161,7 +161,7 @@ def summary_resistant_items(report: dict[str, Any], top: int = 25) -> list[dict[
 
     with db.connect(read_only=True) as con:
         texts = dict(con.execute(
-            "SELECT item_id, text FROM item_bank WHERE bank_version=?",
+            "SELECT item_id, text FROM item_bank WHERE bank_version=%s",
             [report["bank_version"]],
         ).fetchall())
     for r in rows:

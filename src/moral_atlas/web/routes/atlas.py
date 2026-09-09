@@ -25,7 +25,13 @@ from ... import db
 from ...analysis import dataset as dataset_mod
 
 router = APIRouter(prefix="/api", tags=["atlas"])
-log = logging.getLogger(__name__)
+
+# Under uvicorn's own logger, because uvicorn configures that one and nothing
+# configures ours — a module logger here writes to a handler that does not
+# exist, which is how the startup build came to look as though it had never
+# run. It had; the request that seemed to prove otherwise had simply arrived
+# while it was still going.
+log = logging.getLogger("uvicorn.error").getChild("atlas")
 
 _cache: dict[str, Any] = {"key": None, "payload": None}
 

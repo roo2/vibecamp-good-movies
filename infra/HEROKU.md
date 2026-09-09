@@ -23,13 +23,20 @@ makes.
 
 ## Standing it up
 
+The app is `good-movies`, at
+**https://good-movies-a813b7730665.herokuapp.com**. This is how it was made, and
+how a second one — a staging copy, a fresh start — would be:
+
 ```bash
-heroku create moral-atlas --region us
-heroku buildpacks:add heroku/nodejs -a moral-atlas    # order matters:
-heroku buildpacks:add heroku/python -a moral-atlas    # node builds the SPA first
-heroku addons:create heroku-postgresql:essential-0 -a moral-atlas
-heroku config:set ATLAS_SERVE_FRONTEND=1 -a moral-atlas
-heroku config:set ATLAS_FRONTEND_URL=https://moral-atlas.herokuapp.com -a moral-atlas
+heroku create good-movies --region us
+heroku buildpacks:add heroku/nodejs -a good-movies    # order matters:
+heroku buildpacks:add heroku/python -a good-movies    # node builds the SPA first
+heroku addons:create heroku-postgresql:essential-0 -a good-movies
+heroku ps:type basic -a good-movies                   # after the first deploy:
+                                                      # there are no dynos to
+                                                      # resize before one exists
+heroku config:set ATLAS_SERVE_FRONTEND=1 ATLAS_WARM_CACHE=1 -a good-movies
+heroku config:set ATLAS_FRONTEND_URL=https://good-movies-a813b7730665.herokuapp.com -a good-movies
 git push heroku main
 ```
 
@@ -39,7 +46,7 @@ pages and reads the store, and it calls no model, so it needs no API key.
 Then the data, once:
 
 ```bash
-atlas corpus-push moral-atlas
+atlas corpus-push good-movies
 ```
 
 ## Deploying
@@ -49,7 +56,7 @@ A push to `main` runs the tests and pushes to Heroku — see
 things set on the repository, once:
 
 ```bash
-gh variable set HEROKU_APP --body moral-atlas
+gh variable set HEROKU_APP --body good-movies
 gh secret set HEROKU_API_KEY --body "$(heroku authorizations:create --short)"
 ```
 
@@ -66,7 +73,7 @@ old dyno keeps serving.
 Ingest and sweep locally, then:
 
 ```bash
-atlas corpus-push moral-atlas
+atlas corpus-push good-movies
 ```
 
 It reads the app's `DATABASE_URL` through `heroku config:get`, so no credential
@@ -80,17 +87,17 @@ shortlisted: those are named in the output and kept. To remove one for real,
 including the ratings that point at it:
 
 ```bash
-heroku run atlas remove-film some-film-2019 --yes -a moral-atlas
+heroku run atlas remove-film some-film-2019 --yes -a good-movies
 ```
 
 ## Looking at it
 
 ```bash
-heroku logs --tail -a moral-atlas
-heroku pg:psql -a moral-atlas
-heroku pg:info -a moral-atlas
-heroku releases -a moral-atlas
-heroku rollback -a moral-atlas          # back one release, dyno and all
+heroku logs --tail -a good-movies
+heroku pg:psql -a good-movies
+heroku pg:info -a good-movies
+heroku releases -a good-movies
+heroku rollback -a good-movies          # back one release, dyno and all
 ```
 
 `/internal` is the pipeline page — corpus counts, dimension coverage, what has
@@ -100,8 +107,8 @@ product lives at `/` now.
 ## Pulling production down to your machine
 
 ```bash
-heroku pg:backups:capture -a moral-atlas
-heroku pg:backups:download -a moral-atlas -o /tmp/atlas.dump
+heroku pg:backups:capture -a good-movies
+heroku pg:backups:download -a good-movies -o /tmp/atlas.dump
 dropdb --if-exists moral_atlas_prod && createdb moral_atlas_prod
 pg_restore --no-owner --no-privileges -d moral_atlas_prod /tmp/atlas.dump
 ATLAS_DB=postgresql:///moral_atlas_prod atlas status
@@ -134,6 +141,14 @@ EXISTS` takes an exclusive lock even when the column is already there, and
 running thirty of them per request queues the whole site behind whichever client
 last died mid-transaction. That is not hypothetical; it is what the first real
 request against Postgres did.
+
+**The atlas document is built at boot, not on request.** `/api/atlas` runs a
+thousand-permutation null test, which is 3 seconds of arithmetic on a laptop and
+about 20 on a dyno — against a router that hangs up at 30. It is built in a
+background thread at startup (`ATLAS_WARM_CACHE=1`) and cached against the
+store's counts, so the only person who can wait for it is one who opens the
+atlas page in the twenty seconds after a restart, and dynos restart daily. Look
+for `atlas document built and cached` in the log.
 
 **A killed client can hold a lock.** If the site stops answering and nothing
 looks wrong, this is the first thing to check:

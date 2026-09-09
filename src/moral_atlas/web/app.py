@@ -1,4 +1,7 @@
 """Application assembly only; feature endpoints live in `web.routes`."""
+import threading
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,7 +9,20 @@ from ..config import settings
 from . import frontend
 from .routes import access, atlas, factors, landing, onboarding, profile, sessions, shortlist, test
 
-app = FastAPI(title="Moral Atlas API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Build the expensive document before anyone asks for it.
+
+    In a thread, and a daemon one: the dyno has sixty seconds to bind its port
+    and this takes half of that on the hardware it runs on, so it must not be in
+    the way of the bind — and a restart must not wait for it to finish either.
+    """
+    if settings().warm_on_start:
+        threading.Thread(target=atlas.warm, name="atlas-warm", daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Moral Atlas API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

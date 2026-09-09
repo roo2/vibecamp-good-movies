@@ -8,7 +8,32 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parents[2]
+def _root() -> Path:
+    """The project directory: where `.env`, `data/` and the front-end build are.
+
+    Two ends up in the same place while the project is installed editable, which
+    it is on every developer machine: `src/moral_atlas/config.py` is inside the
+    checkout, so walking up three levels lands on it.
+
+    A deploy installs it properly, into site-packages, and then walking up lands
+    in `lib/python3.12` — which is how the first Heroku release came up with no
+    interface at all and a 503 on `/`, having built one perfectly well two
+    directories away. So: look up, and if that is not a project, look at where
+    the process was started, which on a dyno is the app itself.
+    """
+    override = os.environ.get("ATLAS_ROOT", "").strip()
+    if override:
+        return Path(override)
+    beside = Path(__file__).resolve().parents[2]
+    if (beside / "pyproject.toml").exists():
+        return beside
+    here = Path.cwd()
+    if (here / "pyproject.toml").exists():
+        return here
+    return beside
+
+
+ROOT = _root()
 load_dotenv(ROOT / ".env")
 
 # Every derived row is stamped with the prompt version that produced it, so a
@@ -144,6 +169,12 @@ class Settings:
     # process that helps itself to all of them locks everything else out.
     db_pool_size: int = field(default_factory=lambda: int(
         _clean("ATLAS_DB_POOL_SIZE") or "5"))
+
+    # Whether to build the atlas document at startup rather than on the first
+    # request for it. Off in a checkout, where a three-second wait once is
+    # nothing and starting `uvicorn` should not pin a core.
+    warm_on_start: bool = field(default_factory=lambda: (
+        (_clean("ATLAS_WARM_CACHE") or "").lower() in ("1", "true", "yes")))
 
     # Whether this process also serves the built interface.
     #

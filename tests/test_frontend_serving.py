@@ -98,3 +98,39 @@ def test_the_pipeline_page_keeps_its_own_address():
     r = TestClient(app).get("/internal")
     assert r.status_code == 200
     assert "atlas" in r.text.lower()
+
+
+def test_the_atlas_document_is_built_once_under_concurrency():
+    """Two cold requests must not each run the thousand-permutation null test.
+
+    On one dyno CPU that is not twice the work, it is worse than twice: the two
+    builds interleave and each makes the other slower, to produce the identical
+    document.
+    """
+    import threading
+
+    from moral_atlas.web.routes import atlas
+
+    builds = []
+    atlas._cache["key"] = None
+
+    def slow_build(dim_version, bank_version):
+        builds.append(1)
+        threading.Event().wait(0.2)
+        return {"built": True}
+
+    original_build, original_totals = atlas.dataset_mod.build, atlas.dataset_mod.totals
+    atlas.dataset_mod.build = slow_build
+    atlas.dataset_mod.totals = lambda *_: {"films": 1}
+    try:
+        threads = [threading.Thread(target=atlas._payload, args=("d1", "b1"))
+                   for _ in range(4)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+    finally:
+        atlas.dataset_mod.build, atlas.dataset_mod.totals = original_build, original_totals
+        atlas._cache["key"] = None
+
+    assert len(builds) == 1, f"built {len(builds)} times, wanted once"

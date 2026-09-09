@@ -28,15 +28,18 @@ sweep and the API can now write at the same time.
 """
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any, Iterator
 
 import psycopg
 from psycopg import sql as pgsql
+from psycopg_pool import ConnectionPool
 
 from .config import settings
 
@@ -775,6 +778,50 @@ def normalise_url(url: str) -> str:
     return url
 
 
+# One pool per store, made on first use and closed at exit.
+#
+# A connection is not free any more. Opening one to a file cost nothing, and the
+# code is written accordingly — `db.connect()` sits inside loops in a dozen
+# places. Against a socket that is 1.7ms each; against a database on another
+# host, behind TLS, it is ten to thirty times that, and the ranking endpoint
+# opened 1,340 of them in a single request. Pooling makes the checkout ~0.05ms
+# and turns those call sites back into the cheap thing they were written as.
+_POOLS: dict[str, ConnectionPool] = {}
+_POOL_LOCK = Lock()
+
+
+def pool() -> ConnectionPool:
+    with _POOL_LOCK:
+        key = dsn()
+        existing = _POOLS.get(key)
+        if existing is None:
+            existing = _POOLS[key] = ConnectionPool(
+                key,
+                connection_class=Connection,
+                kwargs={"row_factory": _row_factory, "autocommit": False},
+                min_size=1,
+                max_size=settings().db_pool_size,
+                # Wait rather than fail when every connection is busy: a slow
+                # page beats a 500, and the ceiling is there to protect the
+                # database's own connection limit, not to shed load.
+                timeout=30,
+                open=True,
+                name="moral-atlas",
+            )
+        return existing
+
+
+def close_pools() -> None:
+    """Shut the pools down. Registered at exit; also useful in a test."""
+    with _POOL_LOCK:
+        while _POOLS:
+            _, existing = _POOLS.popitem()
+            existing.close()
+
+
+atexit.register(close_pools)
+
+
 @contextmanager
 def connect(read_only: bool = False) -> Iterator[Connection]:
     """A connection, committed on a clean exit and rolled back on an exception.
@@ -784,26 +831,48 @@ def connect(read_only: bool = False) -> Iterator[Connection]:
     `mode=ro` gave, and it lets the readers run against the same database the
     writers are using. Concurrent readers and one writer was a SQLite
     constraint; it is not one here.
+
+    The connection is borrowed rather than made. It goes back to the pool at the
+    end of the block, rolled back, so nothing a caller did to it — a search
+    path, a read-only transaction — is inherited by whoever borrows it next.
     """
-    con = Connection.connect(dsn(), row_factory=_row_factory, autocommit=False)
-    try:
+    with pool().connection() as con:
         schema = settings().db_schema
         if schema != "public":
             con.execute(pgsql.SQL("SET search_path TO {}").format(pgsql.Identifier(schema)))
         if read_only:
             con.execute("SET TRANSACTION READ ONLY")
         yield con
-        con.commit()
-    except BaseException:
-        con.rollback()
-        raise
-    finally:
-        con.close()
 
 
-def init_db() -> None:
+# Which stores this process has already brought up to schema. Keyed by store,
+# because the test suite points each test at a schema of its own and every one
+# of them needs creating.
+_INITIALISED: set[tuple[str, str]] = set()
+
+
+def init_db(force: bool = False) -> None:
+    """Bring the store up to this schema. Cheap to call; runs once per process.
+
+    It used to run in full on every call, and `web.store` calls it at the top of
+    about twenty-five functions — so under SQLite the API re-ran the whole
+    migration on every request, which was wasteful and harmless.
+
+    It is not harmless here. `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` takes an
+    ACCESS EXCLUSIVE lock whether or not the column is missing, so thirty of
+    them per request means every request queues behind every other request, and
+    one client that dies mid-transaction blocks the site rather than itself.
+    That is not a hypothesis: it happened on the first real request this store
+    ever served, and the queue was six deep before anything timed out.
+
+    So: once per process, and `init_schema` looks before it alters.
+    """
+    key = (dsn(), settings().db_schema)
+    if not force and key in _INITIALISED:
+        return
     with connect() as con:
         init_schema(con)
+    _INITIALISED.add(key)
 
 
 def init_schema(con) -> None:
@@ -814,6 +883,11 @@ def init_schema(con) -> None:
     and has nowhere to put it otherwise.
     """
     con.executescript(SCHEMA)
+    # One catalogue read for the whole migration, so the thirty column checks
+    # below cost thirty dictionary lookups rather than thirty round trips —
+    # and, more to the point, so a column that is already there costs no lock
+    # at all.
+    con._columns = _all_columns(con)
     _add_column_if_missing(con, "films", "description", "TEXT")
     _add_column_if_missing(con, "films", "artwork_url", "TEXT")
     # Which hand wrote the blind story card. NULL on the fifty written by
@@ -832,7 +906,12 @@ def init_schema(con) -> None:
     # counted toward — rather than dropped: 126 of them exist in production
     # and a dropped answer is a person's profile getting quietly thinner.
     # Runs on every start; after the first it matches nothing.
-    con.execute("UPDATE movie_ratings SET reaction='not_for_me' WHERE reaction='neutral'")
+    # Guarded by a read: without it this takes a row-exclusive lock on a user
+    # table every time the schema is checked, to update nothing.
+    if con.execute("SELECT 1 FROM movie_ratings WHERE reaction='neutral' "
+                   "LIMIT 1").fetchone():
+        con.execute("UPDATE movie_ratings SET reaction='not_for_me' "
+                    "WHERE reaction='neutral'")
     _add_column_if_missing(con, "latent_factors", "coherence", "REAL")
     _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
     _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
@@ -901,13 +980,42 @@ def table_names(con) -> set[str]:
         "WHERE table_schema = current_schema()")}
 
 
+def _all_columns(con) -> dict[str, set[str]]:
+    """Every table's columns in the current schema, in one query.
+
+    Read once at the top of a migration so the thirty checks below cost thirty
+    dictionary lookups rather than thirty round trips — and so a column that is
+    already there costs no lock at all.
+    """
+    out: dict[str, set[str]] = {}
+    for row in con.execute(
+            "SELECT table_name, column_name FROM information_schema.columns "
+            "WHERE table_schema = current_schema()"):
+        out.setdefault(row["table_name"], set()).add(row["column_name"])
+    return out
+
+
 def _add_column_if_missing(con, table: str, column: str, definition: str) -> None:
-    # Postgres has the condition built in, so the read-then-decide is gone.
+    """Add a column, and take no lock at all if it is already there.
+
+    Postgres has `IF NOT EXISTS` built in, which reads as the obvious thing to
+    use and is a trap: the statement takes its ACCESS EXCLUSIVE lock BEFORE it
+    checks, so the no-op case — which is every case, on every start after the
+    first — still blocks every reader of that table for as long as it waits its
+    turn. Looking first costs a dictionary lookup against the catalogue read
+    `init_schema` already did.
+    """
+    if column in getattr(con, "_columns", {}).get(table, ()):
+        return
     con.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}")
+    con._columns.setdefault(table, set()).add(column)
 
 
 def _drop_column_if_present(con, table: str, column: str) -> None:
+    if column not in getattr(con, "_columns", {}).get(table, ()):
+        return
     con.execute(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column}")
+    con._columns[table].discard(column)
 
 
 # Where each derived layer records the model that produced it. One place, so a

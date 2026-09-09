@@ -725,6 +725,12 @@ def test_the_shrug_that_was_dropped_is_read_as_the_milder_negative(monkeypatch, 
     actually gave, so they are migrated to the milder negative — which is the
     side the shrug already counted toward. The migration runs on every start and
     has to be safe to run again.
+
+    `force=True` is what a restart looks like from in here: `init_db` now runs
+    once per process, because re-running thirty ALTER TABLEs per request took an
+    exclusive lock per request and queued the whole site behind whichever client
+    died mid-transaction. Every start still migrates; this one process is asked
+    to do it three times.
     """
     from dataclasses import replace
 
@@ -742,7 +748,7 @@ def test_the_shrug_that_was_dropped_is_read_as_the_milder_negative(monkeypatch, 
             "VALUES (%s,%s,%s,%s,%s)",
             [("r1", "u", "f", "neutral", db.now()), ("r2", "u", "f", "loved_it", db.now())])
 
-    db.init_db()
+    db.init_db(force=True)
 
     with db.connect(read_only=True) as con:
         rows = {r["rating_id"]: r["reaction"] for r in
@@ -750,7 +756,7 @@ def test_the_shrug_that_was_dropped_is_read_as_the_milder_negative(monkeypatch, 
     assert rows == {"r1": "not_for_me", "r2": "loved_it"}, (
         "the shrug becomes a mild negative and nothing else is touched")
 
-    db.init_db()
+    db.init_db(force=True)
     with db.connect(read_only=True) as con:
         again = {r["reaction"] for r in con.execute("SELECT reaction FROM movie_ratings")}
     assert again == {"not_for_me", "loved_it"}, "and running it twice changes nothing"

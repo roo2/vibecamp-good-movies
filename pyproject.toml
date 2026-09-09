@@ -8,6 +8,8 @@ dependencies = [
     # The store. `binary` so a deploy does not need libpq and a compiler on the
     # far end — Heroku's Python buildpack has neither by default.
     "psycopg[binary]>=3.2",
+    # Connections are no longer free, and this code opens them in loops.
+    "psycopg-pool>=3.2",
     "fastapi>=0.115",
     "httpx>=0.27",
     "pydantic>=2.7",

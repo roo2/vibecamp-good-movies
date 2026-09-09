@@ -20,7 +20,7 @@ the personal moral axis everything is finally ranked along.
 
 | Stage | State |
 |---|---|
-| Store (SQLite) | migrated from DuckDB, 580 rows verified |
+| Store (Postgres) | DuckDB → SQLite → Postgres; 358,123 rows carried across |
 | Ingestion (Wikipedia / Wikidata / OPUS subtitles) | working — 40/40 plot, 40/40 reception, 39/40 subtitles, no API keys |
 | Evidence packets and A/B variants | working — all four conditions runnable on 39/40 films |
 | Moral skeleton extraction | built, needs `ANTHROPIC_API_KEY` |
@@ -278,8 +278,9 @@ memberships — was derived from another film's dialogue, so repairing the row
 would have meant re-scoring it from scratch, and neither is load-bearing for
 anything the project claims. Removal sweeps every table that names a film,
 found from the schema rather than from a list somebody has to remember to
-update. Run it on the runner as well: a corpus load replaces corpus tables and
-leaves the runner's own ratings and shortlists pointing at nothing.
+update. Run it against the deployed store as well: a corpus push replaces corpus
+tables, and a film somebody there has rated is kept rather than deleted — the
+push names the ones it kept.
 
 **The house style is checked, not requested.** `describe_problems` rejects a
 card that runs long, names anything, uses more than one sentence, rates the
@@ -292,45 +293,46 @@ picks them up.
 
 ## Looking at the data
 
-The store is a plain SQLite file, so anything that reads SQLite reads it — the
-`sqlite3` CLI, DB Browser for SQLite, Datasette, DBeaver, TablePlus, pandas.
+The store is Postgres, so anything that speaks Postgres reads it — `psql`,
+pgAdmin, DBeaver, TablePlus, pandas.
 
 ```bash
-sqlite3 data/atlas.sqlite                  # CLI
-datasette data/atlas.sqlite                # browsable web UI with charts
-python -c "import sqlite3,pandas as pd; \
-  print(pd.read_sql('SELECT * FROM runs', sqlite3.connect('data/atlas.sqlite')))"
+psql moral_atlas                           # CLI
+python -c "import psycopg,pandas as pd; \
+  print(pd.read_sql('SELECT * FROM runs', psycopg.connect('dbname=moral_atlas')))"
 ```
+
+`DATABASE_URL` (or `ATLAS_DB`, which is the same setting) points every `atlas`
+command at another store, so reading production for an afternoon never means
+editing a config file.
 
 ### Getting the corpus without running a sweep
 
 A sweep costs money and an API key. If someone else has already run one, take
-theirs — `infra/export-corpus.sh` publishes the store with every user table
-dropped, and that file is what a collaborator wants:
+theirs — the deployed store holds it, and Heroku will hand you a copy:
 
 ```bash
-aws s3 cp s3://<data-bucket>/latest/atlas-corpus.sqlite data/atlas.sqlite
+heroku pg:backups:capture -a moral-atlas
+heroku pg:backups:download -a moral-atlas -o /tmp/atlas.dump
+createdb moral_atlas && pg_restore --no-owner --no-privileges -d moral_atlas /tmp/atlas.dump
 ```
 
-Films, skeletons, propositions, the item bank, the dimensions and every score,
-and nothing about anybody who used the demo. It is an ordinary store, so
-`atlas dataset`, Datasette and the interface all read it unchanged.
+Films, skeletons, propositions, the item bank, the dimensions and every score —
+and, unlike the old S3 snapshot, the user tables as well, because a backup is
+a backup. Treat it accordingly: it is people's ratings.
 
-Publish a new one with `./infra/export-corpus.sh`. It refuses to upload if a
-user table survived the drop, so the file cannot leak people by a typo.
+Sending work the other way is `atlas corpus-push`, which replaces the corpus
+tables in a deployed store and refuses to touch the user ones. The laptop is
+authoritative for the corpus, the app for the people, and neither overwrites
+the other. See [`infra/HEROKU.md`](infra/HEROKU.md).
 
-The same object is what the demo runs on: `infra/load-corpus.sh` pulls it onto
-the runner and swaps the derived tables in, leaving the demo's own users, group
-sessions and ratings untouched — the laptop is authoritative for the corpus, the
-runner for the people, and neither overwrites the other.
-
-In the `sqlite3` CLI, `.headers on` and `.mode box` make output readable.
+In `psql`, `\x auto` and `\pset null '∅'` make output readable.
 
 ```sql
-.tables
+\dt
 SELECT stage, model, n_calls, cost_usd FROM runs ORDER BY started_at;
 SELECT variant, count(*) FROM skeletons GROUP BY 1;
-SELECT film_id, json_extract(data, '$.legitimacy_source')
+SELECT film_id, data::json->>'legitimacy_source'
 FROM skeletons WHERE variant = 'full' LIMIT 10;
 ```
 
@@ -387,12 +389,12 @@ atlas dataset            # rebuild the snapshot from the store
 atlas dataset --check    # exit non-zero if it is behind; for a pre-commit hook
 ```
 
-`--check` compares **counts, not timestamps**. The store runs in WAL mode, so
-writes land in `atlas.sqlite-wal` and the main file's mtime can sit still
-through an entire sweep — an mtime check reports "current" while the corpus is
-being rewritten underneath it, which is the one moment it must not. CI cannot
-run this: the store is gitignored, so the machine that builds the site has
-nothing to compare against.
+`--check` compares **counts, not timestamps**. There is no file to stat any
+more, and there never was a good answer in one: under SQLite the writes landed
+in a WAL and the store's own mtime could sit still through an entire sweep, so
+the check reported "current" while the corpus was being rewritten underneath it
+— the one moment it must not. CI cannot run this at all: the store is not in the
+repository, so the machine that builds the site has nothing to compare against.
 
 ## Which model produced this?
 
@@ -479,7 +481,7 @@ weakest.
 ```
 src/moral_atlas/
   config.py            settings, PROMPT_VERSION, cost estimation
-  db.py                SQLite schema and helpers
+  db.py                Postgres schema and helpers
   cli.py               the atlas command
   sources/
     _http.py           cached HTTP with rate-limit backoff

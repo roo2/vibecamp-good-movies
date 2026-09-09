@@ -39,12 +39,13 @@ def get_atlas(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, An
             detail="No store yet — run `atlas init` and ingest before reading the dataset.",
         )
 
-    # Counts, not file stats. SQLite runs in WAL mode here, and a write lands in
-    # atlas.sqlite-wal without necessarily moving the main file's mtime OR its
-    # size — measured, not assumed: a probe write changed neither, because the
-    # WAL was pre-allocated and the row fitted in space it already had. An
-    # mtime key therefore serves a stale document indefinitely after a pipeline
-    # run, which is the exact failure this endpoint exists to avoid.
+    # Counts, and there is nothing else left to key on: the store is a database
+    # on another host now, with no file to stat. Under SQLite the file was
+    # right there and still the wrong answer — a write landed in the WAL
+    # without necessarily moving the main file's mtime OR its size, measured
+    # rather than assumed, so an mtime key served a stale document indefinitely
+    # after a pipeline run. That is the exact failure this endpoint exists to
+    # avoid, and counts are what notice it.
     #
     # `totals` is five indexed counts and costs about a millisecond. It cannot
     # see an edit that changes no count — retitling a film, or re-scoring the

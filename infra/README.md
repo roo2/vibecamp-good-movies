@@ -1,4 +1,20 @@
-# Infrastructure
+# Infrastructure — AWS, frozen
+
+> **This describes where the project used to run.** It moved to Heroku and
+> Postgres; the runbook is [`HEROKU.md`](HEROKU.md).
+>
+> The stack below is still up and still serving the demo URL, deliberately: it
+> keeps running the last SQLite commit until the new environment has been
+> watched for long enough to replace it. Nothing deploys to it any more —
+> `.github/workflows/deploy.yml` no longer runs on a push — so it will not
+> silently receive code that expects a database it does not have.
+>
+> Two things that lived here are gone rather than frozen, because what replaced
+> them is not AWS-shaped: `export-corpus.sh`, `load-corpus.sh` and
+> `load_corpus.py` moved a snapshot through S3 to a machine that could not be
+> reached from a laptop. `atlas corpus-push` connects to the store directly.
+>
+> Read on for what exists in AWS and how to take it down.
 
 Enough AWS to collaborate and to demo, and deliberately not more.
 

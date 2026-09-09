@@ -136,6 +136,15 @@ class Settings:
     datasette_url: str = os.environ.get("ATLAS_DATASETTE_URL", "http://localhost:8001")
     sqliteweb_url: str = os.environ.get("ATLAS_SQLITEWEB_URL", "http://localhost:8002")
 
+    # How many connections this process keeps open to the store.
+    #
+    # A ceiling, not a target: the pool opens one and grows to this under load.
+    # It exists because the database has its own limit — Heroku's smallest plan
+    # allows twenty across every process, dynos and `atlas` runs alike — and a
+    # process that helps itself to all of them locks everything else out.
+    db_pool_size: int = field(default_factory=lambda: int(
+        _clean("ATLAS_DB_POOL_SIZE") or "5"))
+
     # Whether this process also serves the built interface.
     #
     # On AWS it never did: CloudFront served the SPA out of a bucket and sent

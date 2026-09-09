@@ -1,14 +1,19 @@
 """Portable export of everything derived so far.
 
-Two shapes, because a staging box may or may not want the database file:
+Two shapes, because the machine at the other end may or may not want a database:
 
-  the .sqlite file itself   Copy it. This is what `infra/README.md` documents
-                            moving through S3, so a manual transfer and the
-                            eventual automated one land the same object.
+  a pg_dump                 The store as Postgres holds it, restorable with
+                            `pg_restore`. This was a copy of the .sqlite file,
+                            which was simply the store — a dump is the nearest
+                            thing a server has, and it compresses better.
 
   a JSONL bundle            Self-describing, no database dependency, diffable,
                             and each table is one file so a partial transfer is
                             still useful.
+
+For moving the corpus to the DEPLOYED store, neither of these is the tool:
+`atlas corpus-push` connects to it and swaps the corpus tables directly,
+leaving user rows alone. This is for moving work between your own machines.
 
 The manifest is the important part. It records prompt versions, models, and what
 each run cost, because a bundle whose provenance you cannot reconstruct is not
@@ -18,7 +23,7 @@ comparable or were produced by different prompts.
 from __future__ import annotations
 
 import json
-import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -98,9 +103,18 @@ def export(out_dir: str, include_evidence: bool = False,
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
 
     if copy_db:
-        src = settings().db_path
-        if src.exists():
-            shutil.copy2(src, out / "atlas.sqlite")
-            manifest["sqlite_bytes"] = (out / "atlas.sqlite").stat().st_size
+        dump = out / "atlas.dump"
+        try:
+            # Custom format: compressed, and `pg_restore` can pick tables out of
+            # it. A missing pg_dump is a note in the manifest rather than a
+            # failure — the JSONL bundle above is the part that always works.
+            subprocess.run(["pg_dump", "--format=custom", "--no-owner",
+                            "--no-privileges", f"--file={dump}", db.dsn()],
+                           check=True, capture_output=True, text=True)
+            manifest["dump_bytes"] = dump.stat().st_size
+        except FileNotFoundError:
+            manifest["dump_error"] = "no pg_dump on PATH"
+        except subprocess.CalledProcessError as e:
+            manifest["dump_error"] = e.stderr.strip().splitlines()[-1:] or ["pg_dump failed"]
 
     return manifest

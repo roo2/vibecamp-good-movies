@@ -71,11 +71,32 @@ jobs:
   test:
     name: tests
     runs-on: ubuntu-latest
+
+    # The suite needs a real Postgres now. There is no in-process substitute:
+    # the point of the move was that the store enforces its own foreign keys and
+    # refuses its own read-only writes, and a fake that did neither would pass
+    # the tests that exist to check exactly that.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ATLAS_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      ATLAS_TEST_URL: postgresql://postgres:postgres@localhost:5432/moral_atlas_test
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
       - run: pip install -e . pytest
       - run: pytest -q
 

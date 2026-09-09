@@ -28,29 +28,25 @@ class Settings:
     root: Path = ROOT
     data_dir: Path = ROOT / "data"
     cache_dir: Path = ROOT / "data" / "cache"
-    # ATLAS_DB points every reader at another store. infra/export-corpus.sh
-    # already used that name for the same idea; the Python side did not honour
-    # it, so analysing a pulled production snapshot meant copying it over the
-    # working database and hoping to remember which one was which.
+    # Which schema inside that database. `public` everywhere real; the test
+    # suite points each test at a scratch schema of its own, which is how 300
+    # tests that used to get a SQLite file each still get isolation from one
+    # another without 300 databases.
+    db_schema: str = field(default_factory=lambda: _clean("ATLAS_DB_SCHEMA") or "public")
+
     # Where the store is. DATABASE_URL is what Heroku sets and what every
-    # Postgres tool already understands, so it is the name used everywhere —
+    # Postgres tool already understands, so it is the name used everywhere;
     # locally it points at a database on the machine's own server.
     #
-    # ATLAS_DB survives as an alias because every deploy script, every runbook
-    # and half the comments in this repo say ATLAS_DB, and a rename that breaks
-    # all of them buys nothing.
-    # Which schema inside that database. `public` everywhere real; the test
-    # suite points each test at a scratch schema of its own, which is how 303
-    # tests that used to get a file each still get isolation from one another
-    # without 303 databases.
+    # ATLAS_DB survives as an alias because the deploy scripts, the runbooks and
+    # half the comments in this repo say ATLAS_DB, and it already meant "point
+    # every reader at another store".
     #
     # Both are read when a Settings is BUILT rather than when this module is
     # imported. A bare default is evaluated once, at class definition, so an
-    # environment set after the first import — which is exactly what a test
-    # session does — was silently ignored. `settings.cache_clear()` now means
-    # what it looks like it means.
-    db_schema: str = field(default_factory=lambda: _clean("ATLAS_DB_SCHEMA") or "public")
-
+    # environment set after the first import — which is exactly what the test
+    # session does — was silently ignored, and every test ran against whatever
+    # database the developer happened to have configured.
     database_url: str = field(default_factory=lambda: (
         _clean("DATABASE_URL") or _clean("ATLAS_DB") or "postgresql:///moral_atlas"
     ))
@@ -139,6 +135,21 @@ class Settings:
     frontend_url: str = os.environ.get("ATLAS_FRONTEND_URL", "http://localhost:5173")
     datasette_url: str = os.environ.get("ATLAS_DATASETTE_URL", "http://localhost:8001")
     sqliteweb_url: str = os.environ.get("ATLAS_SQLITEWEB_URL", "http://localhost:8002")
+
+    # Whether this process also serves the built interface.
+    #
+    # On AWS it never did: CloudFront served the SPA out of a bucket and sent
+    # only /api/* to the box. One Heroku dyno serves both, which is a saving in
+    # moving parts and the reason the interface and the API can no longer
+    # disagree about which commit they are on.
+    #
+    # Off by default, so a developer running `uvicorn` still gets the pipeline
+    # landing page at `/` and Vite still owns port 5173. On, `/` is the product
+    # and the landing page moves to `/internal`.
+    serve_frontend: bool = field(default_factory=lambda: (
+        (_clean("ATLAS_SERVE_FRONTEND") or "").lower() in ("1", "true", "yes")))
+    frontend_dist: Path = field(default_factory=lambda: Path(
+        _clean("ATLAS_FRONTEND_DIST") or str(ROOT / "src" / "frontend" / "dist")))
 
     @property
     def factor_bank(self) -> str:

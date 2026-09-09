@@ -53,7 +53,7 @@ def init() -> None:
     from .sources import seed as seed_mod
     migration = seed_mod.sync_seed_films()
     s = settings()
-    console.print(f"[green]database ready[/] {s.db_path}")
+    console.print(f"[green]database ready[/] {_redact(s.database_url)}")
     console.print(
         "[green]curated films ready[/] "
         f"inserted {migration['inserted']}, updated {migration['updated']}, "
@@ -1435,9 +1435,9 @@ def displacement(
 def migrate_db(
     source: str = typer.Option("data/atlas.duckdb", help="Old DuckDB file."),
 ) -> None:
-    """Copy an existing DuckDB store into the SQLite store, verifying counts."""
+    """Copy an existing DuckDB store into the store, verifying counts."""
     from .analysis import migrate as migrate_mod
-    console.print(f"migrating [bold]{source}[/] -> {settings().db_path}\n")
+    console.print(f"migrating [bold]{source}[/] -> {_redact(settings().database_url)}\n")
     report = migrate_mod.migrate(source, progress=console.print)
     console.print(f"\n[green]migrated {report['total_rows']} rows[/]")
 
@@ -1470,8 +1470,8 @@ def dataset_cmd(
     # "Safe to run at any stage" means any stage of the pipeline, not "before
     # there is a database". Without this the failure is a raw OperationalError
     # about a missing table, which tells you nothing about what to do next.
-    if not settings().db_path.exists():
-        console.print(f"[red]no store at[/] {settings().db_path}")
+    if not _store_exists():
+        console.print(f"[red]no store at[/] {_redact(settings().database_url)}")
         console.print("[dim]run `atlas init`, then ingest, before building the dataset[/]")
         raise typer.Exit(1)
 
@@ -1484,10 +1484,11 @@ def dataset_cmd(
             console.print(f"[red]no dataset at[/] {out} — run `atlas dataset`")
             raise typer.Exit(1)
 
-        # Counts rather than mtimes. The store runs in WAL mode, so writes land
-        # in atlas.sqlite-wal and the main file's timestamp barely moves until a
-        # checkpoint — an mtime comparison reports "current" while a sweep is
-        # actively writing, which is the precise reassurance this must not give.
+        # Counts rather than timestamps. There is no file to stat now, and
+        # there never was a good answer: under SQLite the writes landed in a
+        # WAL and the store's own mtime barely moved until a checkpoint, so the
+        # comparison reported "current" in the middle of a sweep — the precise
+        # reassurance this must not give.
         built = json.loads(target.read_text()).get("totals") or {}
         current = dataset_mod.totals(version, bank)
         drift = {key: (built.get(key), value) for key, value in current.items()
@@ -1540,7 +1541,7 @@ def export_cmd(
     include_evidence: bool = typer.Option(
         False, help="Include raw plot/subtitle text. Large, and fully "
                     "reproducible from public sources without it."),
-    no_db: bool = typer.Option(False, help="Skip copying the .sqlite file."),
+    no_db: bool = typer.Option(False, help="Skip the pg_dump."),
 ) -> None:
     """Export everything derived so far, for transfer to another machine."""
     from .analysis import export as export_mod
@@ -1739,3 +1740,109 @@ def axis_placement_cmd(
     passing = [a for a in result["axes"] if a["places_people"]]
     console.print(f"\n[green]stored[/] {len(passing)} of {len(result['axes'])} axes "
                   f"place people, from {result['raters']} raters")
+
+
+@app.command("import-sqlite")
+def import_sqlite(
+    path: str = typer.Argument("data/atlas.sqlite", help="The old SQLite store."),
+    yes: bool = typer.Option(False, "--yes", help="Skip the confirmation."),
+) -> None:
+    """Load an old SQLite store into this Postgres one, whole.
+
+    The move off SQLite, run once per environment. Everything crosses, user
+    rows included, so the demo picks up where it left off — which also means
+    this EMPTIES the target first. It is a stand-up, not a merge.
+    """
+    from . import transfer
+
+    if not Path(path).exists():
+        console.print(f"[red]no store at[/] {path}")
+        raise typer.Exit(1)
+    console.print(f"[bold]{path}[/] → {db.dsn()}")
+    if not yes:
+        typer.confirm("Replace every table in the target with this file?", abort=True)
+
+    counts = transfer.import_sqlite(path, report=lambda line: console.print(f"[dim]{line}[/]"))
+    console.print(f"[green]loaded[/] {sum(counts.values()):,} rows "
+                  f"across {len(counts)} tables")
+
+
+@app.command("corpus-push")
+def corpus_push(
+    target: str = typer.Argument(..., help="DATABASE_URL of the target, or a Heroku app name."),
+    yes: bool = typer.Option(False, "--yes", help="Skip the confirmation."),
+) -> None:
+    """Copy this machine's corpus into a deployed store, leaving user rows alone.
+
+    The deploy path for data. Ingest, sweep and derive locally, where the API
+    keys and the subtitle archive are; then send the results to a server that
+    has neither.
+
+    `target` is a Postgres URL, or the name of a Heroku app — in which case its
+    DATABASE_URL is read with `heroku config:get`, so the credential is never
+    typed, pasted or left in a shell history.
+
+    It is one transaction on the target. Either the whole corpus lands or none
+    of it does; the site is never serving half an atlas.
+    """
+    from . import transfer
+
+    url = target if "://" in target else _heroku_database_url(target)
+    console.print(f"[bold]{db.dsn()}[/] → {_redact(url)}")
+    if not yes:
+        typer.confirm("Replace the corpus tables there with the ones here?", abort=True)
+
+    result = transfer.push_corpus(url, report=lambda line: console.print(f"[dim]{line}[/]"))
+    moved = result["moved"]
+    console.print(f"[green]pushed[/] {sum(moved.values()):,} rows across {len(moved)} tables")
+    if result["held"]:
+        console.print(f"[yellow]{len(result['held'])} film(s) kept[/] because users have "
+                      "rated or shortlisted them — run `atlas remove-film` against the "
+                      "target to clear those too")
+    table = Table("user table", "rows")
+    for name, count in sorted(result["users"].items()):
+        table.add_row(name, f"{count:,}")
+    console.print(table)
+    console.print("[dim]user tables above were counted before and after; the push is "
+                  "refused if any of them moved[/]")
+
+
+def _heroku_database_url(app_name: str) -> str:
+    import subprocess
+
+    try:
+        out = subprocess.run(["heroku", "config:get", "DATABASE_URL", "-a", app_name],
+                             capture_output=True, text=True, check=True)
+    except FileNotFoundError:
+        console.print("[red]no heroku CLI on PATH[/] — pass a Postgres URL instead")
+        raise typer.Exit(1)
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]heroku config:get failed[/] {e.stderr.strip()}")
+        raise typer.Exit(1)
+    url = out.stdout.strip()
+    if not url:
+        console.print(f"[red]{app_name} has no DATABASE_URL[/]")
+        raise typer.Exit(1)
+    return url
+
+
+def _store_exists() -> bool:
+    """Whether there is a store to read, without assuming it is a file.
+
+    `Path.exists()` answered this for the first year. What a fresh environment
+    looks like now is a database that connects and has nothing in it, or one
+    that does not accept connections at all — so both count as "no store".
+    """
+    try:
+        with db.connect(read_only=True) as con:
+            return "films" in db.table_names(con)
+    except db.Error:
+        return False
+
+
+def _redact(url: str) -> str:
+    """A URL you can put in a log: host and database, no credential."""
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(db.normalise_url(url))
+    return f"{parts.scheme}://{parts.hostname or ''}{parts.path}"

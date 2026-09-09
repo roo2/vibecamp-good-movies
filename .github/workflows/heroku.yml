@@ -1,0 +1,102 @@
+name: heroku
+
+# The new environment, deployed alongside the old one.
+#
+# `deploy.yml` still publishes to AWS on every push to main, and will keep doing
+# so until this one has been watched for long enough to switch over. Two live
+# deploys of the same commit is a deliberate, temporary state — the AWS site is
+# the one people are using, and it does not move until it is replaced.
+#
+# What this does NOT do is push data. The corpus is derived on a laptop, from
+# API keys and a subtitle archive that are not in CI, and it reaches the app
+# through `atlas corpus-push`. Code deploys automatically; data is a decision
+# somebody makes.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: heroku-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to heroku
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ATLAS_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      ATLAS_TEST_URL: postgresql://postgres:postgres@localhost:5432/moral_atlas_test
+      HEROKU_APP: ${{ vars.HEROKU_APP }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # heroku's git remote refuses a shallow push
+
+      # Say the actual thing rather than letting `git push` fail on an empty
+      # remote URL, which reports as "does not appear to be a git repository".
+      - name: Check the app is configured
+        run: |
+          if [ -z "${{ vars.HEROKU_APP }}" ] || [ -z "${{ secrets.HEROKU_API_KEY }}" ]; then
+            echo "::notice::HEROKU_APP variable or HEROKU_API_KEY secret is not set — skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+        id: guard
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+
+      # The same suite the AWS deploy runs. A release that fails its migration
+      # is caught by Heroku, but a release that passes its migration and then
+      # serves wrong answers is not, so it is caught here.
+      - name: Tests
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          pip install -e . pytest
+          pytest -q
+
+      - name: Push to Heroku
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+        run: |
+          set -euo pipefail
+          git config user.email "deploy@github"
+          git config user.name "GitHub Actions"
+          git remote add heroku "https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP.git"
+          git push heroku "${{ github.sha }}:refs/heads/main" --force
+
+      # A release that reports success can still be serving a dyno that failed
+      # to boot. The health endpoint is the only thing that answers that.
+      - name: Check it came back
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          URL="https://$HEROKU_APP.herokuapp.com/api/health"
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 10 "$URL" | tee /dev/stderr | grep -q '"status":"ok"'; then
+              echo "### Heroku → https://$HEROKU_APP.herokuapp.com" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "not up yet (attempt $attempt)"
+            sleep 10
+          done
+          echo "::error::$URL never returned ok"
+          exit 1

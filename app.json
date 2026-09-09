@@ -1,0 +1,33 @@
+{
+  "name": "moral-atlas",
+  "description": "Films placed on moral and taste axes, and the interface that reads a person onto them.",
+  "repository": "https://github.com/identity-software/vibecamp-good-movies",
+  "buildpacks": [
+    { "url": "heroku/nodejs" },
+    { "url": "heroku/python" }
+  ],
+  "addons": [
+    { "plan": "heroku-postgresql:essential-0" }
+  ],
+  "env": {
+    "ATLAS_SERVE_FRONTEND": {
+      "description": "Serve the built interface from this dyno. Without it the dyno answers only the API and `/` is the pipeline page.",
+      "value": "1"
+    },
+    "ATLAS_FRONTEND_URL": {
+      "description": "Where the pipeline page at /internal points people. The app's own URL once you know it.",
+      "required": false
+    },
+    "ANTHROPIC_API_KEY": {
+      "description": "Only the sweep needs this, and the sweep runs on a laptop. The web dyno does not call any model.",
+      "required": false
+    }
+  },
+  "scripts": {},
+  "environments": {
+    "test": {
+      "addons": ["heroku-postgresql:in-dyno"],
+      "scripts": { "test": "pytest -q" }
+    }
+  }
+}

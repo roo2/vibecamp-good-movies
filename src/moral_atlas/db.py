@@ -761,7 +761,15 @@ def dsn() -> str:
     difference that costs an afternoon the first time you meet it in a dyno
     with no shell, so it is fixed here rather than in the environment.
     """
-    url = settings().database_url
+    return normalise_url(settings().database_url)
+
+
+def normalise_url(url: str) -> str:
+    """The same fix for a URL that did not come from the environment.
+
+    `atlas corpus-push` is handed a target by name or by `heroku config:get`,
+    and both hand back the `postgres://` form.
+    """
     if url.startswith("postgres://"):
         return "postgresql://" + url[len("postgres://"):]
     return url
@@ -795,68 +803,78 @@ def connect(read_only: bool = False) -> Iterator[Connection]:
 
 def init_db() -> None:
     with connect() as con:
-        con.executescript(SCHEMA)
-        _add_column_if_missing(con, "films", "description", "TEXT")
-        _add_column_if_missing(con, "films", "artwork_url", "TEXT")
-        # Which hand wrote the blind story card. NULL on the fifty written by
-        # hand before the column existed; `atlas describe` stamps everything it
-        # writes, so a generated card can always be told from a curated one.
-        _add_column_if_missing(con, "films", "description_source", "TEXT")
-        _add_column_if_missing(con, "film_sets", "url", "TEXT")
-        # Added after the table shipped: rows written before this carry no
-        # fingerprint, so `taste_null.load` treats them as stale and the atlas
-        # draws no adjusted chart until `atlas taste-null` runs again.
-        _add_column_if_missing(con, "null_test_adjusted", "source_fingerprint", "TEXT")
-        _add_column_if_missing(con, "taste_dimensions", "profile_reliability", "REAL")
-        # The deck used to offer a shrug between liking and disliking, and now
-        # offers two degrees each way instead. Every answer given under the
-        # shrug is read as the milder negative — which is the side it already
-        # counted toward — rather than dropped: 126 of them exist in production
-        # and a dropped answer is a person's profile getting quietly thinner.
-        # Runs on every start; after the first it matches nothing.
-        con.execute("UPDATE movie_ratings SET reaction='not_for_me' WHERE reaction='neutral'")
-        _add_column_if_missing(con, "latent_factors", "coherence", "REAL")
-        _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
-        _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
-        _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")
-        _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
-        _add_column_if_missing(con, "users", "moral_stance", "TEXT")
-        _add_column_if_missing(con, "users", "moral_weight", "REAL")
-        # Which model produced each derived row. Older databases carry the model
-        # only on `runs`, reachable through a join that most callers never made;
-        # these columns put it where the row is.
-        for table in ("propositions_raw", "scores", "item_bank"):
-            _add_column_if_missing(con, table, "model", "TEXT")
-            _add_column_if_missing(con, table, "prompt_version", "TEXT")
-        _add_column_if_missing(con, "item_bank", "run_id", "TEXT")
-        _add_column_if_missing(con, "item_bank", "created_at", "TEXT")
-        # The reversed-pair check never populated a single row, so the column
-        # only ever recorded that a check had not run. Dropped rather than left
-        # to read as "no reversals found".
-        _drop_column_if_present(con, "item_bank", "reversed_of")
-        # Short labels for the two ends of each axis, and whether the namer
-        # thought the group cohered at all. `coherent` was always produced and
-        # never stored, so the interface's "would not cohere" warning could not
-        # fire however honest a namer was.
-        for column in ("pole_high_label", "pole_low_label"):
-            _add_column_if_missing(con, "latent_factors", column, "TEXT")
-        # Every factor's loading for this proposition, as a JSON array, not just
-        # the one it was filed under. A proposition can speak to more than one
-        # axis and 29% of them do — measured on the current reading, 22% of all
-        # loading mass sat outside the factor an item was assigned to, and was
-        # being discarded. The single `loading` column stays: it is the signed
-        # value on the assigned factor and everything that reads direction
-        # rather than weight still wants exactly that.
-        _add_column_if_missing(con, "latent_factor_items", "loadings", "TEXT")
-        # A verdict whose own justification argues the opposite verdict is a
-        # real and measurable failure — a few percent of them — and correcting
-        # one must never quietly erase what the scorer actually said. The
-        # original is kept beside the correction and the row is stamped.
-        _add_column_if_missing(con, "model_verdicts", "original_value", "INTEGER")
-        _add_column_if_missing(con, "model_verdicts", "audited_at", "TEXT")
-        _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
-        _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
-        _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")
+        init_schema(con)
+
+
+def init_schema(con) -> None:
+    """Create and migrate the store on whatever connection is handed in.
+
+    Split out of `init_db` so a deploy can bring a REMOTE database up to this
+    schema before copying into it — `atlas corpus-push` opens the target itself
+    and has nowhere to put it otherwise.
+    """
+    con.executescript(SCHEMA)
+    _add_column_if_missing(con, "films", "description", "TEXT")
+    _add_column_if_missing(con, "films", "artwork_url", "TEXT")
+    # Which hand wrote the blind story card. NULL on the fifty written by
+    # hand before the column existed; `atlas describe` stamps everything it
+    # writes, so a generated card can always be told from a curated one.
+    _add_column_if_missing(con, "films", "description_source", "TEXT")
+    _add_column_if_missing(con, "film_sets", "url", "TEXT")
+    # Added after the table shipped: rows written before this carry no
+    # fingerprint, so `taste_null.load` treats them as stale and the atlas
+    # draws no adjusted chart until `atlas taste-null` runs again.
+    _add_column_if_missing(con, "null_test_adjusted", "source_fingerprint", "TEXT")
+    _add_column_if_missing(con, "taste_dimensions", "profile_reliability", "REAL")
+    # The deck used to offer a shrug between liking and disliking, and now
+    # offers two degrees each way instead. Every answer given under the
+    # shrug is read as the milder negative — which is the side it already
+    # counted toward — rather than dropped: 126 of them exist in production
+    # and a dropped answer is a person's profile getting quietly thinner.
+    # Runs on every start; after the first it matches nothing.
+    con.execute("UPDATE movie_ratings SET reaction='not_for_me' WHERE reaction='neutral'")
+    _add_column_if_missing(con, "latent_factors", "coherence", "REAL")
+    _add_column_if_missing(con, "group_sessions", "deck_json", "TEXT")
+    _add_column_if_missing(con, "group_sessions", "selected_film_id", "TEXT")
+    _add_column_if_missing(con, "shortlist_reactions", "session_id", "TEXT")
+    _add_column_if_missing(con, "test_results", "session_share_token", "TEXT")
+    _add_column_if_missing(con, "users", "moral_stance", "TEXT")
+    _add_column_if_missing(con, "users", "moral_weight", "REAL")
+    # Which model produced each derived row. Older databases carry the model
+    # only on `runs`, reachable through a join that most callers never made;
+    # these columns put it where the row is.
+    for table in ("propositions_raw", "scores", "item_bank"):
+        _add_column_if_missing(con, table, "model", "TEXT")
+        _add_column_if_missing(con, table, "prompt_version", "TEXT")
+    _add_column_if_missing(con, "item_bank", "run_id", "TEXT")
+    _add_column_if_missing(con, "item_bank", "created_at", "TEXT")
+    # The reversed-pair check never populated a single row, so the column
+    # only ever recorded that a check had not run. Dropped rather than left
+    # to read as "no reversals found".
+    _drop_column_if_present(con, "item_bank", "reversed_of")
+    # Short labels for the two ends of each axis, and whether the namer
+    # thought the group cohered at all. `coherent` was always produced and
+    # never stored, so the interface's "would not cohere" warning could not
+    # fire however honest a namer was.
+    for column in ("pole_high_label", "pole_low_label"):
+        _add_column_if_missing(con, "latent_factors", column, "TEXT")
+    # Every factor's loading for this proposition, as a JSON array, not just
+    # the one it was filed under. A proposition can speak to more than one
+    # axis and 29% of them do — measured on the current reading, 22% of all
+    # loading mass sat outside the factor an item was assigned to, and was
+    # being discarded. The single `loading` column stays: it is the signed
+    # value on the assigned factor and everything that reads direction
+    # rather than weight still wants exactly that.
+    _add_column_if_missing(con, "latent_factor_items", "loadings", "TEXT")
+    # A verdict whose own justification argues the opposite verdict is a
+    # real and measurable failure — a few percent of them — and correcting
+    # one must never quietly erase what the scorer actually said. The
+    # original is kept beside the correction and the row is stamped.
+    _add_column_if_missing(con, "model_verdicts", "original_value", "INTEGER")
+    _add_column_if_missing(con, "model_verdicts", "audited_at", "TEXT")
+    _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
+    _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
+    _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")
 
 
 def table_columns(con, table: str) -> set[str]:

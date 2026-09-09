@@ -261,7 +261,10 @@ def _label(url: str) -> str:
     return url.replace("https://", "").replace("http://", "").rstrip("/")
 
 
-@router.get("/", response_class=HTMLResponse, include_in_schema=False)
+# `/internal` always, `/` only when nothing else wants it. One dyno now serves
+# the product and the pipeline page, and the product is what a visitor typing
+# the bare domain should get; this page is for whoever ran the sweep.
+@router.get("/internal", response_class=HTMLResponse, include_in_schema=False)
 def landing() -> HTMLResponse:
     s = settings()
     snap = _snapshot()
@@ -291,3 +294,8 @@ def landing() -> HTMLResponse:
         bars=_bars(snap["dimensions"]),
         coverage=_coverage(snap["variants"], snap["films"]),
     ))
+
+
+if not settings().serve_frontend:
+    router.add_api_route("/", landing, response_class=HTMLResponse,
+                         include_in_schema=False)

@@ -73,12 +73,12 @@ function CompassScreen({ access, shareToken, onContinue }) {
           <button className="peach-button" type="button" onClick={onContinue}>
             See tonight’s list <span aria-hidden="true">→</span>
           </button>
-          {/* Two ways on for a reader who does not want tonight's list: where the
-              scales came from, and what the same scales make of a film they
-              already have in mind. */}
-          <a className="quiet-link" href="#/corpus">Look up a film you love →</a>
-          <a className="quiet-link" href="#/atlas?me=1">See where you sit among the films →</a>
-          <a className="quiet-link" href="#/atlas">Where do these scales come from? →</a>
+          {/* One way on, not three. The three were a corpus lookup, the same
+              atlas with the viewer marked, and the atlas plain — all the same
+              destination in effect, stacked under the one button anybody came
+              here to press. This one lands on the half of the atlas that
+              answers the question the screen just raised. */}
+          <a className="quiet-link" href="#/atlas?space=taste">Where do these scales come from? →</a>
         </div>
       </section>
     </main>

@@ -1,5 +1,6 @@
 import React from 'react'
 import FilmExplorer from '../components/atlas/FilmExplorer.jsx'
+import AtlasSkeleton from '../components/atlas/AtlasSkeleton.jsx'
 import { loadAtlas, plotAxes } from '../services/atlasService.js'
 import { loadFactors, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
@@ -79,19 +80,25 @@ export default function CorpusPage({ onBack }) {
 
         {error && <p className="atlas-note">{error}</p>}
 
+        {/* The corpus is the whole payload this page is for, and it arrives in
+            one piece. Until it does the explorer below would draw an empty plot
+            and a search box over nothing, which reads as a page with no films
+            in it rather than one still fetching them. */}
+        {!corpus && !error && <AtlasSkeleton rows={2} />}
+
         {/* The same three spaces and the same axis picker the atlas has. This
             page drew one fixed view of one pair, so a reader who found their
             film here could not ask what it looks like on any other axis, or in
             taste at all — the controls existed one page away and nothing said
             so. */}
-        <FilmExplorer films={all} factors={factors} taste={taste} reading={reading}
+        {corpus && <FilmExplorer films={all} factors={factors} taste={taste} reading={reading}
                       selectedId={selected?.id || null}
                       onSelect={(id) => setSelected(all.find((f) => f.id === id) || null)}
                       space={space} onSpaceChange={setSpace}
                       pair={pair} onPairChange={setPair}
-                      axes={productAxes} />
+                      axes={productAxes} />}
 
-        {!selected && (
+        {corpus && !selected && (
           <p className="atlas-note">
             If a film is not here it simply has not been read yet — the corpus grows by subtitle
             availability, not by taste.

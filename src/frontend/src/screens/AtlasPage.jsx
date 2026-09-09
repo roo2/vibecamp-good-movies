@@ -7,6 +7,7 @@ import { loadMoralProfile } from '../services/profileService.js'
 import TasteDimensions from '../components/atlas/TasteDimensions.jsx'
 import TastePoles from '../components/atlas/TastePoles.jsx'
 import TasteVersusValues from '../components/atlas/TasteVersusValues.jsx'
+import AtlasSkeleton from '../components/atlas/AtlasSkeleton.jsx'
 import { loadFactors, loadFilmSets, loadModels, loadTaste } from '../services/factorService.js'
 import '../styles/atlas.css'
 
@@ -28,6 +29,18 @@ function filmParam() {
   return new URLSearchParams(search).get('film')
 }
 
+// Which half of the atlas to open on. `#/atlas?space=taste` is how the compass
+// hands somebody over: they have just read their taste, and the page that
+// explains where those scales came from should already be showing taste rather
+// than asking them to find the switch.
+const SPACES = ['moral', 'taste', 'adjusted']
+
+function spaceParam() {
+  const [, search = ''] = window.location.hash.split('?')
+  const asked = new URLSearchParams(search).get('space')
+  return SPACES.includes(asked) ? asked : 'moral'
+}
+
 function AtlasPage({ onBack, access }) {
   const [models, setModels] = React.useState(null)
   const [selected, setSelected] = React.useState(null)
@@ -44,7 +57,7 @@ function AtlasPage({ onBack, access }) {
   const [taste, setTaste] = React.useState(null)
   // Which pair of axes the plane draws. Moral by default — this is an atlas of
   // what films argue, and taste is the comparison rather than the subject.
-  const [space, setSpace] = React.useState('moral')
+  const [space, setSpace] = React.useState(spaceParam)
   // Which two axes the plane draws. Null means the support order's first two.
   const [pair, setPair] = React.useState(null)
 
@@ -178,7 +191,17 @@ function AtlasPage({ onBack, access }) {
 
 
   if (models === null) {
-    return <main className="app-page"><p className="message">Reading the atlas…</p></main>
+    return (
+      <main className="atlas-page">
+        <div className="atlas-wrap">
+          <header className="atlas-header">
+            {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
+            <div><h1>What do these films value?</h1></div>
+          </header>
+          <AtlasSkeleton />
+        </div>
+      </main>
+    )
   }
 
   return (

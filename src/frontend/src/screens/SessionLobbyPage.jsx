@@ -65,7 +65,25 @@ function SessionLobbyPage({ access, groupSession, onStart }) {
               the other said.
             </p>
             <img className="session-qr" src={qrUrl} alt="QR code a friend can scan to join you" />
-            <button className="link-button" type="button" onClick={sendLink}>
+            <button className="link-button share-button" type="button" onClick={sendLink}>
+              {/* The system share glyph, drawn rather than an emoji: an emoji
+                  renders as a different picture on every platform, and this one
+                  has to read as the button the operating system is about to
+                  open. Swapped for a clipboard where there is no sheet. */}
+              <svg className="share-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                {canShare ? (
+                  <>
+                    <path d="M12 3v12" />
+                    <path d="M8 7l4-4 4 4" />
+                    <path d="M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6" />
+                  </>
+                ) : (
+                  <>
+                    <rect x="9" y="3" width="9" height="12" rx="1.5" />
+                    <path d="M15 18v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h2" />
+                  </>
+                )}
+              </svg>
               {copied ? 'Link copied' : canShare ? 'Send them the link' : 'Copy the link for them'}
             </button>
             {failed && (

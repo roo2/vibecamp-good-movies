@@ -70,7 +70,7 @@ def _snapshot() -> dict[str, Any]:
 
             for variant in VARIANTS:
                 films = _scalar(
-                    con, "SELECT COUNT(DISTINCT film_id) FROM scores WHERE variant=?",
+                    con, "SELECT COUNT(DISTINCT film_id) FROM scores WHERE variant=%s",
                     [variant],
                 )
                 if films:

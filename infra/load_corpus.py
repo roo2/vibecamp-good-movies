@@ -96,7 +96,7 @@ def main() -> int:
         # change part of the deploy rather than something to remember.
         if not live_cols:
             ddl = con.execute(
-                "SELECT sql FROM corpus.sqlite_master WHERE type='table' AND name=?",
+                "SELECT sql FROM corpus.sqlite_master WHERE type='table' AND name=%s",
                 (table,)).fetchone()
             if not ddl or not ddl[0]:
                 print(f"  skip {table}: no schema in the snapshot")

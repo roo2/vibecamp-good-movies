@@ -99,7 +99,7 @@ def store(progress: Callable[[str], None] | None = None) -> dict[str, Any]:
         con.execute("DELETE FROM film_moral_adjusted")
         con.executemany(
             "INSERT INTO film_moral_adjusted (scorer, variant, bank_version, "
-            "film_id, dim_id, score, taste_explained) VALUES (?,?,?,?,?,?,?)", rows)
+            "film_id, dim_id, score, taste_explained) VALUES (%s,%s,%s,%s,%s,%s,%s)", rows)
     if progress:
         progress(f"  stored {len(rows):,} taste-adjusted positions")
     return {"positions": len(rows), "films": len({r[3] for r in rows}),

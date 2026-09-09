@@ -46,7 +46,7 @@ def load(min_support: int = MIN_SUPPORT) -> dict[str, list[tuple[str, float]]]:
         try:
             rows = con.execute(
                 "SELECT film_id, neighbour_id, similarity FROM film_neighbours "
-                "WHERE support IS NULL OR support >= ? "
+                "WHERE support IS NULL OR support >= %s "
                 "ORDER BY film_id, similarity DESC", [min_support],
             ).fetchall()
         except Exception:

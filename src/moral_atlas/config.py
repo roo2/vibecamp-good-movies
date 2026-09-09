@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
@@ -32,7 +32,28 @@ class Settings:
     # already used that name for the same idea; the Python side did not honour
     # it, so analysing a pulled production snapshot meant copying it over the
     # working database and hoping to remember which one was which.
-    db_path: Path = Path(os.environ.get("ATLAS_DB", str(ROOT / "data" / "atlas.sqlite")))
+    # Where the store is. DATABASE_URL is what Heroku sets and what every
+    # Postgres tool already understands, so it is the name used everywhere —
+    # locally it points at a database on the machine's own server.
+    #
+    # ATLAS_DB survives as an alias because every deploy script, every runbook
+    # and half the comments in this repo say ATLAS_DB, and a rename that breaks
+    # all of them buys nothing.
+    # Which schema inside that database. `public` everywhere real; the test
+    # suite points each test at a scratch schema of its own, which is how 303
+    # tests that used to get a file each still get isolation from one another
+    # without 303 databases.
+    #
+    # Both are read when a Settings is BUILT rather than when this module is
+    # imported. A bare default is evaluated once, at class definition, so an
+    # environment set after the first import — which is exactly what a test
+    # session does — was silently ignored. `settings.cache_clear()` now means
+    # what it looks like it means.
+    db_schema: str = field(default_factory=lambda: _clean("ATLAS_DB_SCHEMA") or "public")
+
+    database_url: str = field(default_factory=lambda: (
+        _clean("DATABASE_URL") or _clean("ATLAS_DB") or "postgresql:///moral_atlas"
+    ))
     # Where the MovieLens ml-25m extract sits, and where the arrays derived from
     # it are cached. Both live under data/, which is git-ignored whole: ml-25m is
     # licensed for non-commercial research and may NOT be redistributed, so

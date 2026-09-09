@@ -75,7 +75,7 @@ def pending(scorer: str, bank_version: str, variant: str,
             "SELECT v.film_id, v.item_id, v.value, v.evidence, i.text "
             "FROM model_verdicts v JOIN item_bank i "
             "  ON i.item_id = v.item_id AND i.bank_version = v.bank_version "
-            "WHERE v.scorer=? AND v.bank_version=? AND v.variant=? "
+            "WHERE v.scorer=%s AND v.bank_version=%s AND v.variant=%s "
             "  AND v.evidence IS NOT NULL AND length(v.evidence) > 25 "
             + ("" if redo else "AND v.audited_at IS NULL ")
             + ("LIMIT " + str(int(limit)) if limit else ""),
@@ -142,8 +142,8 @@ def audit(scorer: str, bank_version: str, variant: str, client,
         if corrections and apply:
             with db.connect() as con:
                 con.executemany(
-                    "UPDATE model_verdicts SET value=?, original_value=?, "
-                    "audited_at=? WHERE scorer=? AND bank_version=? AND variant=? "
+                    "UPDATE model_verdicts SET value=%s, original_value=%s, "
+                    "audited_at=%s WHERE scorer=%s AND bank_version=%s AND variant=%s "
                     "AND film_id=? AND item_id=?",
                     [(new, old, db.now(), scorer, bank_version, variant, film, item)
                      for film, item, new, old in corrections],
@@ -153,7 +153,7 @@ def audit(scorer: str, bank_version: str, variant: str, client,
         if apply:
             with db.connect() as con:
                 con.executemany(
-                    "UPDATE model_verdicts SET audited_at=? WHERE scorer=? AND "
+                    "UPDATE model_verdicts SET audited_at=%s WHERE scorer=%s AND "
                     "bank_version=? AND variant=? AND film_id=? AND item_id=? "
                     "AND audited_at IS NULL",
                     [(db.now(), scorer, bank_version, variant, r["film_id"], r["item_id"])

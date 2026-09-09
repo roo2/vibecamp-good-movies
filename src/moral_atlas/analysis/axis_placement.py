@@ -74,7 +74,7 @@ def fingerprint(scorer: str, variant: str, bank_version: str) -> str:
     """
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT factor_id, n_items FROM latent_factors WHERE scorer=? AND "
+            "SELECT factor_id, n_items FROM latent_factors WHERE scorer=%s AND "
             "variant=? AND bank_version=? ORDER BY factor_id",
             [scorer, variant, bank_version]).fetchall()
     return "|".join(f"{r['factor_id']}:{r['n_items']}" for r in rows) or "none"
@@ -195,9 +195,9 @@ def store(scorer: str, variant: str, bank_version: str,
     db.init_db()
     with db.connect() as con:
         con.execute(
-            "INSERT OR REPLACE INTO axis_placement (scorer, variant, bank_version, "
-            "raters, control, axes, source_fingerprint, computed_at) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            db.upsert("axis_placement", ["scorer", "variant", "bank_version", "raters",
+                                         "control", "axes", "source_fingerprint",
+                                         "computed_at"]),
             [scorer, variant, bank_version, result["raters"], result["control"],
              json.dumps(result["axes"]), fingerprint(scorer, variant, bank_version),
              datetime.now(timezone.utc).isoformat()])
@@ -213,7 +213,7 @@ def load(scorer: str, variant: str, bank_version: str) -> dict[int, bool] | None
     try:
         with db.connect(read_only=True) as con:
             row = con.execute(
-                "SELECT axes, source_fingerprint FROM axis_placement WHERE scorer=? "
+                "SELECT axes, source_fingerprint FROM axis_placement WHERE scorer=%s "
                 "AND variant=? AND bank_version=?",
                 [scorer, variant, bank_version]).fetchone()
     except Exception:

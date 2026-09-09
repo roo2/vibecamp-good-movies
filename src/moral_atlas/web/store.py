@@ -33,11 +33,11 @@ def create_session(name: str = "") -> Session:
     created_at = db.now()
     with db.connect() as con:
         con.execute(
-            "INSERT INTO users (user_id, name, created_at) VALUES (?,?,?)",
+            "INSERT INTO users (user_id, name, created_at) VALUES (%s,%s,%s)",
             [user.id, user.name, created_at],
         )
         con.execute(
-            "INSERT INTO user_sessions (token, user_id, created_at) VALUES (?,?,?)",
+            "INSERT INTO user_sessions (token, user_id, created_at) VALUES (%s,%s,%s)",
             [token, user.id, created_at],
         )
     return Session(token=token, user=user)
@@ -48,7 +48,7 @@ def get_session(token: str) -> Session | None:
     with db.connect(read_only=True) as con:
         row = con.execute(
             "SELECT s.token, u.user_id, u.name FROM user_sessions s "
-            "JOIN users u ON u.user_id=s.user_id WHERE s.token=?",
+            "JOIN users u ON u.user_id=s.user_id WHERE s.token=%s",
             [token],
         ).fetchone()
     if row is None:
@@ -67,26 +67,26 @@ def save_test_result(user_id: str, answers: dict[str, str], session_share_token:
     )
     with db.connect() as con:
         existing = con.execute(
-            "SELECT result_id FROM test_results WHERE user_id=? AND session_share_token=? "
+            "SELECT result_id FROM test_results WHERE user_id=%s AND session_share_token=%s "
             "ORDER BY submitted_at DESC LIMIT 1", [user_id, session_share_token],
         ).fetchone() if session_share_token else None
         if existing:
             result.id = existing["result_id"]
             con.execute(
-                "UPDATE test_results SET answers=?, answered_count=?, submitted_at=? WHERE result_id=?",
+                "UPDATE test_results SET answers=%s, answered_count=%s, submitted_at=%s WHERE result_id=%s",
                 [json.dumps(result.answers), result.answered_count, result.submitted_at.isoformat(), result.id],
             )
         else:
             con.execute(
                 "INSERT INTO test_results (result_id, user_id, answers, answered_count, "
-                "submitted_at, session_share_token) VALUES (?,?,?,?,?,?)",
+                "submitted_at, session_share_token) VALUES (%s,%s,%s,%s,%s,%s)",
                 [result.id, result.user_id, json.dumps(result.answers), result.answered_count,
                  result.submitted_at.isoformat(), session_share_token],
             )
         if session_share_token:
             con.execute(
-                "UPDATE session_members SET completed_at=? WHERE user_id=? AND completed_at IS NULL "
-                "AND session_id=(SELECT session_id FROM group_sessions WHERE share_token=? AND status='in_progress')",
+                "UPDATE session_members SET completed_at=%s WHERE user_id=%s AND completed_at IS NULL "
+                "AND session_id=(SELECT session_id FROM group_sessions WHERE share_token=%s AND status='in_progress')",
                 [result.submitted_at.isoformat(), user_id, session_share_token],
             )
     return result
@@ -97,7 +97,7 @@ def current_test_result(user_id: str, session_share_token: str) -> TestResult | 
     with db.connect(read_only=True) as con:
         row = con.execute(
             "SELECT result_id, user_id, answers, answered_count, submitted_at FROM test_results "
-            "WHERE user_id=? AND session_share_token=? ORDER BY submitted_at DESC LIMIT 1",
+            "WHERE user_id=%s AND session_share_token=%s ORDER BY submitted_at DESC LIMIT 1",
             [user_id, session_share_token],
         ).fetchone()
     if row is None:
@@ -113,7 +113,7 @@ def list_test_results(user_id: str) -> list[TestResult]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT result_id, user_id, answers, answered_count, submitted_at "
-            "FROM test_results WHERE user_id=? ORDER BY submitted_at DESC",
+            "FROM test_results WHERE user_id=%s ORDER BY submitted_at DESC",
             [user_id],
         ).fetchall()
     return [TestResult(
@@ -127,7 +127,7 @@ def user_rating_inputs(user_id: str) -> list[tuple[str, str]]:
     _ensure_db()
     with db.connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT film_id, reaction FROM movie_ratings WHERE user_id=? "
+            "SELECT film_id, reaction FROM movie_ratings WHERE user_id=%s "
             "ORDER BY submitted_at DESC", [user_id],
         ).fetchall()
     return [(row["film_id"], row["reaction"]) for row in rows]
@@ -155,7 +155,7 @@ def moral_stance(user_id: str) -> tuple[str | None, float]:
     _ensure_db()
     with db.connect(read_only=True) as con:
         row = con.execute(
-            "SELECT moral_stance, moral_weight FROM users WHERE user_id=?",
+            "SELECT moral_stance, moral_weight FROM users WHERE user_id=%s",
             [user_id]).fetchone()
     if not row:
         return None, 0.0
@@ -167,7 +167,7 @@ def stance_answered(user_id: str) -> bool:
     """Whether they have answered at all — including by choosing to opt out."""
     _ensure_db()
     with db.connect(read_only=True) as con:
-        row = con.execute("SELECT moral_weight FROM users WHERE user_id=?",
+        row = con.execute("SELECT moral_weight FROM users WHERE user_id=%s",
                           [user_id]).fetchone()
     return bool(row) and row["moral_weight"] is not None
 
@@ -183,7 +183,7 @@ def save_moral_stance(user_id: str, stance_id: str | None, weight: float) -> tup
     if stance_id is None:
         weight = 0.0
     with db.connect() as con:
-        con.execute("UPDATE users SET moral_stance=?, moral_weight=? WHERE user_id=?",
+        con.execute("UPDATE users SET moral_stance=%s, moral_weight=%s WHERE user_id=%s",
                     [stance_id, weight, user_id])
     return stance_id, weight
 
@@ -199,12 +199,12 @@ def user_pair_answers(user_id: str) -> list[tuple[str, list[str]]]:
     _ensure_db()
     with db.connect(read_only=True) as con:
         results = con.execute(
-            "SELECT answers, session_share_token FROM test_results WHERE user_id=? "
+            "SELECT answers, session_share_token FROM test_results WHERE user_id=%s "
             "ORDER BY submitted_at DESC", [user_id],
         ).fetchall()
         decks = con.execute(
             "SELECT s.share_token, s.deck_json FROM group_sessions s "
-            "JOIN session_members m ON m.session_id=s.session_id WHERE m.user_id=?",
+            "JOIN session_members m ON m.session_id=s.session_id WHERE m.user_id=%s",
             [user_id],
         ).fetchall()
 
@@ -244,7 +244,7 @@ def save_movie_rating(user_id: str, film_id: str, reaction: str) -> MovieRating:
     with db.connect() as con:
         con.execute(
             "INSERT INTO movie_ratings (rating_id, user_id, film_id, reaction, submitted_at) "
-            "VALUES (?,?,?,?,?)",
+            "VALUES (%s,%s,%s,%s,%s)",
             [rating.id, rating.user_id, rating.film_id, rating.reaction,
              rating.submitted_at.isoformat()],
         )
@@ -256,7 +256,7 @@ def list_movie_ratings(user_id: str) -> list[MovieRating]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT rating_id, user_id, film_id, reaction, submitted_at "
-            "FROM movie_ratings WHERE user_id=? ORDER BY submitted_at DESC",
+            "FROM movie_ratings WHERE user_id=%s ORDER BY submitted_at DESC",
             [user_id],
         ).fetchall()
     return [MovieRating(
@@ -266,10 +266,10 @@ def list_movie_ratings(user_id: str) -> list[MovieRating]:
 
 
 def _ensure_shortlist(con, session_id: str) -> None:
-    if con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=?", [session_id]).fetchone():
+    if con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=%s", [session_id]).fetchone():
         return
     member_ids = [row["user_id"] for row in con.execute(
-        "SELECT user_id FROM session_members WHERE session_id=? ORDER BY joined_at", [session_id]
+        "SELECT user_id FROM session_members WHERE session_id=%s ORDER BY joined_at", [session_id]
     ).fetchall()]
     # Import here because the ranking service reads preference helpers from this
     # module. A session keeps the resulting order forever, even as later votes
@@ -279,7 +279,7 @@ def _ensure_shortlist(con, session_id: str) -> None:
     if not film_ids:
         film_ids = [row["film_id"] for row in con.execute("SELECT film_id FROM films").fetchall()]
         random.SystemRandom().shuffle(film_ids)
-    con.executemany("INSERT INTO session_shortlist_films (session_id, film_id, position) VALUES (?,?,?)", [(session_id, film_id, position) for position, film_id in enumerate(film_ids)])
+    con.executemany("INSERT INTO session_shortlist_films (session_id, film_id, position) VALUES (%s,%s,%s)", [(session_id, film_id, position) for position, film_id in enumerate(film_ids)])
 
 
 def reorder_shortlist(share_token: str, user_id: str) -> bool:
@@ -301,16 +301,16 @@ def reorder_shortlist(share_token: str, user_id: str) -> bool:
     _ensure_db()
     with db.connect() as con:
         session = con.execute(
-            "SELECT session_id FROM group_sessions WHERE share_token=?",
+            "SELECT session_id FROM group_sessions WHERE share_token=%s",
             [share_token]).fetchone()
         if session is None:
             return False
         member = con.execute(
-            "SELECT 1 FROM session_members WHERE session_id=? AND user_id=?",
+            "SELECT 1 FROM session_members WHERE session_id=%s AND user_id=%s",
             [session["session_id"], user_id]).fetchone()
         if not member:
             return False
-        con.execute("DELETE FROM session_shortlist_films WHERE session_id=?",
+        con.execute("DELETE FROM session_shortlist_films WHERE session_id=%s",
                     [session["session_id"]])
     return True
 
@@ -327,8 +327,8 @@ def next_shortlist_film(share_token: str, user_id: str, since: int = 0) -> dict[
     """
     _ensure_db()
     with db.connect() as con:
-        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
-        if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
+        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=%s", [share_token]).fetchone()
+        if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=%s AND user_id=%s", [session["session_id"], user_id]).fetchone():
             return None
         full = _shortlist_state(con, session["session_id"])
         if full["state"] == "shortlist" and len(full["films"]) > since:
@@ -339,9 +339,9 @@ def next_shortlist_film(share_token: str, user_id: str, since: int = 0) -> dict[
         # wait for two round trips. Handing over the next few lets the screen
         # advance the moment a card leaves and send the vote behind it.
         rows = con.execute(
-            "SELECT q.film_id FROM session_shortlist_films q WHERE q.session_id=? "
+            "SELECT q.film_id FROM session_shortlist_films q WHERE q.session_id=%s "
             "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions n WHERE n.session_id=q.session_id AND n.film_id=q.film_id AND n.reaction='no') "
-            "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions mine WHERE mine.session_id=q.session_id AND mine.film_id=q.film_id AND mine.user_id=?) "
+            "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions mine WHERE mine.session_id=q.session_id AND mine.film_id=q.film_id AND mine.user_id=%s) "
             "ORDER BY q.position LIMIT ?", [session["session_id"], user_id, QUEUE_AHEAD],
         ).fetchall()
     films = [card for row in rows if (card := film_card(row["film_id"]))]
@@ -371,12 +371,12 @@ def _agreed_films(con, session_id: str) -> list[str]:
     reactions it is computed from — including after someone's vote is removed.
     """
     members = con.execute(
-        "SELECT count(*) FROM session_members WHERE session_id=?", [session_id]).fetchone()[0]
+        "SELECT count(*) FROM session_members WHERE session_id=%s", [session_id]).fetchone()[0]
     if not members:
         return []
     return [row["film_id"] for row in con.execute(
         "SELECT film_id, MAX(submitted_at) agreed_at FROM shortlist_reactions "
-        "WHERE session_id=? GROUP BY film_id "
+        "WHERE session_id=%s GROUP BY film_id "
         "HAVING COUNT(DISTINCT CASE WHEN reaction='yes' THEN user_id END)=? "
         "AND SUM(reaction='no')=0 ORDER BY agreed_at",
         [session_id, members])]
@@ -394,8 +394,8 @@ def _shortlist_state(con, session_id: str) -> dict[str, Any]:
 def shortlist_selection(share_token: str, user_id: str) -> dict[str, Any] | None:
     _ensure_db()
     with db.connect(read_only=True) as con:
-        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
-        if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone():
+        session = con.execute("SELECT session_id, selected_film_id FROM group_sessions WHERE share_token=%s", [share_token]).fetchone()
+        if session is None or not con.execute("SELECT 1 FROM session_members WHERE session_id=%s AND user_id=%s", [session["session_id"], user_id]).fetchone():
             return None
         return _shortlist_state(con, session["session_id"])
 
@@ -405,30 +405,30 @@ def reopen_shortlist(share_token: str, user_id: str) -> dict[str, str] | None:
     with db.connect() as con:
         session = con.execute(
             "SELECT s.session_id FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
-            "WHERE s.share_token=? AND m.user_id=?",
+            "WHERE s.share_token=%s AND m.user_id=%s",
             [share_token, user_id],
         ).fetchone()
         if session is None:
             return None
-        con.execute("UPDATE group_sessions SET selected_film_id=NULL WHERE session_id=?", [session["session_id"]])
+        con.execute("UPDATE group_sessions SET selected_film_id=NULL WHERE session_id=%s", [session["session_id"]])
         return _shortlist_state(con, session["session_id"])
 
 
 def save_shortlist_reaction(share_token: str, user_id: str, film_id: str, reaction: str) -> dict[str, Any] | None:
     _ensure_db()
     with db.connect() as con:
-        session = con.execute("SELECT session_id FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        session = con.execute("SELECT session_id FROM group_sessions WHERE share_token=%s", [share_token]).fetchone()
         if session is None:
             return None
         _ensure_shortlist(con, session["session_id"])
-        if not con.execute("SELECT 1 FROM session_members WHERE session_id=? AND user_id=?", [session["session_id"], user_id]).fetchone() or not con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=? AND film_id=?", [session["session_id"], film_id]).fetchone():
+        if not con.execute("SELECT 1 FROM session_members WHERE session_id=%s AND user_id=%s", [session["session_id"], user_id]).fetchone() or not con.execute("SELECT 1 FROM session_shortlist_films WHERE session_id=%s AND film_id=%s", [session["session_id"], film_id]).fetchone():
             return None
         if con.execute(
-            "SELECT 1 FROM shortlist_reactions WHERE session_id=? AND user_id=? AND film_id=?",
+            "SELECT 1 FROM shortlist_reactions WHERE session_id=%s AND user_id=%s AND film_id=%s",
             [session["session_id"], user_id, film_id],
         ).fetchone():
             return {"state": "continue"}
-        con.execute("INSERT INTO shortlist_reactions (reaction_id, session_id, user_id, film_id, reaction, submitted_at) VALUES (?,?,?,?,?,?)", [f"short_{uuid4().hex[:12]}", session["session_id"], user_id, film_id, reaction, db.now()])
+        con.execute("INSERT INTO shortlist_reactions (reaction_id, session_id, user_id, film_id, reaction, submitted_at) VALUES (%s,%s,%s,%s,%s,%s)", [f"short_{uuid4().hex[:12]}", session["session_id"], user_id, film_id, reaction, db.now()])
         if reaction == "yes":
             progress = _shortlist_state(con, session["session_id"])
             if progress["state"] == "shortlist":
@@ -452,11 +452,11 @@ def create_group_session(host_user_id: str) -> GroupSession:
     )
     with db.connect() as con:
         con.execute(
-            "INSERT INTO group_sessions (session_id, share_token, host_user_id, status, created_at, deck_json) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO group_sessions (session_id, share_token, host_user_id, status, created_at, deck_json) VALUES (%s,%s,%s,%s,%s,%s)",
             [group_session.id, group_session.share_token, host_user_id, group_session.status, group_session.created_at.isoformat(), json.dumps(deck)],
         )
         con.execute(
-            "INSERT INTO session_members (session_id, user_id, joined_at) VALUES (?,?,?)",
+            "INSERT INTO session_members (session_id, user_id, joined_at) VALUES (%s,%s,%s)",
             [group_session.id, host_user_id, group_session.created_at.isoformat()],
         )
     return group_session
@@ -465,11 +465,12 @@ def create_group_session(host_user_id: str) -> GroupSession:
 def join_group_session(share_token: str, user_id: str) -> GroupSession | None:
     _ensure_db()
     with db.connect() as con:
-        row = con.execute("SELECT * FROM group_sessions WHERE share_token=?", [share_token]).fetchone()
+        row = con.execute("SELECT * FROM group_sessions WHERE share_token=%s", [share_token]).fetchone()
         if row is None or row["status"] != "lobby":
             return None
         con.execute(
-            "INSERT OR IGNORE INTO session_members (session_id, user_id, joined_at) VALUES (?,?,?)",
+            "INSERT INTO session_members (session_id, user_id, joined_at) VALUES (%s,%s,%s) "
+            "ON CONFLICT (session_id, user_id) DO NOTHING",
             [row["session_id"], user_id, db.now()],
         )
     return _group_session_from_row(row)
@@ -480,13 +481,13 @@ def get_group_session_status(share_token: str, user_id: str) -> GroupSessionStat
     with db.connect(read_only=True) as con:
         row = con.execute(
             "SELECT s.* FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
-            "WHERE s.share_token=? AND m.user_id=?", [share_token, user_id],
+            "WHERE s.share_token=%s AND m.user_id=%s", [share_token, user_id],
         ).fetchone()
         if row is None:
             return None
         member_rows = con.execute(
             "SELECT u.user_id, u.name, m.joined_at, m.completed_at FROM session_members m "
-            "JOIN users u ON u.user_id=m.user_id WHERE m.session_id=? ORDER BY m.joined_at", [row["session_id"]],
+            "JOIN users u ON u.user_id=m.user_id WHERE m.session_id=%s ORDER BY m.joined_at", [row["session_id"]],
         ).fetchall()
     session = _group_session_from_row(row)
     can_continue = bool(session.waiting_started_at and not session.continued_at and
@@ -510,13 +511,13 @@ def mark_session_member_unready(share_token: str, user_id: str) -> GroupSession 
     with db.connect() as con:
         row = con.execute(
             "SELECT s.* FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
-            "WHERE s.share_token=? AND s.status='in_progress' AND m.user_id=?",
+            "WHERE s.share_token=%s AND s.status='in_progress' AND m.user_id=%s",
             [share_token, user_id],
         ).fetchone()
         if row is None:
             return None
         con.execute(
-            "UPDATE session_members SET completed_at=NULL WHERE session_id=? AND user_id=?",
+            "UPDATE session_members SET completed_at=NULL WHERE session_id=%s AND user_id=%s",
             [row["session_id"], user_id],
         )
     return _group_session_from_row(row)
@@ -533,8 +534,8 @@ def continue_group_session(share_token: str, host_user_id: str) -> GroupSession 
 def _update_group_session(share_token: str, host_user_id: str, update: str, values: list[str]) -> GroupSession | None:
     _ensure_db()
     with db.connect() as con:
-        con.execute(f"UPDATE group_sessions SET {update} WHERE share_token=? AND host_user_id=?", [*values, share_token, host_user_id])
-        row = con.execute("SELECT * FROM group_sessions WHERE share_token=? AND host_user_id=?", [share_token, host_user_id]).fetchone()
+        con.execute(f"UPDATE group_sessions SET {update} WHERE share_token=%s AND host_user_id=%s", [*values, share_token, host_user_id])
+        row = con.execute("SELECT * FROM group_sessions WHERE share_token=%s AND host_user_id=%s", [share_token, host_user_id]).fetchone()
     return _group_session_from_row(row) if row else None
 
 
@@ -550,7 +551,7 @@ def group_session_deck(share_token: str, user_id: str) -> dict[str, list[Any]] |
     with db.connect(read_only=True) as con:
         row = con.execute(
             "SELECT s.deck_json FROM group_sessions s JOIN session_members m ON m.session_id=s.session_id "
-            "WHERE s.share_token=? AND m.user_id=?", [share_token, user_id],
+            "WHERE s.share_token=%s AND m.user_id=%s", [share_token, user_id],
         ).fetchone()
     if row is None or not row["deck_json"]:
         return None
@@ -582,7 +583,7 @@ def extend_session_deck(share_token: str, user_id: str, count: int = TOP_UP_CARD
         row = con.execute(
             "SELECT s.session_id, s.deck_json FROM group_sessions s "
             "JOIN session_members m ON m.session_id=s.session_id "
-            "WHERE s.share_token=? AND m.user_id=?", [share_token, user_id],
+            "WHERE s.share_token=%s AND m.user_id=%s", [share_token, user_id],
         ).fetchone()
         if row is None or not row["deck_json"]:
             return []
@@ -594,7 +595,7 @@ def extend_session_deck(share_token: str, user_id: str, count: int = TOP_UP_CARD
         chooser = random.SystemRandom()
         picked = chooser.sample(fresh, k=min(count, len(fresh)))
         deck["direct"] = list(deck.get("direct") or []) + [f["film_id"] for f in picked]
-        con.execute("UPDATE group_sessions SET deck_json=? WHERE session_id=?",
+        con.execute("UPDATE group_sessions SET deck_json=%s WHERE session_id=%s",
                     [json.dumps(deck), row["session_id"]])
     return [card for film in picked if (card := film_card(film["film_id"]))]
 

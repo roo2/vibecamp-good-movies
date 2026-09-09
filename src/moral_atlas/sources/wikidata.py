@@ -126,7 +126,7 @@ def _write(film_id: str, record: dict[str, Any]) -> int:
         return 0
     args.append(film_id)
     with db.connect() as con:
-        con.execute(f"UPDATE films SET {','.join(sets)} WHERE film_id=?", args)
+        con.execute(f"UPDATE films SET {','.join(sets)} WHERE film_id=%s", args)
     return len(sets)
 
 

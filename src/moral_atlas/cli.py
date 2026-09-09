@@ -1342,7 +1342,7 @@ def user_profile(
 def _resolve_user(user: str) -> str:
     with db.connect(read_only=True) as con:
         row = con.execute(
-            "SELECT user_id FROM users WHERE user_id=? OR name=? ORDER BY created_at DESC",
+            "SELECT user_id FROM users WHERE user_id=%s OR name=%s ORDER BY created_at DESC",
             [user, user],
         ).fetchone()
     if row is None:
@@ -1606,7 +1606,7 @@ def taste_null_cmd(
             with _db.connect(read_only=True) as con:
                 wanted = [r["bank_version"] for r in con.execute(
                     "SELECT DISTINCT bank_version FROM model_verdicts "
-                    "WHERE scorer=? AND variant=?", [alias, variant])]
+                    "WHERE scorer=%s AND variant=%s", [alias, variant])]
         for bank in wanted:
             console.print(f"[bold]{alias}[/] · {bank} — residualising and permuting…")
             try:

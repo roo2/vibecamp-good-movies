@@ -59,9 +59,8 @@ def extract_skeletons(
         p, sk = res
         with db.connect() as con:
             con.execute(
-                "INSERT OR REPLACE INTO skeletons "
-                "(film_id, variant, run_id, data, model, prompt_version, created_at) "
-                "VALUES (?,?,?,?,?,?,?)",
+                db.upsert("skeletons", ["film_id", "variant", "run_id", "data",
+                                        "model", "prompt_version", "created_at"]),
                 [p.film_id, p.variant, run_id, sk.model_dump_json(),
                  client.model, PROMPT_VERSION, db.now()],
             )
@@ -122,9 +121,9 @@ def generate_propositions(
         with db.connect() as con:
             for prop in ps.propositions:
                 con.execute(
-                    "INSERT OR REPLACE INTO propositions_raw "
-                    "(prop_id, film_id, variant, run_id, text, stance, evidence, "
-                    "model, prompt_version, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    db.upsert("propositions_raw", ["prop_id", "film_id", "variant",
+                                                   "run_id", "text", "stance", "evidence",
+                                                   "model", "prompt_version", "created_at"]),
                     [uuid.uuid4().hex[:16], p.film_id, p.variant, run_id,
                      prop.text, prop.stance, prop.evidence, client.model,
                      PROMPT_VERSION, db.now()],
@@ -185,9 +184,9 @@ def score_films(
                 if sc.item_id not in valid_ids:
                     continue  # hallucinated id — drop rather than store
                 con.execute(
-                    "INSERT OR REPLACE INTO scores "
-                    "(film_id, item_id, bank_version, variant, run_id, value, "
-                    "confidence, evidence, model, prompt_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    db.upsert("scores", ["film_id", "item_id", "bank_version", "variant",
+                                         "run_id", "value", "confidence", "evidence",
+                                         "model", "prompt_version"]),
                     [p.film_id, sc.item_id, bank_version, p.variant, run_id,
                      1 if sc.verdict == "affirms" else -1, sc.confidence, sc.evidence,
                      client.model, PROMPT_VERSION],
@@ -208,7 +207,7 @@ def score_films(
 # --------------------------------------------------------------------------
 
 def _latest_skeleton(film_id: str, variant: str | None = None) -> dict[str, Any] | None:
-    q = ("SELECT data FROM skeletons WHERE film_id=? "
+    q = ("SELECT data FROM skeletons WHERE film_id=%s "
          + ("AND variant=? " if variant else "")
          + "ORDER BY created_at DESC LIMIT 1")
     args = [film_id] + ([variant] if variant else [])
@@ -221,7 +220,7 @@ def _load_bank(bank_version: str) -> list[dict[str, Any]]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT item_id, text FROM item_bank "
-            "WHERE bank_version=? AND active ORDER BY item_id",
+            "WHERE bank_version=%s AND active ORDER BY item_id",
             [bank_version],
         ).fetchall()
     return [{"item_id": r[0], "text": r[1]} for r in rows]

@@ -1,40 +1,52 @@
-"""SQLite store.
+"""Postgres store.
 
 Design rule: nothing derived is ever overwritten in place without a version
 stamp. Every skeleton, proposition and score carries the run_id, model and
 prompt_version that produced it, so re-cutting the item bank or swapping models
 produces a new layer you can diff rather than a silent mutation of the old one.
 
-Two consequences of SQLite worth knowing:
+This was SQLite until the move to Heroku, and two decisions from then survive
+on purpose:
 
-* **No array type.** The list-valued film columns — genres, keywords, directors,
-  writers, cast, origin_country — are stored as JSON text and decoded on read.
-  `LIST_COLUMNS` is the single place that mapping lives, so a column added to
-  the schema must be added there too or it comes back as a raw string.
+* **The list-valued film columns stay JSON text.** Genres, keywords, directors,
+  writers, cast, origin_country. Postgres has arrays and jsonb and either would
+  be better, but changing the storage and the database at the same time makes a
+  failure impossible to attribute. `LIST_COLUMNS` is the single place that
+  mapping lives, so a column added to the schema must be added there too or it
+  comes back as a raw string.
 
-* **One writer at a time.** WAL mode plus a busy timeout keeps concurrent
-  readers working and makes a brief write collision wait rather than raise.
-  Writes are already serialised — the LLM stages fan out over threads but
-  persist from the collecting thread — so this is belt and braces.
+* **The connection looks like the one the code was written against.** 242 SQL
+  statements across 34 modules read rows by name AND by index, and call
+  `executemany` on the connection rather than on a cursor — both things
+  `sqlite3` allows and psycopg does not. Rather than touch every call site, the
+  two gaps are closed here: a row that is a dict and also indexable, and a
+  connection that carries `executemany`. Everything genuinely dialect-specific
+  — placeholders, upserts, migrations — was changed for real.
+
+What is gone with SQLite: the single-writer constraint, WAL, and the file. A
+sweep and the API can now write at the same time.
 """
 from __future__ import annotations
 
 import json
-import sqlite3
+import os
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
+import psycopg
+from psycopg import sql as pgsql
+
 from .config import settings
 
-# Columns held as JSON text because SQLite has no array type.
+# Columns held as JSON text. See the note above: Postgres could hold these as
+# arrays, and one day should.
 LIST_COLUMNS = {
     "origin_country", "genres", "keywords", "directors", "writers", "billed_cast",
 }
 
 SCHEMA = """
-PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS films (
     film_id           TEXT PRIMARY KEY,
@@ -630,23 +642,149 @@ def new_run_id(stage: str) -> str:
     return f"{stage}-{uuid.uuid4().hex[:10]}"
 
 
+# What each table is keyed on, which is what an upsert has to name.
+#
+# SQLite's `INSERT OR REPLACE` needed none of this: it inferred the conflict
+# from any unique constraint and replaced the whole row. Postgres asks which
+# constraint you mean, and the answer is always the primary key here. Written
+# out rather than read from the catalogue so the SQL can be built without a
+# database in hand; `test_schema.py` checks this table against the real one, so
+# a key that changes in the schema and not here fails a test rather than a
+# deploy.
+PRIMARY_KEYS: dict[str, tuple[str, ...]] = {
+    "films": ("film_id",),
+    "evidence": ("film_id", "layer"),
+    "runs": ("run_id",),
+    "skeletons": ("film_id", "variant", "run_id"),
+    "propositions_raw": ("prop_id",),
+    "item_bank": ("item_id", "bank_version"),
+    "scores": ("film_id", "item_id", "bank_version", "variant", "run_id"),
+    "model_verdicts": ("scorer", "film_id", "item_id", "bank_version", "variant"),
+    "model_propositions": ("scorer", "prop_id"),
+    "model_axes": ("scorer", "dim_version", "dim_id"),
+    "model_axis_items": ("scorer", "dim_version", "bank_version", "item_id"),
+    "latent_factors": ("scorer", "variant", "bank_version", "factor_id"),
+    "latent_factor_items": ("scorer", "variant", "bank_version", "item_id"),
+    "users": ("user_id",),
+    "user_sessions": ("token",),
+    "movie_ratings": ("rating_id",),
+    "test_results": ("result_id",),
+    "dimensions": ("dim_version", "dim_id"),
+    "item_dimensions": ("dim_version", "bank_version", "item_id", "pass_name"),
+    "group_sessions": ("session_id",),
+    "session_members": ("session_id", "user_id"),
+    "shortlist_reactions": ("reaction_id",),
+    "session_shortlist_films": ("session_id", "film_id"),
+    "film_sets": ("set_id",),
+    "film_set_members": ("set_id", "film_id"),
+    "film_neighbours": ("film_id", "neighbour_id"),
+    "taste_dimensions": ("dim_id",),
+    "film_taste": ("film_id", "dim_id"),
+    "findings": ("key",),
+    "axis_placement": ("scorer", "variant", "bank_version"),
+    "null_test_adjusted": ("scorer", "variant", "bank_version"),
+    "film_moral_adjusted": ("scorer", "variant", "bank_version", "film_id", "dim_id"),
+}
+
+
+def upsert(table: str, columns: list[str] | tuple[str, ...]) -> str:
+    """A full INSERT for `table`, replacing the row when the key already exists.
+
+    The one thing `INSERT OR REPLACE` did that this does not: it deleted the old
+    row and inserted a new one, so columns absent from the statement went back
+    to their defaults. This updates only the columns named. Every caller here
+    lists every column it means to write, so the behaviour matches — but a
+    caller that lists a subset now updates a subset, which is the friendlier of
+    the two and worth knowing.
+    """
+    keys = PRIMARY_KEYS[table]
+    cols = list(columns)
+    placeholders = ",".join(["%s"] * len(cols))
+    updates = ", ".join(f"{c}=EXCLUDED.{c}" for c in cols if c not in keys)
+    conflict = (f" ON CONFLICT ({', '.join(keys)}) DO UPDATE SET {updates}"
+                if updates else f" ON CONFLICT ({', '.join(keys)}) DO NOTHING")
+    return f"INSERT INTO {table} ({','.join(cols)}) VALUES ({placeholders}){conflict}"
+
+
+class Row(dict):
+    """A row that answers to a column name and to a position.
+
+    `sqlite3.Row` does both, and the code was written against it: 242
+    statements, some reading `row["title"]` and some reading
+    `count.fetchone()[0]`. psycopg offers one or the other. This is the same
+    interface, so the difference between the two databases stays in the SQL
+    where it belongs rather than spreading into every caller.
+    """
+
+    def __getitem__(self, key: Any) -> Any:
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
+    def keys(self):  # noqa: D102 - sqlite3.Row's own accessor, used by callers
+        return super().keys()
+
+
+def _row_factory(cursor: Any) -> Any:
+    names = [c.name for c in (cursor.description or [])]
+    def make(values: tuple[Any, ...]) -> Row:
+        return Row(zip(names, values))
+    return make
+
+
+class Connection(psycopg.Connection):
+    """A psycopg connection that also carries `executemany` and `executescript`.
+
+    Both are `sqlite3` conveniences that live on the cursor in psycopg. Fourteen
+    call sites use the first and one uses the second, and every one of them is
+    clearer as it stands than it would be wrapped in a cursor block.
+    """
+
+    def executemany(self, query: str, params_seq: Any) -> None:
+        with self.cursor() as cur:
+            cur.executemany(query, params_seq)
+
+    def executescript(self, script: str) -> None:
+        # No parameters, so psycopg will send the whole batch as one statement.
+        self.execute(script)
+
+
+def dsn() -> str:
+    """Where the database is, in the one form psycopg accepts.
+
+    Heroku sets DATABASE_URL to a `postgres://` URL, which psycopg rejects as an
+    unknown scheme — it wants `postgresql://`. That is a five-character
+    difference that costs an afternoon the first time you meet it in a dyno
+    with no shell, so it is fixed here rather than in the environment.
+    """
+    url = settings().database_url
+    if url.startswith("postgres://"):
+        return "postgresql://" + url[len("postgres://"):]
+    return url
+
+
 @contextmanager
-def connect(read_only: bool = False) -> Iterator[sqlite3.Connection]:
-    s = settings()
-    s.ensure_dirs()
-    if read_only and s.db_path.exists():
-        con = sqlite3.connect(f"file:{s.db_path}?mode=ro", uri=True, timeout=30)
-    else:
-        con = sqlite3.connect(s.db_path, timeout=30)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA busy_timeout=30000")
-    if not read_only:
-        con.execute("PRAGMA journal_mode=WAL")
-        con.execute("PRAGMA synchronous=NORMAL")
+def connect(read_only: bool = False) -> Iterator[Connection]:
+    """A connection, committed on a clean exit and rolled back on an exception.
+
+    `read_only` no longer picks a different file — it opens a read-only
+    transaction, which is a real guarantee rather than the one SQLite's
+    `mode=ro` gave, and it lets the readers run against the same database the
+    writers are using. Concurrent readers and one writer was a SQLite
+    constraint; it is not one here.
+    """
+    con = Connection.connect(dsn(), row_factory=_row_factory, autocommit=False)
     try:
+        schema = settings().db_schema
+        if schema != "public":
+            con.execute(pgsql.SQL("SET search_path TO {}").format(pgsql.Identifier(schema)))
+        if read_only:
+            con.execute("SET TRANSACTION READ ONLY")
         yield con
-        if not read_only:
-            con.commit()
+        con.commit()
+    except BaseException:
+        con.rollback()
+        raise
     finally:
         con.close()
 
@@ -717,16 +855,24 @@ def init_db() -> None:
         _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")
 
 
-def _add_column_if_missing(con: sqlite3.Connection, table: str, column: str, definition: str) -> None:
-    columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
-    if column not in columns:
-        con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+def table_columns(con, table: str) -> set[str]:
+    """The columns a table actually has, from the catalogue.
+
+    This was `PRAGMA table_info`, which is SQLite's own. `information_schema` is
+    the standard one and answers the same question.
+    """
+    return {row["column_name"] for row in con.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema = current_schema() AND table_name = %s", [table])}
 
 
-def _drop_column_if_present(con: sqlite3.Connection, table: str, column: str) -> None:
-    columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
-    if column in columns:
-        con.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+def _add_column_if_missing(con, table: str, column: str, definition: str) -> None:
+    # Postgres has the condition built in, so the read-then-decide is gone.
+    con.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}")
+
+
+def _drop_column_if_present(con, table: str, column: str) -> None:
+    con.execute(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column}")
 
 
 # Where each derived layer records the model that produced it. One place, so a
@@ -751,7 +897,7 @@ def backfill_provenance(default_model: str | None = None) -> dict[str, dict[str,
     filled: dict[str, dict[str, int]] = {}
     with connect() as con:
         for table in PROVENANCE_TABLES:
-            columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+            columns = table_columns(con, table)
             if "model" not in columns:
                 continue
             before = con.execute(f"SELECT COUNT(*) FROM {table} WHERE model IS NULL").fetchone()[0]
@@ -764,7 +910,7 @@ def backfill_provenance(default_model: str | None = None) -> dict[str, dict[str,
                 )
             asserted = 0
             if default_model:
-                cur = con.execute(f"UPDATE {table} SET model=? WHERE model IS NULL", [default_model])
+                cur = con.execute(f"UPDATE {table} SET model=%s WHERE model IS NULL", [default_model])
                 asserted = cur.rowcount
             after = con.execute(f"SELECT COUNT(*) FROM {table} WHERE model IS NULL").fetchone()[0]
             filled[table] = {"was_null": before, "from_runs": before - after - asserted,
@@ -777,12 +923,12 @@ def provenance(bank_version: str | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     with connect(read_only=True) as con:
         for table, stage in PROVENANCE_TABLES.items():
-            columns = {row["name"] for row in con.execute(f"PRAGMA table_info({table})")}
+            columns = table_columns(con, table)
             if "model" not in columns:
                 continue
             where, args = "", []
             if bank_version and "bank_version" in columns:
-                where, args = " WHERE bank_version=?", [bank_version]
+                where, args = " WHERE bank_version=%s", [bank_version]
             for row in con.execute(
                 f"SELECT model, prompt_version, COUNT(*) n FROM {table}{where} "
                 f"GROUP BY model, prompt_version ORDER BY n DESC", args,
@@ -798,7 +944,7 @@ def _encode(column: str, value: Any) -> Any:
     return value
 
 
-def _decode_film(row: sqlite3.Row) -> dict[str, Any]:
+def _decode_film(row) -> dict[str, Any]:
     out = dict(row)
     for column in LIST_COLUMNS:
         raw = out.get(column)
@@ -818,7 +964,7 @@ def start_run(stage: str, model: str, prompt_version: str, params: dict[str, Any
         con.execute(
             "INSERT INTO runs (run_id, stage, model, prompt_version, params, started_at, "
             "n_calls, input_tokens, output_tokens, cache_read_tokens, cost_usd) "
-            "VALUES (?,?,?,?,?,?,0,0,0,0,0.0)",
+            "VALUES (%s,%s,%s,%s,%s,%s,0,0,0,0,0.0)",
             [run_id, stage, model, prompt_version, json.dumps(params), now()],
         )
     return run_id
@@ -827,8 +973,8 @@ def start_run(stage: str, model: str, prompt_version: str, params: dict[str, Any
 def finish_run(run_id: str, usage: dict[str, Any]) -> None:
     with connect() as con:
         con.execute(
-            "UPDATE runs SET finished_at=?, n_calls=?, input_tokens=?, output_tokens=?, "
-            "cache_read_tokens=?, cost_usd=? WHERE run_id=?",
+            "UPDATE runs SET finished_at=%s, n_calls=%s, input_tokens=%s, output_tokens=%s, "
+            "cache_read_tokens=%s, cost_usd=%s WHERE run_id=%s",
             [
                 now(),
                 usage.get("n_calls", 0),
@@ -865,25 +1011,24 @@ def upsert_film(row: dict[str, Any]) -> None:
     values = [_encode(c, row.get(c)) for c in FILM_COLUMNS]
     with connect() as con:
         con.execute(
-            f"INSERT OR REPLACE INTO films ({','.join(FILM_COLUMNS)}) "
-            f"VALUES ({','.join('?' * len(FILM_COLUMNS))})",
+            upsert("films", FILM_COLUMNS),
             values,
         )
 
 
 def set_film_description(film_id: str, description: str) -> None:
     with connect() as con:
-        con.execute("UPDATE films SET description=? WHERE film_id=?", [description, film_id])
+        con.execute("UPDATE films SET description=%s WHERE film_id=%s", [description, film_id])
 
 
 def set_film_description_source(film_id: str, source: str) -> None:
     with connect() as con:
-        con.execute("UPDATE films SET description_source=? WHERE film_id=?", [source, film_id])
+        con.execute("UPDATE films SET description_source=%s WHERE film_id=%s", [source, film_id])
 
 
 def set_film_artwork_url(film_id: str, artwork_url: str) -> None:
     with connect() as con:
-        con.execute("UPDATE films SET artwork_url=? WHERE film_id=?", [artwork_url, film_id])
+        con.execute("UPDATE films SET artwork_url=%s WHERE film_id=%s", [artwork_url, film_id])
 
 
 def upsert_evidence(
@@ -892,9 +1037,8 @@ def upsert_evidence(
 ) -> None:
     with connect() as con:
         con.execute(
-            "INSERT OR REPLACE INTO evidence "
-            "(film_id, layer, content, source_url, word_count, meta, fetched_at) "
-            "VALUES (?,?,?,?,?,?,?)",
+            upsert("evidence", ["film_id", "layer", "content", "source_url",
+                                "word_count", "meta", "fetched_at"]),
             [film_id, layer, content, source_url, len(content.split()),
              json.dumps(meta or {}), now()],
         )
@@ -903,14 +1047,14 @@ def upsert_evidence(
 def get_evidence(film_id: str) -> dict[str, str]:
     with connect(read_only=True) as con:
         rows = con.execute(
-            "SELECT layer, content FROM evidence WHERE film_id=?", [film_id]
+            "SELECT layer, content FROM evidence WHERE film_id=%s", [film_id]
         ).fetchall()
     return {r["layer"]: r["content"] for r in rows}
 
 
 def get_film(film_id: str) -> dict[str, Any] | None:
     with connect(read_only=True) as con:
-        row = con.execute("SELECT * FROM films WHERE film_id=?", [film_id]).fetchone()
+        row = con.execute("SELECT * FROM films WHERE film_id=%s", [film_id]).fetchone()
     return _decode_film(row) if row is not None else None
 
 
@@ -937,9 +1081,10 @@ def film_references() -> list[tuple[str, str]]:
     out = []
     with connect(read_only=True) as con:
         tables = [r["name"] for r in con.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]
+            "SELECT table_name AS name FROM information_schema.tables "
+            "WHERE table_schema = current_schema() ORDER BY table_name")]
         for table in tables:
-            columns = {r["name"] for r in con.execute(f'PRAGMA table_info("{table}")')}
+            columns = table_columns(con, table)
             for column in FILM_REFERENCE_COLUMNS:
                 if column in columns:
                     out.append((table, column))
@@ -970,7 +1115,7 @@ def remove_films(film_ids: list[str]) -> dict[str, int]:
     """
     if not film_ids:
         return {}
-    placeholders = ",".join("?" * len(film_ids))
+    placeholders = ",".join(["%s"] * len(film_ids))
     removed: dict[str, int] = {}
     with connect() as con:
         for table, column in film_references():

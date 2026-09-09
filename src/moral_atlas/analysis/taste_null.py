@@ -38,7 +38,7 @@ def fingerprint(scorer: str, variant: str, bank_version: str) -> str:
     """
     with db.connect(read_only=True) as con:
         verdicts = con.execute(
-            "SELECT COUNT(*) n FROM model_verdicts WHERE scorer=? AND variant=? "
+            "SELECT COUNT(*) n FROM model_verdicts WHERE scorer=%s AND variant=%s "
             "AND bank_version=?", [scorer, variant, bank_version]).fetchone()["n"]
         try:
             placed = con.execute("SELECT COUNT(*) n FROM film_taste").fetchone()["n"]
@@ -105,10 +105,10 @@ def store(scorer: str, variant: str, bank_version: str, result: dict[str, Any]) 
     db.init_db()
     with db.connect() as con:
         con.execute(
-            "INSERT OR REPLACE INTO null_test_adjusted "
-            "(scorer, variant, bank_version, films, eigenvalues, thresholds, "
-            " control_eigen, control_thresh, source_fingerprint, computed_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            db.upsert("null_test_adjusted", ["scorer", "variant", "bank_version", "films",
+                                             "eigenvalues", "thresholds", "control_eigen",
+                                             "control_thresh", "source_fingerprint",
+                                             "computed_at"]),
             [scorer, variant, bank_version, result["films"],
              json.dumps(result["eigenvalues"]), json.dumps(result["null_threshold"]),
              json.dumps(result["control_eigenvalues"]),
@@ -129,7 +129,7 @@ def load(scorer: str, variant: str, bank_version: str) -> dict[str, Any] | None:
             row = con.execute(
                 "SELECT films, eigenvalues, thresholds, control_eigen, control_thresh, "
                 "source_fingerprint, computed_at FROM null_test_adjusted "
-                "WHERE scorer=? AND variant=? AND bank_version=?",
+                "WHERE scorer=%s AND variant=%s AND bank_version=%s",
                 [scorer, variant, bank_version]).fetchone()
     except Exception:
         return None

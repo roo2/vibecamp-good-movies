@@ -98,12 +98,13 @@ def load(path: Path | None = None, progress=None) -> dict[str, Any]:
             ids, missing = resolve(entry)
             con.execute(
                 "INSERT INTO film_sets (set_id, name, description, source, url, "
-                "colour, sort_order, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                "colour, sort_order, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)",
                 [entry["id"], entry.get("name") or entry["id"], entry.get("description"),
                  entry.get("source"), entry.get("url"), entry.get("colour"),
                  order, db.now()])
             con.executemany(
-                "INSERT OR IGNORE INTO film_set_members (set_id, film_id) VALUES (?,?)",
+                "INSERT INTO film_set_members (set_id, film_id) VALUES (%s,%s) "
+                "ON CONFLICT (set_id, film_id) DO NOTHING",
                 [(entry["id"], f) for f in ids])
             report["sets"] += 1
             report["members"] += len(ids)

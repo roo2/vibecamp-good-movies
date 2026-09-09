@@ -62,8 +62,7 @@ def migrate(duckdb_path: str | Path, progress=None) -> dict[str, Any]:
 
             with db.connect() as dest:
                 dest.executemany(
-                    f"INSERT OR REPLACE INTO {table} ({','.join(cols)}) "
-                    f"VALUES ({','.join('?' * len(cols))})",
+                    db.upsert(table, cols),
                     payload,
                 )
 

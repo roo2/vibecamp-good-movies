@@ -80,7 +80,7 @@ def _members(sets: list[str]) -> set[str]:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT film_id FROM film_set_members WHERE set_id IN "
-            f"({','.join('?' * len(sets))})", list(sets)).fetchall()
+            f"({','.join(['%s'] * len(sets))})", list(sets)).fetchall()
     return {r["film_id"] for r in rows}
 
 

@@ -77,7 +77,7 @@ def corpus(only_with_evidence: bool = True) -> list[dict[str, Any]]:
 def already_harvested(scorer: str, variant: str) -> set[str]:
     with db.connect(read_only=True) as con:
         return {r[0] for r in con.execute(
-            "SELECT DISTINCT film_id FROM model_propositions WHERE scorer=? AND variant=?",
+            "SELECT DISTINCT film_id FROM model_propositions WHERE scorer=%s AND variant=%s",
             [scorer, variant])}
 
 

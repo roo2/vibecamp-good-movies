@@ -253,7 +253,7 @@ def session_member_ids(share_token: str, viewer_user_id: str) -> list[str] | Non
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT m.user_id FROM session_members m "
-            "JOIN group_sessions s ON s.session_id=m.session_id WHERE s.share_token=? "
+            "JOIN group_sessions s ON s.session_id=m.session_id WHERE s.share_token=%s "
             "ORDER BY m.joined_at", [share_token],
         ).fetchall()
     members = [row["user_id"] for row in rows]

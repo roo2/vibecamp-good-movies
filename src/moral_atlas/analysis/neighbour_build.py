@@ -80,9 +80,8 @@ def build(ratings: movielens.Ratings | None = None,
     with db.connect() as con:
         con.execute("DELETE FROM film_neighbours")
         con.executemany(
-            "INSERT OR REPLACE INTO film_neighbours "
-            "(film_id, neighbour_id, similarity, support, source, created_at) "
-            "VALUES (?,?,?,?,?,?)", rows)
+            db.upsert("film_neighbours", ["film_id", "neighbour_id", "similarity",
+                                          "support", "source", "created_at"]), rows)
 
     stats["links"] = len(rows)
     stats["placed"] = len({r[0] for r in rows})

@@ -344,7 +344,7 @@ def resolve_articles(progress=None) -> dict[str, int]:
             stats["unchanged"] += 1
             continue
         with db.connect() as con:
-            con.execute("UPDATE films SET wikipedia_title=? WHERE film_id=?",
+            con.execute("UPDATE films SET wikipedia_title=%s WHERE film_id=%s",
                         [article, film["film_id"]])
         stats["stored"] += 1
     return stats
@@ -411,7 +411,7 @@ def backfill_plots(force: bool = False, limit: int | None = None,
                 db.upsert_evidence(film["film_id"], layer, content, wiki.get("url"))
                 wrote = wrote or layer == "plot"
         with db.connect() as con:
-            con.execute("UPDATE films SET wikipedia_title=? WHERE film_id=?",
+            con.execute("UPDATE films SET wikipedia_title=%s WHERE film_id=%s",
                         [wiki.get("article"), film["film_id"]])
 
         if wrote:

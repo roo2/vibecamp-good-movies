@@ -328,7 +328,7 @@ def assign(
         with db.connect() as con:
             con.execute(
                 "DELETE FROM item_dimensions WHERE dim_version=%s AND bank_version=%s "
-                "AND pass_name=?", [dim_version, bank_version, pass_name],
+                "AND pass_name=%s", [dim_version, bank_version, pass_name],
             )
             for a in out:
                 con.execute(

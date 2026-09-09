@@ -75,7 +75,7 @@ def fingerprint(scorer: str, variant: str, bank_version: str) -> str:
     with db.connect(read_only=True) as con:
         rows = con.execute(
             "SELECT factor_id, n_items FROM latent_factors WHERE scorer=%s AND "
-            "variant=? AND bank_version=? ORDER BY factor_id",
+            "variant=%s AND bank_version=%s ORDER BY factor_id",
             [scorer, variant, bank_version]).fetchall()
     return "|".join(f"{r['factor_id']}:{r['n_items']}" for r in rows) or "none"
 
@@ -214,7 +214,7 @@ def load(scorer: str, variant: str, bank_version: str) -> dict[int, bool] | None
         with db.connect(read_only=True) as con:
             row = con.execute(
                 "SELECT axes, source_fingerprint FROM axis_placement WHERE scorer=%s "
-                "AND variant=? AND bank_version=?",
+                "AND variant=%s AND bank_version=%s",
                 [scorer, variant, bank_version]).fetchone()
     except Exception:
         return None

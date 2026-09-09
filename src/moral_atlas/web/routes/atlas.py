@@ -27,8 +27,13 @@ def get_atlas(dim_version: str = "d1", bank_version: str = "b1") -> dict[str, An
     """Everything the dataset explorer draws, from the current store."""
     # Through `db`, not `config`, so this asks the same question the store
     # itself does — and so a test that redirects the store redirects this too.
-    db_path = db.settings().db_path
-    if not db_path.exists():
+    # "Is there a store yet?" used to be "does the file exist". A database is
+    # always there; what can be missing is the schema inside it, which is what
+    # an empty deployment actually looks like.
+    with db.connect(read_only=True) as con:
+        ready = con.execute(
+            "SELECT to_regclass('films') IS NOT NULL AS ready").fetchone()["ready"]
+    if not ready:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No store yet — run `atlas init` and ingest before reading the dataset.",

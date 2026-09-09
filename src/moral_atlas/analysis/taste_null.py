@@ -39,7 +39,7 @@ def fingerprint(scorer: str, variant: str, bank_version: str) -> str:
     with db.connect(read_only=True) as con:
         verdicts = con.execute(
             "SELECT COUNT(*) n FROM model_verdicts WHERE scorer=%s AND variant=%s "
-            "AND bank_version=?", [scorer, variant, bank_version]).fetchone()["n"]
+            "AND bank_version=%s", [scorer, variant, bank_version]).fetchone()["n"]
         try:
             placed = con.execute("SELECT COUNT(*) n FROM film_taste").fetchone()["n"]
             dims = con.execute(

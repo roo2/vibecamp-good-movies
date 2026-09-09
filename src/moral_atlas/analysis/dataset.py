@@ -281,7 +281,7 @@ def _film_axes(con, film_id: str, dim_version: str, bank_version: str) -> list[d
         "FROM scores s "
         "JOIN item_dimensions d ON d.item_id = s.item_id "
         "     AND d.bank_version = s.bank_version AND d.pass_name = 'main' "
-        "     AND d.dim_version = ? "
+        "     AND d.dim_version = %s "
         "JOIN item_bank b ON b.item_id = s.item_id AND b.bank_version = s.bank_version "
         "WHERE s.film_id = %s AND s.bank_version = %s",
         [dim_version, film_id, bank_version],

@@ -92,9 +92,9 @@ def _fingerprint(scorer: str, variant: str, bank: str) -> tuple:
     with db.connect(read_only=True) as con:
         return (
             con.execute("SELECT COUNT(*) n FROM model_verdicts WHERE scorer=%s AND "
-                        "bank_version=? AND variant=?", [scorer, bank, variant]).fetchone()["n"],
+                        "bank_version=%s AND variant=%s", [scorer, bank, variant]).fetchone()["n"],
             con.execute("SELECT COUNT(*) n FROM latent_factors WHERE scorer=%s AND "
-                        "variant=? AND bank_version=?", [scorer, variant, bank]).fetchone()["n"],
+                        "variant=%s AND bank_version=%s", [scorer, variant, bank]).fetchone()["n"],
             # The placement verdict decides the `product` flag on every factor
             # below, and it changes WITHOUT any verdict or factor being added —
             # `atlas axis-placement` rewrites one row. Left out, a running
@@ -120,7 +120,7 @@ def _placement_verdicts(scorer: str, variant: str, bank: str) -> list[dict[str, 
         with db.connect(read_only=True) as con:
             row = con.execute(
                 "SELECT axes FROM axis_placement WHERE scorer=%s AND variant=%s "
-                "AND bank_version=?", [scorer, variant, bank]).fetchone()
+                "AND bank_version=%s", [scorer, variant, bank]).fetchone()
     except Exception:
         return []
     if not row:
@@ -135,7 +135,7 @@ def _placement_stamp(con, scorer: str, variant: str, bank: str) -> str:
     try:
         row = con.execute(
             "SELECT computed_at FROM axis_placement WHERE scorer=%s AND variant=%s "
-            "AND bank_version=?", [scorer, variant, bank]).fetchone()
+            "AND bank_version=%s", [scorer, variant, bank]).fetchone()
     except Exception:
         return ""
     return (row["computed_at"] or "") if row else ""
@@ -466,10 +466,10 @@ def film_on_factors(
     with db.connect(read_only=True) as con:
         groups = {r["item_id"]: r["factor_id"] for r in con.execute(
             "SELECT item_id, factor_id FROM latent_factor_items WHERE scorer=%s "
-            "AND variant=? AND bank_version=?", [scorer, variant, bank])}
+            "AND variant=%s AND bank_version=%s", [scorer, variant, bank])}
         loadings = {r["item_id"]: r["loading"] for r in con.execute(
             "SELECT item_id, loading FROM latent_factor_items WHERE scorer=%s "
-            "AND variant=? AND bank_version=?", [scorer, variant, bank])}
+            "AND variant=%s AND bank_version=%s", [scorer, variant, bank])}
         # Every factor's loading, so a film's position here is computed the same
         # way the product computes it — by every proposition that speaks to an
         # axis, weighted by how much it does. Reading only the propositions
@@ -477,11 +477,11 @@ def film_on_factors(
         # for the same film.
         every = {r["item_id"]: json.loads(r["loadings"]) for r in con.execute(
             "SELECT item_id, loadings FROM latent_factor_items WHERE scorer=%s "
-            "AND variant=? AND bank_version=? AND loadings IS NOT NULL",
+            "AND variant=%s AND bank_version=%s AND loadings IS NOT NULL",
             [scorer, variant, bank])}
         rows = con.execute(
             "SELECT item_id, value FROM model_verdicts WHERE scorer=%s AND variant=%s "
-            "AND bank_version=? AND film_id=?", [scorer, variant, bank, film_id],
+            "AND bank_version=%s AND film_id=%s", [scorer, variant, bank, film_id],
         ).fetchall()
         title = con.execute("SELECT title FROM films WHERE film_id=%s",
                             [film_id]).fetchone()

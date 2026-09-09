@@ -40,6 +40,10 @@ from psycopg import sql as pgsql
 
 from .config import settings
 
+# The error every caller of this module catches, named here so they do not each
+# have to import the driver to say "the database said no".
+Error = psycopg.Error
+
 # Columns held as JSON text. See the note above: Postgres could hold these as
 # arrays, and one day should.
 LIST_COLUMNS = {
@@ -866,6 +870,19 @@ def table_columns(con, table: str) -> set[str]:
         "WHERE table_schema = current_schema() AND table_name = %s", [table])}
 
 
+def table_names(con) -> set[str]:
+    """Every table in the current schema.
+
+    Callers that used to ask forgiveness — run the query, catch the error on a
+    table that is not there yet — have to ask permission instead: Postgres marks
+    the whole transaction failed on a missing relation, so the second question
+    never gets an answer.
+    """
+    return {row["table_name"] for row in con.execute(
+        "SELECT table_name FROM information_schema.tables "
+        "WHERE table_schema = current_schema()")}
+
+
 def _add_column_if_missing(con, table: str, column: str, definition: str) -> None:
     # Postgres has the condition built in, so the read-then-decide is gone.
     con.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}")
@@ -1077,6 +1094,12 @@ def film_references() -> list[tuple[str, str]]:
     covered without anyone remembering to add it here. Which matters: this is
     the list a deletion sweeps, and the failure mode of a stale list is rows
     left pointing at a film that no longer exists.
+
+    `films` itself comes last, and the order is now load-bearing. SQLite did not
+    enforce the foreign keys, so a sweep could delete the parent first and clear
+    up after it; Postgres does, and refuses to delete a film while a rating still
+    points at it. Sweeping the children first is what the list already meant —
+    it just never had to be true before.
     """
     out = []
     with connect(read_only=True) as con:
@@ -1088,7 +1111,7 @@ def film_references() -> list[tuple[str, str]]:
             for column in FILM_REFERENCE_COLUMNS:
                 if column in columns:
                     out.append((table, column))
-    return out
+    return sorted(out, key=lambda ref: (ref[0] == "films", ref))
 
 
 def remove_films(film_ids: list[str]) -> dict[str, int]:
@@ -1119,9 +1142,12 @@ def remove_films(film_ids: list[str]) -> dict[str, int]:
     removed: dict[str, int] = {}
     with connect() as con:
         for table, column in film_references():
-            verb = ("UPDATE \"%s\" SET \"%s\"=NULL" % (table, column)
+            # f-strings rather than %-formatting: %s is a bound parameter
+            # everywhere else in this file now, and a literal one built by hand
+            # here would read as one.
+            verb = (f'UPDATE "{table}" SET "{column}"=NULL'
                     if (table, column) in NULLED_FILM_REFERENCES
-                    else 'DELETE FROM "%s"' % table)
+                    else f'DELETE FROM "{table}"')
             touched = con.execute(
                 f'{verb} WHERE "{column}" IN ({placeholders})', film_ids
             ).rowcount

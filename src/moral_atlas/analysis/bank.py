@@ -78,9 +78,9 @@ def model_propositions(scorer: str, variant: str | None = None) -> list[Any]:
     clustering, the representative choice, the inversion split — works on either
     pool without knowing which it was handed.
     """
-    where, args = ["scorer=?"], [scorer]
+    where, args = ["scorer=%s"], [scorer]
     if variant:
-        where.append("variant=?")
+        where.append("variant=%s")
         args.append(variant)
     with db.connect(read_only=True) as con:
         return con.execute(
@@ -366,9 +366,13 @@ def _write_items(bank_version: str, items: list[dict[str, Any]],
                 "INSERT INTO item_bank (item_id, bank_version, text, cluster_id, "
                 "support, active, note, model, prompt_version, run_id, created_at) "
                 "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                # `active` is an INTEGER column and this is a Python bool.
+                # SQLite took either; Postgres knows the difference, and the
+                # column stays an integer because half the readers compare it
+                # to 1.
                 [it["item_id"], bank_version, it["text"], it["cluster_id"],
-                 it["support"], it["active"], it["note"], model, PROMPT_VERSION,
-                 run_id, db.now()],
+                 it["support"], int(bool(it["active"])), it["note"], model,
+                 PROMPT_VERSION, run_id, db.now()],
             )
     return removed
 

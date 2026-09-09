@@ -208,7 +208,7 @@ def score_films(
 
 def _latest_skeleton(film_id: str, variant: str | None = None) -> dict[str, Any] | None:
     q = ("SELECT data FROM skeletons WHERE film_id=%s "
-         + ("AND variant=? " if variant else "")
+         + ("AND variant=%s " if variant else "")
          + "ORDER BY created_at DESC LIMIT 1")
     args = [film_id] + ([variant] if variant else [])
     with db.connect(read_only=True) as con:

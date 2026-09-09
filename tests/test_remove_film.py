@@ -20,7 +20,6 @@ from moral_atlas.config import settings
 def store(monkeypatch, tmp_path):
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "atlas.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
@@ -32,17 +31,19 @@ def _populate() -> None:
     db.upsert_evidence("carlos-2010", "plot", "A dog in Kansas.")
     db.upsert_evidence("the-birds-1963", "plot", "Birds attack a coastal town.")
     with db.connect() as con:
-        con.execute("INSERT INTO film_taste (film_id, dim_id, position) VALUES (?,?,?)",
+        con.execute("INSERT INTO taste_dimensions (dim_id, variance, replication, "
+                    "evidence, status) VALUES (1, 0.2, 0.9, 0.5, 'unnamed')")
+        con.execute("INSERT INTO film_taste (film_id, dim_id, position) VALUES (%s,%s,%s)",
                     ["carlos-2010", 1, 0.4])
         con.executemany(
-            "INSERT INTO film_neighbours (film_id, neighbour_id, similarity) VALUES (?,?,?)",
+            "INSERT INTO film_neighbours (film_id, neighbour_id, similarity) VALUES (%s,%s,%s)",
             [("carlos-2010", "the-birds-1963", 0.7),
              ("the-birds-1963", "carlos-2010", 0.7)])
-        con.execute("INSERT INTO users (user_id, name, created_at) VALUES (?,?,?)",
+        con.execute("INSERT INTO users (user_id, name, created_at) VALUES (%s,%s,%s)",
                     ["u1", "A rater", db.now()])
         con.executemany(
             "INSERT INTO movie_ratings (rating_id, user_id, film_id, reaction, submitted_at) "
-            "VALUES (?,?,?,?,?)",
+            "VALUES (%s,%s,%s,%s,%s)",
             [("r1", "u1", "carlos-2010", "liked", db.now()),
              ("r2", "u1", "the-birds-1963", "liked", db.now())])
 
@@ -70,11 +71,11 @@ def test_removal_reaches_the_edges_pointing_at_the_film_not_only_its_own_rows(st
 def test_a_session_that_ended_on_the_film_survives_it(store):
     _populate()
     with db.connect() as con:
-        con.execute("INSERT INTO users (user_id, name, created_at) VALUES (?,?,?)",
+        con.execute("INSERT INTO users (user_id, name, created_at) VALUES (%s,%s,%s)",
                     ["host", "A host", db.now()])
         con.execute(
             "INSERT INTO group_sessions (session_id, share_token, host_user_id, status, "
-            "created_at, selected_film_id) VALUES (?,?,?,?,?,?)",
+            "created_at, selected_film_id) VALUES (%s,%s,%s,%s,%s,%s)",
             ["s1", "tok", "host", "done", db.now(), "carlos-2010"])
 
     db.remove_films(["carlos-2010"])

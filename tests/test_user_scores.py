@@ -38,8 +38,7 @@ def never_touch_the_real_store(monkeypatch, tmp_path):
     from moral_atlas.config import settings
 
     monkeypatch.setattr(db, "settings", lambda: replace(
-        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "isolated.sqlite"))
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",))
 
 
 # Two axes, and three films positioned on them by hand.
@@ -164,7 +163,6 @@ def scored_atlas(monkeypatch, tmp_path):
 
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "web.sqlite",
         # The fixtures below write deepseek's own bank. Pinned, because which
         # propositions the product reads is a deployment setting now — it can be
         # a bank one model wrote and another answered — and a test that follows
@@ -186,7 +184,7 @@ def scored_atlas(monkeypatch, tmp_path):
         for dimension in DIMENSIONS:
             con.execute(
                 "INSERT INTO dimensions (dim_version, dim_id, name, question, pole_high, "
-                "pole_low, n_dims, source, created_at) VALUES ('d1',?,?,?,?,?,2,'test',?)",
+                "pole_low, n_dims, source, created_at) VALUES ('d1',%s,%s,%s,%s,%s,2,'test',%s)",
                 [dimension["dim_id"], dimension["name"], dimension["question"],
                  dimension["pole_high"], dimension["pole_low"], db.now()],
             )
@@ -194,11 +192,11 @@ def scored_atlas(monkeypatch, tmp_path):
             dim_id = 1 if item < 10 else 2
             con.execute(
                 "INSERT INTO item_bank (item_id, bank_version, text, cluster_id, active) "
-                "VALUES (?, 'b1', ?, ?, 1)", [f"I{item}", f"proposition {item}", item],
+                "VALUES (%s, 'b1', %s, %s, 1)", [f"I{item}", f"proposition {item}", item],
             )
             con.execute(
                 "INSERT INTO item_dimensions (dim_version, bank_version, item_id, dim_id, "
-                "polarity, fit, pass_name, created_at) VALUES ('d1','b1',?,?,1,0.9,'main',?)",
+                "polarity, fit, pass_name, created_at) VALUES ('d1','b1',%s,%s,1,0.9,'main',%s)",
                 [f"I{item}", dim_id, db.now()],
             )
 
@@ -217,7 +215,7 @@ def scored_atlas(monkeypatch, tmp_path):
                 on_payback = item < 10
                 con.execute(
                     "INSERT INTO scores (film_id, item_id, bank_version, variant, run_id, "
-                    "value, confidence) VALUES (?,?, 'b1', 'spine', 'run-test', ?, 0.9)",
+                    "value, confidence) VALUES (%s,%s, 'b1', 'spine', 'run-test', %s, 0.9)",
                     [f"film-{index}", f"I{item}",
                      1 if on_payback == high_on_payback else -1],
                 )
@@ -230,14 +228,14 @@ def scored_atlas(monkeypatch, tmp_path):
             con.execute(
                 "INSERT INTO latent_factors (scorer, variant, bank_version, factor_id, "
                 "name, question, pole_high, pole_low, n_items, created_at) "
-                "VALUES ('deepseek','subs','deepseek-subs',?,?,?,?,?,10,?)",
+                "VALUES ('deepseek','subs','deepseek-subs',%s,%s,%s,%s,%s,10,%s)",
                 [factor, dimension["name"], dimension["question"],
                  dimension["pole_high"], dimension["pole_low"], db.now()],
             )
         for item in range(20):
             con.execute(
                 "INSERT INTO latent_factor_items (scorer, variant, bank_version, "
-                "item_id, factor_id) VALUES ('deepseek','subs','deepseek-subs',?,?)",
+                "item_id, factor_id) VALUES ('deepseek','subs','deepseek-subs',%s,%s)",
                 [f"I{item}", 1 if item < 10 else 2],
             )
         for index in range(20):
@@ -247,7 +245,7 @@ def scored_atlas(monkeypatch, tmp_path):
                 con.execute(
                     "INSERT INTO model_verdicts (scorer, model, film_id, item_id, "
                     "bank_version, variant, run_id, value, confidence, created_at) "
-                    "VALUES ('deepseek','deepseek-chat',?,?,'deepseek-subs','subs','r',?,0.9,?)",
+                    "VALUES ('deepseek','deepseek-chat',%s,%s,'deepseek-subs','subs','r',%s,0.9,%s)",
                     [f"film-{index}", f"I{item}",
                      1 if on_payback == high_on_payback else -1, db.now()],
                 )
@@ -344,7 +342,7 @@ def test_blind_pair_answers_are_traced_back_to_their_films(scored_atlas, monkeyp
     questions = client.get(f"/api/test/questions?share_token={share_token}",
                            headers=headers).json()["questions"]
     with scored_atlas.connect(read_only=True) as con:
-        deck = con.execute("SELECT deck_json FROM group_sessions WHERE share_token=?",
+        deck = con.execute("SELECT deck_json FROM group_sessions WHERE share_token=%s",
                            [share_token]).fetchone()["deck_json"]
     import json
     pairs = json.loads(deck)["pairs"]
@@ -463,7 +461,6 @@ def test_default_profile_falls_back_when_the_shared_map_has_not_been_derived(mon
 
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "web.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
@@ -734,16 +731,15 @@ def test_the_shrug_that_was_dropped_is_read_as_the_milder_negative(monkeypatch, 
     from moral_atlas import db
     from moral_atlas.config import settings
 
-    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-                            db_path=tmp_path / "atlas.sqlite")
+    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",)
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
     with db.connect() as con:
-        con.execute("INSERT INTO users (user_id, name, created_at) VALUES ('u','A',?)", [db.now()])
+        con.execute("INSERT INTO users (user_id, name, created_at) VALUES ('u','A',%s)", [db.now()])
         con.execute("INSERT INTO films (film_id, title) VALUES ('f','A Film')")
         con.executemany(
             "INSERT INTO movie_ratings (rating_id, user_id, film_id, reaction, submitted_at) "
-            "VALUES (?,?,?,?,?)",
+            "VALUES (%s,%s,%s,%s,%s)",
             [("r1", "u", "f", "neutral", db.now()), ("r2", "u", "f", "loved_it", db.now())])
 
     db.init_db()

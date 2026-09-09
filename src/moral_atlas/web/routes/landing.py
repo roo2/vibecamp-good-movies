@@ -13,7 +13,6 @@ yet, since a fresh clone hits `/` before it has a database.
 """
 from __future__ import annotations
 
-import sqlite3
 from html import escape
 from typing import Any
 
@@ -29,12 +28,20 @@ router = APIRouter(tags=["landing"])
 VARIANTS = ("spine", "spine_themes", "subs", "full")
 
 
-def _scalar(con: sqlite3.Connection, sql: str, args: list[Any] | None = None) -> int:
-    try:
-        row = con.execute(sql, args or []).fetchone()
-        return int(row[0]) if row and row[0] is not None else 0
-    except sqlite3.Error:
-        return 0            # table not created yet — a fresh clone, not a fault
+def _scalar(con: db.Connection, sql: str, args: list[Any] | None = None) -> int:
+    row = con.execute(sql, args or []).fetchone()
+    return int(row[0]) if row and row[0] is not None else 0
+
+
+def _present(con: db.Connection) -> set[str]:
+    """Which of this page's tables exist yet.
+
+    Asked ahead rather than caught after, because Postgres aborts the whole
+    transaction on a missing relation — one `SELECT COUNT(*) FROM films` against
+    a fresh database would take every count after it down with it, and the page
+    would report zeroes for a store that has plenty in it.
+    """
+    return db.table_names(con)
 
 
 def _snapshot() -> dict[str, Any]:
@@ -44,19 +51,26 @@ def _snapshot() -> dict[str, Any]:
         "bank_items": 0, "scores": 0, "dimensions": [], "variants": [],
         "ready": False,
     }
-    if not settings().db_path.exists():
-        return out
+    counts = {
+        "films": "SELECT COUNT(*) FROM films",
+        "evidence": "SELECT COUNT(*) FROM evidence",
+        "skeletons": "SELECT COUNT(*) FROM skeletons",
+        "propositions": "SELECT COUNT(*) FROM propositions_raw",
+        "bank_items": "SELECT COUNT(*) FROM item_bank WHERE active=1",
+        "scores": "SELECT COUNT(*) FROM scores",
+    }
+    tables = {"films": "films", "evidence": "evidence", "skeletons": "skeletons",
+              "propositions": "propositions_raw", "bank_items": "item_bank",
+              "scores": "scores"}
     try:
         with db.connect(read_only=True) as con:
-            out["films"] = _scalar(con, "SELECT COUNT(*) FROM films")
-            out["evidence"] = _scalar(con, "SELECT COUNT(*) FROM evidence")
-            out["skeletons"] = _scalar(con, "SELECT COUNT(*) FROM skeletons")
-            out["propositions"] = _scalar(con, "SELECT COUNT(*) FROM propositions_raw")
-            out["bank_items"] = _scalar(con, "SELECT COUNT(*) FROM item_bank WHERE active=1")
-            out["scores"] = _scalar(con, "SELECT COUNT(*) FROM scores")
+            present = _present(con)
+            for key, sql in counts.items():
+                if tables[key] in present:
+                    out[key] = _scalar(con, sql)
             out["ready"] = out["films"] > 0
 
-            try:
+            if "dimensions" in present and "item_dimensions" in present:
                 rows = con.execute(
                     "SELECT d.name, COUNT(i.item_id) n FROM dimensions d "
                     "LEFT JOIN item_dimensions i "
@@ -65,18 +79,17 @@ def _snapshot() -> dict[str, Any]:
                     "GROUP BY d.dim_version, d.dim_id, d.name ORDER BY n DESC"
                 ).fetchall()
                 out["dimensions"] = [(r[0], int(r[1] or 0)) for r in rows]
-            except sqlite3.Error:
-                pass
 
-            for variant in VARIANTS:
-                films = _scalar(
-                    con, "SELECT COUNT(DISTINCT film_id) FROM scores WHERE variant=%s",
-                    [variant],
-                )
-                if films:
-                    out["variants"].append((variant, films))
-    except sqlite3.Error:
-        pass
+            if "scores" in present:
+                for variant in VARIANTS:
+                    films = _scalar(
+                        con, "SELECT COUNT(DISTINCT film_id) FROM scores WHERE variant=%s",
+                        [variant],
+                    )
+                    if films:
+                        out["variants"].append((variant, films))
+    except db.Error:
+        pass        # no database reachable at all — zeroes, not a 500
     return out
 
 

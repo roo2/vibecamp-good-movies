@@ -460,7 +460,7 @@ def factor_axes(scorer: str, variant: str, bank_version: str,
             # different order from every other screen.
             "pole_low_label, eigenvalue, n_items, margin FROM latent_factors "
             "WHERE scorer=%s AND variant=%s AND bank_version=%s "
-            "AND n_items>=? "
+            "AND n_items>=%s "
             # An axis the namer would not call coherent should not be handed to
             # somebody as a reading of what they believe. It stays in the atlas,
             # where the warning beside it is the point.
@@ -560,7 +560,7 @@ def factor_stances(
             assignments[r["item_id"]] = (r["factor_id"], r["loading"], every)
         rows = con.execute(
             "SELECT film_id, item_id, value FROM model_verdicts WHERE scorer=%s "
-            "AND variant=? AND bank_version=?", [scorer, variant, bank_version],
+            "AND variant=%s AND bank_version=%s", [scorer, variant, bank_version],
         ).fetchall()
 
     # EVERY PROPOSITION COUNTS ON EVERY AXIS IT SPEAKS TO, in proportion to how

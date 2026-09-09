@@ -869,12 +869,11 @@ def test_a_film_set_reports_what_it_could_not_find(monkeypatch, tmp_path):
     from moral_atlas.config import settings
 
     monkeypatch.setattr(db, "settings", lambda: replace(
-        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "isolated.sqlite"))
+        settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",))
     db.init_db()
     with db.connect() as con:
         con.executemany(
-            "INSERT INTO films (film_id, title, year, origin_country) VALUES (?,?,?,?)",
+            "INSERT INTO films (film_id, title, year, origin_country) VALUES (%s,%s,%s,%s)",
             [("here-1954", "Here", 1954, '["United States"]'),
              ("also-2011", "Also", 2011, '["United States"]'),
              ("french-1960", "Ailleurs", 1960, '["France"]')])

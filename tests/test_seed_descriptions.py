@@ -10,24 +10,23 @@ from moral_atlas.config import settings
 from moral_atlas.sources import seed
 
 
-def isolated_store(monkeypatch, tmp_path, fresh_schema):
-    """A scratch schema of this test's own, and nothing else's.
+def isolated_store(monkeypatch, tmp_path):
+    """This test's own directories. The schema it writes to is automatic.
 
-    This used to be a SQLite file in tmp_path. It is a Postgres schema now; the
-    `fresh_schema` fixture makes and drops it, `db.connect` turns it into a
-    search_path, and the isolation is the same.
+    It used to be a SQLite file in tmp_path; it is a Postgres schema now, made
+    and dropped by the `fresh_schema` fixture in conftest and inherited here
+    through `settings()`.
     """
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_schema=fresh_schema(tmp_path.name),
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
 
 
 def test_description_migration_updates_existing_rows_and_inserts_new_ones(
-    monkeypatch, tmp_path, fresh_schema,
+    monkeypatch, tmp_path,
 ):
-    isolated_store(monkeypatch, tmp_path, fresh_schema)
+    isolated_store(monkeypatch, tmp_path)
     db.init_db()
     db.upsert_film({
         "film_id": "legacy-lion-id", "title": "The Lion King", "year": 1994,
@@ -69,9 +68,9 @@ def test_blind_story_descriptions_stay_short():
 
 
 def test_description_migration_refuses_to_replace_a_colliding_film(
-    monkeypatch, tmp_path, fresh_schema,
+    monkeypatch, tmp_path,
 ):
-    isolated_store(monkeypatch, tmp_path, fresh_schema)
+    isolated_store(monkeypatch, tmp_path)
     db.init_db()
     db.upsert_film({
         "film_id": "the-matrix-1999", "title": "A Different Film", "year": 2001,
@@ -136,9 +135,9 @@ def test_house_style_check_catches_what_a_model_reaches_for():
 
 
 def test_generated_cards_are_stamped_and_curated_ones_are_not_overwritten(
-    monkeypatch, tmp_path, fresh_schema,
+    monkeypatch, tmp_path,
 ):
-    isolated_store(monkeypatch, tmp_path, fresh_schema)
+    isolated_store(monkeypatch, tmp_path)
     db.init_db()
     db.upsert_film({"film_id": "f1", "title": "A Film", "year": 2000,
                     "description": "Hand written.", "description_source": "curated"})

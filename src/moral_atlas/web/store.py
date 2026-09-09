@@ -342,7 +342,7 @@ def next_shortlist_film(share_token: str, user_id: str, since: int = 0) -> dict[
             "SELECT q.film_id FROM session_shortlist_films q WHERE q.session_id=%s "
             "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions n WHERE n.session_id=q.session_id AND n.film_id=q.film_id AND n.reaction='no') "
             "AND NOT EXISTS (SELECT 1 FROM shortlist_reactions mine WHERE mine.session_id=q.session_id AND mine.film_id=q.film_id AND mine.user_id=%s) "
-            "ORDER BY q.position LIMIT ?", [session["session_id"], user_id, QUEUE_AHEAD],
+            "ORDER BY q.position LIMIT %s", [session["session_id"], user_id, QUEUE_AHEAD],
         ).fetchall()
     films = [card for row in rows if (card := film_card(row["film_id"]))]
     if not films:
@@ -377,8 +377,11 @@ def _agreed_films(con, session_id: str) -> list[str]:
     return [row["film_id"] for row in con.execute(
         "SELECT film_id, MAX(submitted_at) agreed_at FROM shortlist_reactions "
         "WHERE session_id=%s GROUP BY film_id "
-        "HAVING COUNT(DISTINCT CASE WHEN reaction='yes' THEN user_id END)=? "
-        "AND SUM(reaction='no')=0 ORDER BY agreed_at",
+        "HAVING COUNT(DISTINCT CASE WHEN reaction='yes' THEN user_id END)=%s "
+        # `SUM(reaction='no')=0` counted on a comparison being 1 or 0, which is
+        # SQLite. A filtered count says the same thing in standard SQL: nobody
+        # said no.
+        "AND COUNT(*) FILTER (WHERE reaction='no')=0 ORDER BY agreed_at",
         [session_id, members])]
 
 
@@ -499,11 +502,11 @@ def get_group_session_status(share_token: str, user_id: str) -> GroupSessionStat
 
 
 def start_group_session(share_token: str, host_user_id: str) -> GroupSession | None:
-    return _update_group_session(share_token, host_user_id, "status='in_progress', started_at=?", [db.now()])
+    return _update_group_session(share_token, host_user_id, "status='in_progress', started_at=%s", [db.now()])
 
 
 def begin_waiting_for_results(share_token: str, host_user_id: str) -> GroupSession | None:
-    return _update_group_session(share_token, host_user_id, "waiting_started_at=COALESCE(waiting_started_at, ?)", [db.now()])
+    return _update_group_session(share_token, host_user_id, "waiting_started_at=COALESCE(waiting_started_at, %s)", [db.now()])
 
 
 def mark_session_member_unready(share_token: str, user_id: str) -> GroupSession | None:
@@ -528,7 +531,7 @@ def continue_group_session(share_token: str, host_user_id: str) -> GroupSession 
     everyone_completed = bool(status and status.members and all(member.completed_at for member in status.members))
     if status is None or not (status.can_continue_without_members or everyone_completed):
         return None
-    return _update_group_session(share_token, host_user_id, "status='results_started', continued_at=?", [db.now()])
+    return _update_group_session(share_token, host_user_id, "status='results_started', continued_at=%s", [db.now()])
 
 
 def _update_group_session(share_token: str, host_user_id: str, update: str, values: list[str]) -> GroupSession | None:

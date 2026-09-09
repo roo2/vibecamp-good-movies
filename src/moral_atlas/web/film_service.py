@@ -77,7 +77,7 @@ def _films_the_scorer_has_read() -> set[str]:
     with db.connect(read_only=True) as con:
         return {row["film_id"] for row in con.execute(
             "SELECT DISTINCT film_id FROM model_verdicts WHERE scorer=%s "
-            "AND bank_version=? AND variant=?",
+            "AND bank_version=%s AND variant=%s",
             [config.product_scorer, bank, config.product_variant])}
 
 

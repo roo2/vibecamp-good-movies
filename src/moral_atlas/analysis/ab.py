@@ -33,7 +33,7 @@ def _score_map(bank_version: str, run_id: str | None = None) -> dict[str, dict[s
     q = ("SELECT film_id, variant, item_id, value FROM scores WHERE bank_version=%s")
     args: list[Any] = [bank_version]
     if run_id:
-        q += " AND run_id=?"
+        q += " AND run_id=%s"
         args.append(run_id)
 
     out: dict[str, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(dict))

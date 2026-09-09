@@ -746,6 +746,6 @@ def estimator_for(alias: str, variant: str = "subs", bank_version: str = "b1") -
     with db.connect(read_only=True) as con:
         row = con.execute(
             "SELECT estimator FROM latent_factors WHERE scorer=%s AND variant=%s "
-            "AND bank_version=? LIMIT 1", [alias, variant, bank_version],
+            "AND bank_version=%s LIMIT 1", [alias, variant, bank_version],
         ).fetchone()
     return (row["estimator"] if row and row["estimator"] else "dense")

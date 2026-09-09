@@ -20,8 +20,7 @@ def store(monkeypatch, tmp_path):
     from moral_atlas import db
     from moral_atlas.config import settings
 
-    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-                            db_path=tmp_path / "atlas.sqlite")
+    test_settings = replace(settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",)
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()
     for index in range(4):
@@ -52,13 +51,12 @@ def test_totals_move_when_the_store_does(store):
 def test_counts_notice_writes_that_a_timestamp_would_not(store):
     """The reason this compares counts rather than mtimes.
 
-    The store runs in WAL mode, so a write lands in atlas.sqlite-wal and the
-    main file's mtime can sit still through an entire sweep. A staleness check
-    reading mtimes would report "current" while the corpus was being rewritten
-    underneath it — the one moment it most needs not to.
+    Under SQLite this was about WAL: a write landed in atlas.sqlite-wal and the
+    main file's mtime could sit still through an entire sweep, so a staleness
+    check reading mtimes would report "current" while the corpus was being
+    rewritten underneath it. There is no file to stat at all now, which makes
+    the same point permanently: counts are the only thing there is to compare.
     """
-    path = store.settings().db_path
-    before_mtime = path.stat().st_mtime
     before = dataset.totals("d1", "b1")
 
     for index in range(20):
@@ -66,9 +64,7 @@ def test_counts_notice_writes_that_a_timestamp_would_not(store):
 
     after = dataset.totals("d1", "b1")
     assert after["films"] == before["films"] + 20
-    # Not asserting the mtime is unchanged — that is platform-dependent. The
-    # point is that the counts are conclusive whether or not it moved.
-    assert isinstance(before_mtime, float)
+    assert after["films"] > before["films"], "the counts are what notice"
 
 
 def test_totals_are_scoped_to_the_versions_asked_for(store):

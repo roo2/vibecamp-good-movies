@@ -28,9 +28,8 @@ def _save_skeleton(film_id, variant, run_id, data, model="claude-opus-5", prompt
     """What `llm.stages` writes, without going near an API."""
     with db.connect() as con:
         con.execute(
-            "INSERT OR REPLACE INTO skeletons "
-            "(film_id, variant, run_id, data, model, prompt_version, created_at) "
-            "VALUES (?,?,?,?,?,?,?)",
+            db.upsert("skeletons", ["film_id", "variant", "run_id", "data",
+                                    "model", "prompt_version", "created_at"]),
             [film_id, variant, run_id, json.dumps(data), model, prompt, db.now()],
         )
 
@@ -62,7 +61,6 @@ def store(monkeypatch, tmp_path):
     """A small store whose every expected answer is known by construction."""
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "dataset.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     monkeypatch.setattr(dataset, "db", db)
@@ -97,11 +95,11 @@ def scored_store(store):
         for item_id in ("I1", "I2"):
             con.execute(
                 "INSERT INTO item_bank (item_id, bank_version, text, cluster_id, active) "
-                "VALUES (?, 'b1', 'A proposition.', 1, 1)", [item_id])
+                "VALUES (%s, 'b1', 'A proposition.', 1, 1)", [item_id])
             con.execute(
                 "INSERT INTO item_dimensions "
                 "(dim_version, bank_version, item_id, dim_id, polarity, fit, pass_name, model) "
-                "VALUES ('d1', 'b1', ?, 1, 1, 0.8, 'main', 'claude-opus-5')", [item_id])
+                "VALUES ('d1', 'b1', %s, 1, 1, 0.8, 'main', 'claude-opus-5')", [item_id])
         # Film A: +1 and -1 → net 0.0 over 2 items.
         con.execute("INSERT INTO scores (film_id, item_id, bank_version, variant, run_id, value, confidence) "
                     "VALUES ('a', 'I1', 'b1', 'full', 'r', 1, 0.9)")

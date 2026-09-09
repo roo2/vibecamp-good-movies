@@ -252,7 +252,7 @@ def assign_shared(
     kept = [row for row in kept if row[3] in known]
     with db.connect() as con:
         con.execute("DELETE FROM model_axis_items WHERE scorer=%s AND dim_version=%s "
-                    "AND bank_version=?", [alias, dim_version, bank_version])
+                    "AND bank_version=%s", [alias, dim_version, bank_version])
         con.executemany(
             db.upsert("model_axis_items", ["scorer", "dim_version", "bank_version",
                                            "item_id", "dim_id", "polarity", "fit",
@@ -288,7 +288,7 @@ def partitions(
         if incumbent:
             for row in con.execute(
                 "SELECT item_id, dim_id FROM item_dimensions WHERE dim_version=%s "
-                "AND bank_version=? AND pass_name=?",
+                "AND bank_version=%s AND pass_name=%s",
                 [incumbent, bank_version, dim_mod.MAIN_PASS],
             ):
                 out[INCUMBENT][row["item_id"]] = row["dim_id"]
@@ -309,6 +309,6 @@ def _incumbent_version(con, dim_version: str) -> str | None:
         return None
     row = con.execute(
         "SELECT dim_version FROM dimensions GROUP BY dim_version "
-        "HAVING COUNT(*)=? ORDER BY dim_version LIMIT 1", [int(dim_version[1:])],
+        "HAVING COUNT(*)=%s ORDER BY dim_version LIMIT 1", [int(dim_version[1:])],
     ).fetchone()
     return row["dim_version"] if row else None

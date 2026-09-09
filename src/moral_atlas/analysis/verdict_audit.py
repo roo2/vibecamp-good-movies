@@ -144,7 +144,7 @@ def audit(scorer: str, bank_version: str, variant: str, client,
                 con.executemany(
                     "UPDATE model_verdicts SET value=%s, original_value=%s, "
                     "audited_at=%s WHERE scorer=%s AND bank_version=%s AND variant=%s "
-                    "AND film_id=? AND item_id=?",
+                    "AND film_id=%s AND item_id=%s",
                     [(new, old, db.now(), scorer, bank_version, variant, film, item)
                      for film, item, new, old in corrections],
                 )
@@ -154,7 +154,7 @@ def audit(scorer: str, bank_version: str, variant: str, client,
             with db.connect() as con:
                 con.executemany(
                     "UPDATE model_verdicts SET audited_at=%s WHERE scorer=%s AND "
-                    "bank_version=? AND variant=? AND film_id=? AND item_id=? "
+                    "bank_version=%s AND variant=%s AND film_id=%s AND item_id=%s "
                     "AND audited_at IS NULL",
                     [(db.now(), scorer, bank_version, variant, r["film_id"], r["item_id"])
                      for r in batch],

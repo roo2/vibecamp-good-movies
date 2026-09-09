@@ -92,5 +92,5 @@ def films_scored_by_all(scorers: list[str], bank_version: str,
         for scorer in scorers:
             sets.append({r["film_id"] for r in con.execute(
                 "SELECT DISTINCT film_id FROM model_verdicts WHERE scorer=%s "
-                "AND bank_version=? AND variant=?", [scorer, bank_version, variant])})
+                "AND bank_version=%s AND variant=%s", [scorer, bank_version, variant])})
     return sorted(set.intersection(*sets))

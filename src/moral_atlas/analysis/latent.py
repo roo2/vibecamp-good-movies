@@ -127,12 +127,12 @@ def response_matrix(
     db.init_db()
     with db.connect(read_only=True) as con:
         table = "scores" if scorer is None else "model_verdicts"
-        where, args = ["bank_version=?"], [bank_version]
+        where, args = ["bank_version=%s"], [bank_version]
         if scorer is not None:
-            where.append("scorer=?")
+            where.append("scorer=%s")
             args.append(scorer)
         if variant:
-            where.append("variant=?")
+            where.append("variant=%s")
             args.append(variant)
         rows = con.execute(
             f"SELECT film_id, item_id, value FROM {table} WHERE {' AND '.join(where)}",

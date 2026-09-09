@@ -52,20 +52,54 @@ def test_database() -> str:
     settings.cache_clear()
 
 
-@pytest.fixture
-def fresh_schema(test_database: str):
-    """A scratch schema, and the settings changes that point the app at it."""
-    made: list[str] = []
+@pytest.fixture(autouse=True)
+def fresh_schema(test_database: str, request) -> str:
+    """A scratch schema for every test, whether it asks for one or not.
 
-    def make(hint: str = "t") -> str:
-        name = f"{re.sub(r'[^a-z0-9_]', '_', hint.lower())[:20]}_{uuid.uuid4().hex[:8]}"
-        with psycopg.connect(TEST_URL, autocommit=True) as con:
-            con.execute(f'CREATE SCHEMA "{name}"')
-        made.append(name)
-        return name
+    Autouse on purpose. A test that forgets to isolate itself is the kind of
+    test that passes alone and fails in a suite, and under SQLite the isolation
+    was a path each test had to remember to set. Here it is the default: the
+    schema exists before the test body runs, `settings()` already points at it,
+    and any `replace(settings(), ...)` a test does inherits it without knowing
+    this fixture exists.
 
-    yield make
+    Named after the test so a schema left behind by a crash says which one.
+    """
+    from moral_atlas.config import settings
 
+    hint = re.sub(r"[^a-z0-9_]", "_", request.node.name.lower())[:24].strip("_")
+    name = f"{hint or 'test'}_{uuid.uuid4().hex[:8]}"
     with psycopg.connect(TEST_URL, autocommit=True) as con:
-        for name in made:
+        con.execute(f'CREATE SCHEMA "{name}"')
+
+    previous = os.environ.get("ATLAS_DB_SCHEMA")
+    os.environ["ATLAS_DB_SCHEMA"] = name
+    settings.cache_clear()
+    try:
+        yield name
+    finally:
+        if previous is None:
+            os.environ.pop("ATLAS_DB_SCHEMA", None)
+        else:
+            os.environ["ATLAS_DB_SCHEMA"] = previous
+        settings.cache_clear()
+        with psycopg.connect(TEST_URL, autocommit=True) as con:
+            con.execute(f'DROP SCHEMA IF EXISTS "{name}" CASCADE')
+
+
+@pytest.fixture
+def empty_schema(test_database: str) -> str:
+    """A schema with nothing in it — what a deployment looks like before init.
+
+    `fresh_schema` gives every test a schema, but tests that check the
+    empty-database path need one they can be sure stays empty even after the
+    code under test has run `init_db` against the other one.
+    """
+    name = f"empty_{uuid.uuid4().hex[:8]}"
+    with psycopg.connect(TEST_URL, autocommit=True) as con:
+        con.execute(f'CREATE SCHEMA "{name}"')
+    try:
+        yield name
+    finally:
+        with psycopg.connect(TEST_URL, autocommit=True) as con:
             con.execute(f'DROP SCHEMA IF EXISTS "{name}" CASCADE')

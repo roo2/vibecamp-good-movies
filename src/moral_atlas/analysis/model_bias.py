@@ -200,7 +200,7 @@ def scan(
             # a six-film trial: 162 of 570 rows were survivors of the run before.
             con.execute(
                 "DELETE FROM model_verdicts WHERE scorer=%s AND film_id=%s "
-                "AND bank_version=? AND variant=?",
+                "AND bank_version=%s AND variant=%s",
                 [alias, p.film_id, bank_version, variant],
             )
             con.executemany(

@@ -24,7 +24,6 @@ from moral_atlas.sources import wikipedia as wiki
 def store(monkeypatch, tmp_path):
     test_settings = replace(
         settings(), data_dir=tmp_path, cache_dir=tmp_path / "cache",
-        db_path=tmp_path / "atlas.sqlite",
     )
     monkeypatch.setattr(db, "settings", lambda: test_settings)
     db.init_db()

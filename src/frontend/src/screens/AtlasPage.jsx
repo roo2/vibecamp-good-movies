@@ -218,7 +218,7 @@ function AtlasPage({ onBack, access }) {
         <div>
           {space === 'taste' ? (
             <>
-              <h1>What kind of film do people choose?</h1>
+              <h1>What films do people choose?</h1>
               <p className="atlas-note">
                 A second set of dimensions, found the same way as the{' '}
                 <em className="lit-values">values</em> ones but from a different question: not
@@ -259,7 +259,12 @@ function AtlasPage({ onBack, access }) {
               separate distributions read one after another. */}
           {factors?.factors?.length >= 2 && (
             <>
-              {filmSets.length > 0 && (
+              <FilmExplorer films={corpus?.films || []} factors={factors} taste={taste}
+                            reading={selected} selectedId={selectedId}
+                            onSelect={setSelectedId} sets={chosen} viewer={viewerHere}
+                            space={space} onSpaceChange={setSpace}
+                            pair={pair} onPairChange={setPair} axes={productAxes}
+                            underTabs={filmSets.length > 0 && (
                 <div className="set-picker">
                   <span className="set-picker-label">highlight a set</span>
                   {/* The provenance rides WITH the chip rather than as prose
@@ -329,12 +334,7 @@ function AtlasPage({ onBack, access }) {
                       orderedSets.filter((s) => !SHORTLIST.includes(s.set_id)).length})`}
                   </button>
                 </div>
-              )}
-              <FilmExplorer films={corpus?.films || []} factors={factors} taste={taste}
-                            reading={selected} selectedId={selectedId}
-                            onSelect={setSelectedId} sets={chosen} viewer={viewerHere}
-                            space={space} onSpaceChange={setSpace}
-                            pair={pair} onPairChange={setPair} axes={productAxes} />
+              )} />
               {wantsMe && !viewerHere && (
                 <p className="atlas-note">
                   {!access ? 'Take the survey first and this will show where you sit.'

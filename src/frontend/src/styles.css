@@ -271,6 +271,15 @@ button { cursor: pointer; }
 
 @media (max-width: 420px) { .phone-screen { width: 100%; } }
 
+/* On a screen wider than the 390px column, the column's flat #171310 sat on
+   the page's radial gradient as a visible seam — a phone-shaped rectangle of
+   slightly the wrong colour, its edges brightest where the gradient is. The
+   page already paints a background; the column stops painting a second one and
+   the seam has nowhere to be. */
+@media (min-width: 421px) {
+  .phone-screen { background: transparent; }
+}
+
 @media (max-height: 740px) {
   .phone-screen { padding: 22px 20px 16px; }
   .phone-screen h1, .login-content h1 { font-size: 34px; }

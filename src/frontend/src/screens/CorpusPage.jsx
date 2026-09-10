@@ -64,15 +64,19 @@ export default function CorpusPage({ onBack }) {
   const all = corpus?.films || []
 
   return (
-    <main className="atlas-page">
+    <main className="atlas-page corpus-page">
+      {/* The header lives INSIDE the wrap, as it does on the atlas. Outside it
+          the title had no column to sit in — it ran to the left edge of the
+          window — and the frame drawn round the page's content excluded the one
+          line the page is named after. */}
+      <div className="atlas-wrap">
       <header className="atlas-header">
         {onBack && <button type="button" className="back-button" onClick={onBack}>←</button>}
         <div>
-          <h1>What does it make of your film?</h1>
+          <h1>Where does your film stand</h1>
         </div>
       </header>
 
-      <div className="atlas-wrap">
         <p className="atlas-lede">
           Every film here was read from its own dialogue — no reviews, no synopsis.
           Search {all.length ? `${all.length} films` : 'the corpus'}, or pick a point.

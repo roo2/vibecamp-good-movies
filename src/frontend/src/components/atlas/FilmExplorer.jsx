@@ -54,6 +54,7 @@ const EXPLAINS = {
 export default function FilmExplorer({
   films, factors, taste, reading, selectedId, onSelect,
   sets, viewer, space = 'moral', onSpaceChange, pair = null, onPairChange, axes = [],
+  underTabs = null,
 }) {
   const [query, setQuery] = React.useState('')
   const shown = React.useMemo(() => axisPair(axes, pair), [axes, pair])
@@ -149,6 +150,12 @@ export default function FilmExplorer({
           </div>
         )}
 
+        {/* Whatever the page wants between the tabs and the plot — the set
+            picker, on the atlas. It belongs under the tabs because the sets are
+            drawn ON the plot the tabs choose, and above them it read as a
+            control for the page rather than for the picture. */}
+        {underTabs}
+
         {/* WHICH two of the axes. The plane draws two because a plane has two
             dimensions, and until now which two was decided entirely by the
             support order — so a third axis the product reads was never
@@ -174,27 +181,31 @@ export default function FilmExplorer({
           </div>
         )}
 
-        <input
-          className="atlas-search"
-          value={query}
-          placeholder="Search for a film"
-          aria-label="Search for a film"
-          onChange={(event) => setQuery(event.target.value)}
-        />
+        {/* The input and its suggestions are one positioned unit, so the list
+            can hang out of the flow beneath it rather than pushing the plot
+            down the page as somebody types. */}
+        <div className="explorer-search">
+          <input
+            className="atlas-search"
+            value={query}
+            placeholder="Search for a film"
+            aria-label="Search for a film"
+            onChange={(event) => setQuery(event.target.value)}
+          />
 
-        {listed.length > 0 && (
-          <ul className="film-list">
-            {listed.map((f) => (
-              <li key={f.id}>
-                <button type="button" onClick={() => choose(f.id)}>
-                  <b>{f.title}</b> <span>{f.year}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+          {listed.length > 0 && (
+            <ul className="film-list">
+              {listed.map((f) => (
+                <li key={f.id}>
+                  <button type="button" onClick={() => choose(f.id)}>
+                    <b>{f.title}</b> <span>{f.year}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
-        {query.trim() && (
+          {query.trim() && (
           <p className="atlas-note explorer-matches">
             {matches.length
               ? <>{matches.length} highlighted{matches.length <= 8 && ' — '}
@@ -208,7 +219,8 @@ export default function FilmExplorer({
               : <>Nothing matches &ldquo;{query.trim()}&rdquo;. The corpus is {all.length} films,
                   so plenty of cinema is not in it yet.</>}
           </p>
-        )}
+          )}
+        </div>
 
         {/* Sets on BOTH spaces. Where a published list sits in taste is a
             question the project asks directly — several of these lists turned

@@ -1265,3 +1265,67 @@
   .figures { font-size: 13.5px; }
   .figures th, .figures td { padding: 8px 9px; }
 }
+
+/* --- Reading-page furniture -------------------------------------------
+ *
+ * The atlas and the corpus lookup are documents, not phone screens, and these
+ * are the four places that showed.
+ */
+
+/* Air above the first line. Both pages started hard against the top of the
+   window, which reads as a page that has been scrolled rather than one that
+   begins here. */
+.atlas-page .atlas-wrap { padding-top: 28px; }
+
+/* The browser already has a back button, and on a desktop it is the one people
+   use. Ours sat above the title taking a line of its own to say the same thing
+   less well. It stays on phones, where there is no visible browser chrome to
+   fall back on. */
+@media (min-width: 721px) {
+  .atlas-header .back-button { display: none; }
+}
+
+/* The lookup page reads as one object: a frame around the question and its
+   answer together, title included. The atlas is a long document and takes no
+   frame — it would be a border around a page rather than around a thing. */
+@media (min-width: 721px) {
+  .corpus-page .atlas-wrap {
+    max-width: 1000px;
+    margin-block: 24px;
+    padding: 34px 40px 40px;
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(36, 29, 24, .55), rgba(28, 23, 19, .35));
+  }
+  .corpus-page .atlas-header { margin-bottom: 4px; }
+}
+
+/* The suggestions leave the flow.
+ *
+ * They were a grid in the document, so typing pushed the plot — the thing the
+ * search exists to move a marker on — down the page and sometimes off it. A
+ * panel over the page leaves everything behind it where it was. */
+.explorer-search { position: relative; z-index: 20; }
+.explorer-search .film-list {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 46vh; overflow-y: auto;
+  display: block; padding: 6px; gap: 0;
+  border: 1px solid var(--rule2); border-radius: 10px;
+  background: #14100e;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+.explorer-search .film-list li + li { margin-top: 2px; }
+
+/* The count and the named matches, which is what appears when there IS a plot —
+   and what was pushing the plot down the page a line at a time as somebody
+   typed. Same panel, same reason. */
+.explorer-search .explorer-matches {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  margin: 0; padding: 10px 12px;
+  border: 1px solid var(--rule2); border-radius: 10px;
+  background: #14100e;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .55);
+}
+.explorer-search .film-list button { border-color: transparent; background: transparent; }
+.explorer-search .film-list button:hover,
+.explorer-search .film-list button:focus-visible { border-color: var(--rule2); background: #1c1713; }

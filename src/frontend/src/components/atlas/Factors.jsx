@@ -113,10 +113,11 @@ export function Factors({ data }) {
           {shown === 1 ? 'One axis' : `${shown} axes`}, and where they came from
         </h2>
         <p className="atlas-note">
-          Nobody chose these, or how many. {data.scorer} wrote its own propositions from{' '}
-          {data.films} films&apos; dialogue and scored the films against them; a group is the
-          propositions the same films answer the same way. Names came last, so each describes a
-          finished result rather than a theory the propositions were sorted into.
+          Nobody chose these, or how many. Working from {data.films} films&apos; dialogue,{' '}
+          {data.scorer} wrote its own propositions and scored the films against them; an axis is
+          a set of propositions that the same films answer the same way. The names came last, so
+          each one describes a finished result rather than a theory the propositions were sorted
+          into.
         </p>
 
         <p className="factor-headline">
@@ -125,7 +126,7 @@ export function Factors({ data }) {
           <span className="factor-headline-sub">
             {data.films} films × {data.items} propositions
             {data.unanimous_items
-              ? `, after ${data.unanimous_items} every film agreed with were set aside`
+              ? `, after setting aside ${data.unanimous_items} that every film agreed with`
               : ''}
             {' '}· at most {data.max_recoverable} recoverable from this many films
           </span>
@@ -138,8 +139,8 @@ export function Factors({ data }) {
             and worse, invents a dimension: each film is judged against its own affirm rate, which
             turns a unanimously affirmed item into a negated copy of how agreeable that film is.
             Those items correlated −1.00 with affirm rate and carried three times the weight of
-            everything else. Removing them cut 20 axes to {shown} and made what remains more
-            reproducible, not less.
+            everything else. Removing them left far fewer axes standing, and made the ones that
+            remain more reproducible rather than less.
           </p>
         )}
 
@@ -163,10 +164,13 @@ export function Factors({ data }) {
             </ul>
             <p className="atlas-note">
               1.00 would mean the two halves found the same thing exactly. The first factor is
-              the one that clearly survives; by the third the halves are agreeing much less,
-              which is why the compass shows three axes and not all {shown}. This is a lower
-              bound — each half has half the films, and the estimator weakens as films are
-              removed — so read the gap from chance rather than the number itself.
+              the one that clearly survives; by the third the halves agree much less, which is
+              why the compass leans on the strongest and treats the rest more lightly
+              {data.n_factors > shown
+                ? ` — and why ${shown} of the ${data.n_factors} that cleared the null are named here`
+                : ''}. This is a lower bound — each half has half the films, and the estimator
+              weakens as films are removed — so read the gap from chance rather than the number
+              itself.
             </p>
           </>
         )}

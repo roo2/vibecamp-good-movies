@@ -10,7 +10,7 @@ const TRANSIENT = new Set([502, 503, 504])
 async function request(path, options = {}, attempt = 0) {
   const method = options.method || 'GET'
   const requestBody = options.body ? JSON.parse(options.body) : undefined
-  if (requestBody) console.info(`[Something Good To Watch API] ${method} ${path} request\n${JSON.stringify(requestBody, null, 2)}`)
+  if (requestBody) console.info(`[Movie Compass API] ${method} ${path} request\n${JSON.stringify(requestBody, null, 2)}`)
 
   let response
   try {
@@ -22,14 +22,14 @@ async function request(path, options = {}, attempt = 0) {
     // fetch only rejects when the request did not complete at all — no status,
     // nothing on the server, nothing in its log. Worth saying plainly rather
     // than reporting it as though the service had answered.
-    console.error(`[Something Good To Watch API] ${method} ${path} never reached the server`, networkError)
+    console.error(`[Movie Compass API] ${method} ${path} never reached the server`, networkError)
     if (REPEATABLE.has(method) && attempt === 0) return request(path, options, attempt + 1)
     throw new Error('That did not reach the server. Check your connection and try again.')
   }
 
   const body = await response.json().catch(() => null)
   if (!response.ok) {
-    console.error(`[Something Good To Watch API] ${method} ${path} failed ${response.status}\n${JSON.stringify(body, null, 2)}`)
+    console.error(`[Movie Compass API] ${method} ${path} failed ${response.status}\n${JSON.stringify(body, null, 2)}`)
     if (TRANSIENT.has(response.status) && REPEATABLE.has(method) && attempt === 0) {
       return request(path, options, attempt + 1)
     }
@@ -43,7 +43,7 @@ async function request(path, options = {}, attempt = 0) {
       ? `The connection to the service dropped (${response.status}). Please try again.`
       : `The service could not complete that request (${response.status}).`)
   }
-  console.info(`[Something Good To Watch API] ${method} ${path} response\n${JSON.stringify(body, null, 2)}`)
+  console.info(`[Movie Compass API] ${method} ${path} response\n${JSON.stringify(body, null, 2)}`)
   return body
 }
 

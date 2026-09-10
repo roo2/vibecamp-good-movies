@@ -1,2 +1,11 @@
 node_modules/
 dist/
+
+# esbuild's output when a script is bundled beside its source rather than into
+# node_modules. Five of these were committed and went stale — old copies of the
+# whole app, under the old product name, which a grep for that name then found.
+*.run.mjs
+*.run.css
+c.css
+check.css
+check.mjs.css

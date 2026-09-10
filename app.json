@@ -1,6 +1,6 @@
 {
-  "name": "moral-atlas",
-  "description": "Films placed on moral and taste axes, and the interface that reads a person onto them.",
+  "name": "movie-compass",
+  "description": "Movie Compass — films placed on moral and taste axes, and the interface that reads a person onto them.",
   "repository": "https://github.com/identity-software/vibecamp-good-movies",
   "buildpacks": [
     { "url": "heroku/nodejs" },
@@ -15,7 +15,7 @@
       "value": "1"
     },
     "ATLAS_FRONTEND_URL": {
-      "description": "Where the pipeline page at /internal points people. The app's own URL once you know it.",
+      "description": "Where the pipeline page at /internal points people. The site's own address — https://moviecompass.net.",
       "required": false
     },
     "ANTHROPIC_API_KEY": {

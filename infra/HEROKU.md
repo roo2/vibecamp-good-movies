@@ -23,20 +23,19 @@ makes.
 
 ## Standing it up
 
-The app is `good-movies`, at
-**https://good-movies-a813b7730665.herokuapp.com**. This is how it was made, and
-how a second one — a staging copy, a fresh start — would be:
+The app is `movie-compass`, at **https://moviecompass.net**. This is how it was
+made, and how a second one — a staging copy, a fresh start — would be:
 
 ```bash
-heroku create good-movies --region us
-heroku buildpacks:add heroku/nodejs -a good-movies    # order matters:
-heroku buildpacks:add heroku/python -a good-movies    # node builds the SPA first
-heroku addons:create heroku-postgresql:essential-0 -a good-movies
-heroku ps:type basic -a good-movies                   # after the first deploy:
+heroku create movie-compass --region us
+heroku buildpacks:add heroku/nodejs -a movie-compass    # order matters:
+heroku buildpacks:add heroku/python -a movie-compass    # node builds the SPA first
+heroku addons:create heroku-postgresql:essential-0 -a movie-compass
+heroku ps:type basic -a movie-compass                   # after the first deploy:
                                                       # there are no dynos to
                                                       # resize before one exists
-heroku config:set ATLAS_SERVE_FRONTEND=1 ATLAS_WARM_CACHE=1 -a good-movies
-heroku config:set ATLAS_FRONTEND_URL=https://good-movies-a813b7730665.herokuapp.com -a good-movies
+heroku config:set ATLAS_SERVE_FRONTEND=1 ATLAS_WARM_CACHE=1 -a movie-compass
+heroku config:set ATLAS_FRONTEND_URL=https://moviecompass.net -a movie-compass
 git push heroku main
 ```
 
@@ -46,7 +45,35 @@ pages and reads the store, and it calls no model, so it needs no API key.
 Then the data, once:
 
 ```bash
-atlas corpus-push good-movies
+atlas corpus-push movie-compass
+```
+
+## The domain
+
+`moviecompass.net`, registered at Cloudflare, which is also its DNS. Two records
+point it here — the apex needs ALIAS/ANAME rather than A, because Heroku has no
+static IPs, and Cloudflare's CNAME flattening is what makes that possible at all:
+
+| Type | Name | Target |
+|---|---|---|
+| CNAME | `@` | `cryptic-dinosaur-zukyeayxamzpgmzrqk17iqti.herokudns.com` |
+| CNAME | `www` | `safe-marigold-juxba63c3k8hwpxiy9gfnhur.herokudns.com` |
+
+Read the current targets with `heroku domains -a movie-compass`; they are
+per-app and per-domain, not guessable, and they change if a domain is removed
+and re-added.
+
+**Leave both records DNS-only — the grey cloud, not the orange one.** Proxied,
+Cloudflare answers the ACME challenge with its own certificate and Heroku's
+Automatic Certificate Management can never validate, which presents as a
+domain that resolves and then fails its TLS handshake. Once
+`heroku certs:auto` reports the cert as issued, proxying can be turned on with
+Cloudflare's SSL mode set to Full (strict) — but it buys little here and is one
+more thing between a visitor and the dyno.
+
+```bash
+heroku certs:auto -a movie-compass      # issued? failing? what on
+heroku domains -a movie-compass         # the targets, and whether DNS matches
 ```
 
 ## Deploying
@@ -56,7 +83,7 @@ A push to `main` runs the tests and pushes to Heroku — see
 things set on the repository, once:
 
 ```bash
-gh variable set HEROKU_APP --body good-movies
+gh variable set HEROKU_APP --body movie-compass
 gh secret set HEROKU_API_KEY --body "$(heroku authorizations:create --short)"
 ```
 
@@ -73,7 +100,7 @@ old dyno keeps serving.
 Ingest and sweep locally, then:
 
 ```bash
-atlas corpus-push good-movies
+atlas corpus-push movie-compass
 ```
 
 It reads the app's `DATABASE_URL` through `heroku config:get`, so no credential
@@ -87,17 +114,17 @@ shortlisted: those are named in the output and kept. To remove one for real,
 including the ratings that point at it:
 
 ```bash
-heroku run atlas remove-film some-film-2019 --yes -a good-movies
+heroku run atlas remove-film some-film-2019 --yes -a movie-compass
 ```
 
 ## Looking at it
 
 ```bash
-heroku logs --tail -a good-movies
-heroku pg:psql -a good-movies
-heroku pg:info -a good-movies
-heroku releases -a good-movies
-heroku rollback -a good-movies          # back one release, dyno and all
+heroku logs --tail -a movie-compass
+heroku pg:psql -a movie-compass
+heroku pg:info -a movie-compass
+heroku releases -a movie-compass
+heroku rollback -a movie-compass          # back one release, dyno and all
 ```
 
 `/internal` is the pipeline page — corpus counts, dimension coverage, what has
@@ -107,8 +134,8 @@ product lives at `/` now.
 ## Pulling production down to your machine
 
 ```bash
-heroku pg:backups:capture -a good-movies
-heroku pg:backups:download -a good-movies -o /tmp/atlas.dump
+heroku pg:backups:capture -a movie-compass
+heroku pg:backups:download -a movie-compass -o /tmp/atlas.dump
 dropdb --if-exists moral_atlas_prod && createdb moral_atlas_prod
 pg_restore --no-owner --no-privileges -d moral_atlas_prod /tmp/atlas.dump
 ATLAS_DB=postgresql:///moral_atlas_prod atlas status

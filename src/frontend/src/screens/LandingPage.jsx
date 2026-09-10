@@ -30,7 +30,7 @@ function LandingPage({ onStart, joining = false }) {
   return (
     <main className="app-page login-page">
       <section className="phone-screen login-screen" aria-label="Start">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Something Good To Watch</span></div>
+        <div className="brand"><span className="brand-mark" aria-hidden="true">⊕</span><span>Movie Compass</span></div>
         <div className="login-content">
           <p className="screen-label">{joining ? 'A friend invited you' : '90 seconds · no sign-up'}</p>
           {/* Two words, two colours, and they are the app's whole vocabulary:

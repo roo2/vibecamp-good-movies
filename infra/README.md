@@ -16,9 +16,9 @@
 >
 > **To take it down: [`teardown-aws.sh`](teardown-aws.sh)** — `--dry-run` first,
 > which prints what it would delete and roughly what it stops paying for
-> (about US$18/month). Read its header before running it: the runner's database
-> was the only copy of the demo's 217 users and 1,988 ratings, and the script
-> refuses to run unless the archive of them is where it expects.
+> (about US$18/month). The 217 accounts and 1,988 ratings on the runner are
+> pre-launch testing and are not being kept; the script's header says what they
+> were and where a copy is if you want one.
 >
 > Read on for what exists in AWS.
 

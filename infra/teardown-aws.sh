@@ -4,19 +4,25 @@
 #   ./infra/teardown-aws.sh --dry-run     # what it would delete, and the bill
 #   ./infra/teardown-aws.sh               # do it, after one confirmation
 #
-# READ THIS FIRST.
+# About the data on it, which is not being kept.
 #
-# The runner's database was the only copy of 217 users and 1,988 ratings. It has
-# been pulled to data/archive/aws-production-final.sqlite (185MB, integrity
-# checked) — the demo's whole history, which `atlas corpus-push` never carried
-# because it never writes user tables. Check that file is where you want it
-# before running this. It is not in git: data/ is ignored whole.
+# The runner held 217 accounts and 1,988 ratings — the demo's whole history,
+# which `atlas corpus-push` never carried because it never writes user tables.
+# It is testing: the owner and a few friends over eight days before going live.
+# The shape says so plainly. 95 of the 217 accounts rated nothing at all; of the
+# 122 that did, 58 rated exactly twenty — one full deck — and 26 rated exactly
+# five and stopped. There is no sign-in, so every browser that opened the site
+# became another account, and one person testing on three devices is three
+# users. It is not a sample of anybody.
 #
-# Do not trust the nightly S3 snapshots for this. They were a file copy that did
-# not fold in the write-ahead log, so the last one held 208 users and 1,951
-# ratings against the box's 217 and 1,988 — 9 people and 37 answers that only
-# ever existed on the instance. The archived file was taken with VACUUM INTO,
-# which does fold it in.
+# A copy is at data/archive/aws-production-final.sqlite if you want it (185MB,
+# integrity checked, ignored by git because data/ is). Deleting it is `rm`.
+# Nothing else refers to it.
+#
+# Worth recording once, because a later count will be tempting: the nightly S3
+# snapshots were LOSSY. A file copy that never folded in the write-ahead log —
+# the last one held 208 and 1,951 against the box's 217 and 1,988. The archive
+# above was taken with VACUUM INTO, which does fold it in.
 #
 # Order matters. CloudFormation cannot delete a bucket with anything in it, and
 # the data bucket is versioned, so "empty" means every version and every delete
@@ -57,12 +63,6 @@ echo
 if [ "$DRY" = true ]; then
   echo "(dry run — nothing deleted)"
   exit 0
-fi
-
-if [ ! -f "$(dirname "$0")/../data/archive/aws-production-final.sqlite" ]; then
-  echo "refusing: data/archive/aws-production-final.sqlite is not there." >&2
-  echo "That file is the only copy of the demo's users and ratings." >&2
-  exit 1
 fi
 
 read -r -p "Delete $STACK and everything in it? Type the stack name to confirm: " typed

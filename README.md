@@ -118,7 +118,7 @@ reload rather than on rebuild.
 
 That endpoint is a permutation test as much as a page, so its answer is kept in
 `documents` and rebuilt only when the corpus counts move. See
-[`infra/HEROKU.md`](infra/HEROKU.md).
+[`infra/README.md`](infra/README.md).
 
 `atlas dataset` still writes the same document to a file, which is what to reach
 for when somebody wants the numbers without the site:
@@ -331,7 +331,7 @@ a backup. Treat it accordingly: it is people's ratings.
 Sending work the other way is `atlas corpus-push`, which replaces the corpus
 tables in a deployed store and refuses to touch the user ones. The laptop is
 authoritative for the corpus, the app for the people, and neither overwrites
-the other. See [`infra/HEROKU.md`](infra/HEROKU.md).
+the other. See [`infra/README.md`](infra/README.md).
 
 In `psql`, `\x auto` and `\pset null '∅'` make output readable.
 

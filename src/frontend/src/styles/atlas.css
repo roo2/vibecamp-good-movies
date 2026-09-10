@@ -25,6 +25,7 @@
   --gauge: #4a423b;
 
   min-height: 100dvh;
+  min-height: var(--app-vh, 100dvh);
   padding: 0 0 80px;
   background: radial-gradient(80% 45% at 50% 0%, #2a211b 0%, #171310 68%);
   color: var(--ink);

@@ -1,336 +1,198 @@
-# Infrastructure — AWS, frozen
+# Infrastructure
 
-> **This describes where the project used to run.** It moved to Heroku and
-> Postgres; the runbook is [`HEROKU.md`](HEROKU.md).
->
-> The stack below is still up and still serving the demo URL, deliberately: it
-> keeps running the last SQLite commit until the new environment has been
-> watched for long enough to replace it. Nothing deploys to it any more —
-> `.github/workflows/deploy.yml` no longer runs on a push — so it will not
-> silently receive code that expects a database it does not have.
->
-> Two things that lived here are gone rather than frozen, because what replaced
-> them is not AWS-shaped: `export-corpus.sh`, `load-corpus.sh` and
-> `load_corpus.py` moved a snapshot through S3 to a machine that could not be
-> reached from a laptop. `atlas corpus-push` connects to the store directly.
->
-> **To take it down: [`teardown-aws.sh`](teardown-aws.sh)** — `--dry-run` first,
-> which prints what it would delete and roughly what it stops paying for
-> (about US$18/month). The 217 accounts and 1,988 ratings on the runner are
-> pre-launch testing and are not being kept; the script's header says what they
-> were and where a copy is if you want one.
->
-> Read on for what exists in AWS.
+One Heroku app, one dyno, one Postgres database. That is the whole of it.
 
-Enough AWS to collaborate and to demo, and deliberately not more.
+It ran on AWS until 2026-09-10 — an EC2 runner holding a SQLite file on an EBS
+volume, a static site in S3 behind CloudFront, and a GitHub OIDC role to deploy
+it. All of that is deleted: the stack, both buckets, the retained volume, the
+elastic IP, the secret and the OIDC provider. About US$18 a month. The scripts
+and the CloudFormation template are out of the repository too, along with the
+teardown script that removed them; `git log` has them if they are ever wanted.
 
-The repository is in two halves, so the infrastructure is too:
+The one thing worth carrying forward from that era is a warning. Its nightly
+database snapshots were a plain file copy that never folded in SQLite's
+write-ahead log, so every one of them was quietly short — the last held 208
+users and 1,951 ratings against the machine's 217 and 1,988. A backup you have
+not restored is a file you have not checked.
+
+## The shape
 
 | | What it is | Where it runs |
 |---|---|---|
-| **The atlas** | a batch pipeline that spends money on LLM calls and writes a SQLite file | one EC2 runner, reachable only through SSM |
-| **The interface** | static screens plus one JSON payload | S3 behind CloudFront, on a private URL |
+| **The atlas** | a batch pipeline that spends money on LLM calls | your laptop |
+| **The interface and its API** | React build plus FastAPI | one Heroku dyno |
+| **The store** | Postgres | a Heroku Postgres add-on |
 
-One template builds both: [`moral-atlas.yaml`](moral-atlas.yaml).
+The pipeline stays local on purpose. It needs API keys, a 60GB subtitle archive
+and hours of wall time, none of which belong on a web dyno. What crosses is the
+result: `atlas corpus-push` sends the derived tables straight into the app's
+database. Code deploys itself on a push to `main`; data is a decision somebody
+makes.
 
-```bash
-SITE_PASSWORD='pick-something' ./infra/deploy.sh
-./infra/deploy-site.sh
-```
+## Standing it up
 
-Default region is `ap-southeast-2`; override with `AWS_REGION`.
-
-## Why this shape
-
-**The pipeline is not a service.** `atlas score` is a long batch job holding a
-write lock on a file, not a request handler. Containers and autoscaling would
-add moving parts to something that wants exactly one machine, so it gets one
-machine — and the thing that actually matters, the database file, lives on a
-separate EBS volume that survives the instance being replaced.
-
-**One writer at a time.** The SQLite store runs in WAL mode, so readers never block, but a single writer at a time
-at a time; readers cannot attach while a sweep holds it. That is fine for how
-this work happens, but it is the reason the design is the way it is:
-
-- The runner is the only writer. Two people should not start sweeps at once —
-  the second gets a lock error, not corruption, but it is still a wasted run.
-- Colleagues read a **copy**, not the live file. `atlas-snapshot` puts one in
-  S3; pull it down and point your own checkout at it.
-- The demo site never touches the database. It reads `/api/session.json`,
-  which the runner publishes. That seam is already in
-  `design/INTERFACE-CONTRACT.md`, so this only makes the contract real.
-
-If several people ever need to write concurrently, that is the moment to move
-to a server database — not before.
-
-**No SSH, no bastion, no open port.** The runner's security group has no
-ingress rules at all. Shell access is SSM Session Manager, which dials out.
-
-**No NAT gateway.** The runner sits in a public subnet with a public IP and no
-way in. That is ~$32/month cheaper than a private subnet with NAT, and no less
-closed.
-
-## What gets built
-
-- **VPC** — one public subnet, internet gateway, egress-only security group.
-- **EC2 runner** — `t4g.small` (Graviton), Amazon Linux 2023, Python 3.11, the
-  project installed into a venv at `/opt/atlas/app`.
-- **EBS data volume** — encrypted gp3, mounted at `/opt/atlas/data`, with
-  `data/` in the checkout symlinked to it. `DeletionPolicy: Retain`, because a
-  UserData edit replaces the instance and the SQLite file must not go with it.
-- **S3 data bucket** — versioned, for database snapshots and bank exports.
-- **S3 site bucket + CloudFront** — private bucket, origin access control, the
-  bucket reachable only through the distribution.
-- **Secrets Manager** — one JSON secret with the API keys.
-- **CloudWatch** — a log group for bootstrap and snapshot logs, and an alarm
-  that stops the runner after 4 idle hours.
-
-## First deploy
+The app is `movie-compass`, at **https://moviecompass.net**. This is how it was
+made, and how a second one — a staging copy, a fresh start — would be:
 
 ```bash
-SITE_PASSWORD='pick-something' ./infra/deploy.sh
+heroku create movie-compass --region us
+heroku buildpacks:add heroku/nodejs -a movie-compass    # order matters:
+heroku buildpacks:add heroku/python -a movie-compass    # node builds the SPA first
+heroku addons:create heroku-postgresql:essential-0 -a movie-compass
+heroku ps:type basic -a movie-compass                   # after the first deploy:
+                                                      # there are no dynos to
+                                                      # resize before one exists
+heroku config:set ATLAS_SERVE_FRONTEND=1 ATLAS_WARM_CACHE=1 -a movie-compass
+heroku config:set ATLAS_FRONTEND_URL=https://moviecompass.net -a movie-compass
+git push heroku main
 ```
 
-Then fill in the credentials. They are not template parameters on purpose:
-parameter values persist in stack history and in every `describe-stacks` call.
+`DATABASE_URL` is set by the add-on. Nothing else is required: the dyno serves
+pages and reads the store, and it calls no model, so it needs no API key.
+
+Then the data, once:
 
 ```bash
-aws secretsmanager put-secret-value \
-  --secret-id moral-atlas/dev/config \
-  --secret-string '{
-    "ANTHROPIC_API_KEY": "sk-ant-...",
-    "TMDB_READ_TOKEN": "...",
-    "OPENSUBTITLES_API_KEY": "",
-    "OPENSUBTITLES_USERNAME": "",
-    "OPENSUBTITLES_PASSWORD": "",
-    "github_token": "ghp_..."
-  }'
+atlas corpus-push movie-compass
 ```
 
-`github_token` is only used to clone a private repository on first boot. Leave
-it empty and the machine still comes up fully prepared — clone by hand inside
-the session instead.
+## The domain
 
-Pick the keys up on the runner:
+`moviecompass.net`, registered at Cloudflare, which is also its DNS. Two records
+point it here — the apex needs ALIAS/ANAME rather than A, because Heroku has no
+static IPs, and Cloudflare's CNAME flattening is what makes that possible at all:
 
-```bash
-aws ssm start-session --target <RunnerInstanceId>
-sudo su - ec2-user          # the project lives here, not under ssm-user
-atlas-refresh-env           # rewrites .env from the secret
-atlas init && atlas status
-```
-
-## Working on it
-
-```bash
-aws ssm start-session --target <RunnerInstanceId>
-sudo su - ec2-user
-```
-
-You land in `/opt/atlas/app` with the venv on `PATH`. Long sweeps outlive the
-session if you start them under `tmux` — an SSM session that drops otherwise
-takes the run with it.
-
-Three helpers are installed:
-
-| Command | What it does |
-|---|---|
-| `atlas-refresh-env` | rewrite `.env` from Secrets Manager; run after rotating a key |
-| `atlas-snapshot` | copy the SQLite file and `bank.jsonl` to S3 (also nightly at 03:00 UTC) |
-| `atlas-publish <file.json>` | push a session payload to `/api/session.json` and invalidate the edge cache |
-| `atlas-update [branch]` | pull, reinstall, re-init — what CI runs after a push |
-
-`atlas-update` discards local changes. The runner is a deployment target, not
-somewhere to edit code.
-
-**Take a snapshot when no sweep is running.** Copying the file mid-write gives
-a torn snapshot that looks fine until the day you need it.
-
-### Getting the data onto your own machine
-
-```bash
-# The bucket name is generated by CloudFormation, so read it from the stack
-# rather than guessing — it is not moral-atlas-dev-data-<account>.
-BUCKET=$(aws cloudformation describe-stacks --stack-name moral-atlas-dev \
-  --query 'Stacks[0].Outputs[?OutputKey==`DataBucketName`].OutputValue' --output text)
-
-aws s3 cp "s3://$BUCKET/latest/atlas.sqlite" data/atlas.sqlite
-
-# Pushing local work up is the same command reversed:
-aws s3 cp data/atlas.sqlite "s3://$BUCKET/latest/atlas.sqlite"
-```
-
-That is the whole local setup for someone picking up the front end or the
-analysis — real scores, no API key, no sweep of their own.
-
-## Administering the database
-
-The admin is public, at `/admin` on the site distribution, behind the same HTTP
-basic auth as the rest of the private site:
-
-```
-https://<SiteUrl>/admin/
-```
-
-Full CRUD — insert, edit, delete, add and drop columns and tables, arbitrary
-SQL, import and export. Credentials are `SiteUsername` / `SitePassword` from the
-stack parameters.
-
-How the exposure is bounded, since an unauthenticated CRUD admin on the open
-internet would be a genuinely bad idea:
-
-| layer | what it does |
-|---|---|
-| CloudFront `/admin*` behaviour | terminates TLS, runs the basic-auth function on every request |
-| Security group | inbound 8002 only from the managed prefix list `com.amazonaws.global.cloudfront.origin-facing` — zero CIDR rules, so the port is not open to the internet |
-| Elastic IP | a stable origin name, so the idle-stop alarm restarting the runner does not break the admin |
-
-**The residual gap, stated plainly:** that prefix list covers *every* CloudFront
-distribution, not only ours. Someone who learns the runner's Elastic IP could
-point their own distribution at it and reach the admin without our basic auth.
-Closing that properly means either a shared secret header checked at the origin,
-or sqlite-web's own `--password`. For a hackathon this is a reasonable place to
-stop; for anything longer-lived it is not.
-
-## Browsing the database
-
-Two views of the same SQLite file, both running on the runner and bound to
-localhost. SSM port forwarding reaches them with no inbound security-group
-rule, which is less setup than opening a port, not more.
-
-```bash
-IID=$(aws cloudformation describe-stacks --stack-name moral-atlas-dev \
-  --query 'Stacks[0].Outputs[?OutputKey==`RunnerInstanceId`].OutputValue' --output text)
-
-# Datasette on :8001 - browse, facet, query, chart. Read-only.
-aws ssm start-session --target $IID \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["8001"],"localPortNumber":["8001"]}'
-
-# sqlite-web on :8002 - full CRUD admin, for when a row needs editing.
-aws ssm start-session --target $IID \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["8002"],"localPortNumber":["8002"]}'
-```
-
-Then open http://localhost:8001 (or :8002). Datasette also serves JSON, so
-`curl --get http://localhost:8001/atlas.json --data-urlencode "sql=..."` works
-for scripted queries.
-
-The exact commands are stack outputs: `DatasetteTunnelCommand` and
-`SqliteWebTunnelCommand`.
-
-## Publishing the interface
-
-```bash
-./infra/deploy-site.sh                    # publishes design/
-SITE_DIR=web/dist ./infra/deploy-site.sh  # once a real front end exists
-```
-
-`/api/session.json` is seeded from `design/fixtures/session.json` and served
-uncached, so the runner can overwrite it with real output at any time and the
-next reload picks it up. That behaviour is the contract's "swap the fixture for
-a live endpoint later", already wired.
-
-## Deploying from a GitHub push
-
-`.github/workflows/deploy.yml` runs on every push to `main`. It does not blindly
-redeploy everything:
-
-| Changed | What runs |
-|---|---|
-| anything | tests, then publish the site |
-| `infra/**` | `deploy.sh` as well — the stack itself |
-| `src/**`, `seeds/**`, `pyproject.toml` | `atlas-update` on the runner, over SSM |
-
-That split matters: a template change can replace the EC2 instance, and doing
-that because someone edited a design file would be a bad afternoon. Run the
-stack deploy manually any time from the Actions tab — **Run workflow → Deploy
-the CloudFormation stack**.
-
-### Wiring it up, once
-
-There is no AWS access key involved. GitHub presents a short-lived OIDC token
-naming the repository, the branch and the run; AWS trades it for temporary
-credentials. The trust policy is pinned to `main` of the repo named in the
-`GitHubRepo` parameter, so a push to another branch — or a pull request from a
-fork — cannot reach the account.
-
-```bash
-./infra/deploy.sh                    # creates the OIDC provider and the role
-
-gh variable set AWS_DEPLOY_ROLE \
-  --body "$(aws cloudformation describe-stacks --stack-name moral-atlas-dev \
-    --query "Stacks[0].Outputs[?OutputKey=='DeployRoleArn'].OutputValue" \
-    --output text)"
-```
-
-A repository **variable**, not a secret — it is an ARN, and pretending it is
-confidential only makes it harder to debug.
-
-The OIDC provider is account-wide and can exist only once. If another stack in
-the account already created it, deploy with
-`CreateGitHubOidcProvider=false`.
-
-### The part to think about before you turn it on
-
-The `manage-stack` policy on the deploy role is broad, and there is no honest
-way to make it narrow: the template creates IAM roles, so whatever deploys it
-must be able to create IAM roles, which is close to administrator. **Write
-access to `main` is therefore write access to this AWS account.** Protect the
-branch — require a pull request, and do not let the workflow file be edited
-without review, since a workflow can run whatever it likes with that role.
-
-If that trade is not worth it, delete the `manage-stack` policy from the
-template and the `stack` job from the workflow. Run `./infra/deploy.sh` by hand
-and let CI publish only the site, which needs nothing but S3 and CloudFront.
-
-## Cost
-
-Rough, `ap-southeast-2`, and worth checking against the calculator rather than
-trusting a number in a README:
-
-| | Idle (runner stopped) | Runner always on |
+| Type | Name | Target |
 |---|---|---|
-| EC2 `t4g.small` | $0 | ~$15 |
-| EBS, 20 GB root + 20 GB data | ~$4 | ~$4 |
-| Secrets Manager | ~$0.40 | ~$0.40 |
-| S3 + CloudFront at demo traffic | cents | cents |
-| **Total / month** | **~$5** | **~$20** |
+| CNAME | `@` | `cryptic-dinosaur-zukyeayxamzpgmzrqk17iqti.herokudns.com` |
+| CNAME | `www` | `safe-marigold-juxba63c3k8hwpxiy9gfnhur.herokudns.com` |
 
-The idle alarm stops the runner after 4 consecutive hours below 3% CPU, so the
-common failure — someone demos on a Friday and remembers in March — costs
-almost nothing. Restart it with `aws ec2 start-instances`; the data volume is
-untouched either way. Set `IdleShutdownHours=0` to disable.
+Read the current targets with `heroku domains -a movie-compass`; they are
+per-app and per-domain, not guessable, and they change if a domain is removed
+and re-added.
 
-LLM calls are not in this table and will dominate it. `atlas` prints a running
-cost estimate.
+**Leave both records DNS-only — the grey cloud, not the orange one.** Proxied,
+Cloudflare answers the ACME challenge with its own certificate and Heroku's
+Automatic Certificate Management can never validate, which presents as a
+domain that resolves and then fails its TLS handshake. Once
+`heroku certs:auto` reports the cert as issued, proxying can be turned on with
+Cloudflare's SSL mode set to Full (strict) — but it buys little here and is one
+more thing between a visitor and the dyno.
+
+```bash
+heroku certs:auto -a movie-compass      # issued? failing? what on
+heroku domains -a movie-compass         # the targets, and whether DNS matches
+```
+
+## Deploying
+
+A push to `main` runs the tests and pushes to Heroku — see
+[`.github/workflows/heroku.yml`](../.github/workflows/heroku.yml). It needs two
+things set on the repository, once:
+
+```bash
+gh variable set HEROKU_APP --body movie-compass
+gh secret set HEROKU_API_KEY --body "$(heroku authorizations:create --short)"
+```
+
+`heroku authorizations:create` rather than `heroku auth:token`: the second is
+your own session token and expires, which turns into a deploy that stops working
+a month later for no visible reason.
+
+Every release runs `atlas init` before the new dyno takes traffic (see
+[`Procfile`](../Procfile)). A migration that fails aborts the release and the
+old dyno keeps serving.
+
+## Sending up a new corpus
+
+Ingest and sweep locally, then:
+
+```bash
+atlas corpus-push movie-compass
+```
+
+It reads the app's `DATABASE_URL` through `heroku config:get`, so no credential
+is typed or pasted. Everything that is not a user table is replaced, inside one
+transaction — the site is never serving half an atlas, and a push that dies
+half-way leaves it as it was.
+
+User rows are counted before and after and the push is refused if any of them
+moved. One thing it will not do is delete a film somebody has rated or
+shortlisted: those are named in the output and kept. To remove one for real,
+including the ratings that point at it:
+
+```bash
+heroku run atlas remove-film some-film-2019 --yes -a movie-compass
+```
+
+## Looking at it
+
+```bash
+heroku logs --tail -a movie-compass
+heroku pg:psql -a movie-compass
+heroku pg:info -a movie-compass
+heroku releases -a movie-compass
+heroku rollback -a movie-compass          # back one release, dyno and all
+```
+
+`/internal` is the pipeline page — corpus counts, dimension coverage, what has
+been scored. It is the same page that used to be at `/` on the runner; the
+product lives at `/` now.
+
+## Pulling production down to your machine
+
+```bash
+heroku pg:backups:capture -a movie-compass
+heroku pg:backups:download -a movie-compass -o /tmp/atlas.dump
+dropdb --if-exists moral_atlas_prod && createdb moral_atlas_prod
+pg_restore --no-owner --no-privileges -d moral_atlas_prod /tmp/atlas.dump
+ATLAS_DB=postgresql:///moral_atlas_prod atlas status
+```
+
+`ATLAS_DB` and `DATABASE_URL` are the same setting; every `atlas` command
+honours either, so a one-off read of production never means editing a config
+file.
+
+## What it costs
+
+The smallest useful pair. `essential-0` Postgres and one `basic` dyno is about
+US$12/month between them; both scale up in place without a migration.
+
+The database limits worth knowing: 20 connections and 1GB. The corpus is around
+50MB with 674 films, so the size is not the constraint — the connection count
+is, which is why `ATLAS_DB_POOL_SIZE` exists and defaults to 5. A second dyno
+type, a `heroku run` session and a `corpus-push` all draw from the same twenty.
 
 ## Things worth knowing before you rely on them
 
-**Basic auth on the site is a doormat, not a lock.** The credential is compiled
-into the CloudFront function, so anyone with CloudFront read access in the
-account can read it, and it is visible in the console. It keeps unfinished work
-off search engines and out of casual reach. It is not a security boundary, and
-nothing sensitive should go behind it on the strength of it. `SITE_AUTH=false`
-turns it off if the demo is meant to be open.
+**The dyno's filesystem is temporary.** Nothing may be written to disk and
+expected to survive a restart, and dynos restart daily. Everything durable is in
+Postgres. The one exception is the front-end build, which is baked into the slug
+at deploy time and is read-only.
 
-**Deleting the stack does not delete the data.** The data bucket and the EBS
-volume are both `Retain`. That is deliberate — and it means a re-deploy after
-a delete leaves orphans behind that you have to clean up by hand.
+**Migrations run in the release phase, not on request.** `init_db` runs once per
+process and looks before it alters — an `ALTER TABLE ... ADD COLUMN IF NOT
+EXISTS` takes an exclusive lock even when the column is already there, and
+running thirty of them per request queues the whole site behind whichever client
+last died mid-transaction. That is not hypothetical; it is what the first real
+request against Postgres did.
 
-**The runner is a shared machine, not a dev environment each.** One checkout,
-one database file, one writer. It is the right size for two or three people
-coordinating; it is not a build farm.
+**The atlas document is built once, not per process.** `/api/atlas` runs a
+thousand-permutation null test — 3 seconds of arithmetic on a laptop, forty on a
+dyno, against a router that hangs up at 30. It is kept in `atlas_documents`,
+keyed on the store's own counts, so a restart reads it rather than making it
+again; a sweep changes the counts and the next request rebuilds. On top of that
+it is built in a background thread at startup (`ATLAS_WARM_CACHE=1`), which
+covers the one case the table cannot: the first boot after a corpus push. Look
+for `atlas document built and cached` in the log.
 
-## Not included, on purpose
+**A killed client can hold a lock.** If the site stops answering and nothing
+looks wrong, this is the first thing to check:
 
-- **A custom domain.** The CloudFront URL works today. A domain needs an ACM
-  certificate in `us-east-1` and a hosted zone — add `Aliases` and
-  `ViewerCertificate` when there is a name worth using.
-- **CI/CD.** `deploy-site.sh` from a laptop is honest at this size.
-- **An API server.** Nothing needs one yet: the interface is a pure function of
-  one payload, and a static file serves it. When `session.json` has to be built
-  per pair of users, that is a Lambda with a Function URL, not a rewrite.
-- **Multi-AZ anything.** This is a demo and a workbench. An hour of downtime
-  costs a conversation, not money.
+```sql
+SELECT pid, state, wait_event_type, left(query, 60), xact_start
+FROM pg_stat_activity WHERE datname = current_database() ORDER BY xact_start;
+```
+
+An `idle in transaction` row with an old `xact_start` is the culprit;
+`SELECT pg_terminate_backend(pid)` clears it.

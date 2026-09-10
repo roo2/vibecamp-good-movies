@@ -131,6 +131,11 @@ export default function StancePicker({ access, shareToken = null, onChange, onCl
                 <q>{stance.line}</q>
                 <small>{stance.character}</small>
               </span>
+              {/* The tile is a card of paper on a dark page, which reads as
+                  something to look at rather than something to press. The
+                  chevron is the whole difference; it sits at the end, centred
+                  against however tall the tile turns out to be. */}
+              <span className="stance-go" aria-hidden="true">›</span>
             </button>
           </li>
         ))}
@@ -149,7 +154,8 @@ export default function StancePicker({ access, shareToken = null, onChange, onCl
               <strong>Don&apos;t care</strong>
               <q>Just show me good films.</q>
             </span>
-          </button>
+            <span className="stance-go" aria-hidden="true">›</span>
+            </button>
         </li>
       </ul>
 

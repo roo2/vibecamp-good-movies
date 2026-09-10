@@ -1,11 +1,7 @@
 name: heroku
 
-# The new environment, deployed alongside the old one.
-#
-# `deploy.yml` still publishes to AWS on every push to main, and will keep doing
-# so until this one has been watched for long enough to switch over. Two live
-# deploys of the same commit is a deliberate, temporary state — the AWS site is
-# the one people are using, and it does not move until it is replaced.
+# The deploy. The only one — the AWS stack this ran alongside was deleted on
+# 2026-09-10 and its workflow went with it.
 #
 # What this does NOT do is push data. The corpus is derived on a laptop, from
 # API keys and a subtitle archive that are not in CI, and it reaches the app
@@ -63,7 +59,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      # The same suite the AWS deploy runs. A release that fails its migration
+      # A release that fails its migration
       # is caught by Heroku, but a release that passes its migration and then
       # serves wrong answers is not, so it is caught here.
       - name: Tests

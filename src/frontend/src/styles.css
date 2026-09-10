@@ -1,7 +1,7 @@
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f5efe6; background: #171310; font-synthesis: none; }
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
-body { min-width: 320px; min-height: 100svh; margin: 0; background: #171310; }
+body { min-width: 320px; min-height: 100svh; min-height: var(--app-vh, 100svh); margin: 0; background: #171310; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 
@@ -20,8 +20,8 @@ button { cursor: pointer; }
    723px and a phone shows about 620 of it, so its buttons sat off the end and
    looked like they had failed to render. `safe` falls back to start alignment
    the moment content overflows, and behaves exactly as before when it fits. */
-.app-page { min-height: 100svh; display: grid; place-items: safe center; background: radial-gradient(80% 65% at 50% 0%, #2a211b 0%, #171310 72%); }
-.phone-screen { width: min(100%, 390px); min-height: min(844px, 100svh); display: flex; flex-direction: column; padding: clamp(24px, 6vh, 52px) 24px clamp(18px, 3.5vh, 28px); overflow: visible; background: #171310; }
+.app-page { min-height: 100svh; min-height: var(--app-vh, 100svh); display: grid; place-items: safe center; background: radial-gradient(80% 65% at 50% 0%, #2a211b 0%, #171310 72%); }
+.phone-screen { width: min(100%, 390px); min-height: min(844px, 100svh); min-height: min(844px, var(--app-vh, 100svh)); display: flex; flex-direction: column; padding: clamp(24px, 6vh, 52px) 24px clamp(18px, 3.5vh, 28px); overflow: visible; background: #171310; }
 .brand { display: flex; align-items: center; gap: 8px; color: #b3aa9e; font-size: 12px; font-weight: 650; letter-spacing: .22em; text-transform: uppercase; }
 .brand-mark { color: #eda36b; font-size: 22px; line-height: 1; }
 .screen-label { margin: 0; color: #7e766c; font-size: 11px; font-weight: 650; letter-spacing: .14em; text-transform: uppercase; }
@@ -63,9 +63,9 @@ button { cursor: pointer; }
 
 
 .quickfire-page { align-items: start; }
-.fork-screen { height: auto; min-height: min(844px, 100svh); gap: 0; overflow: visible; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.fork-screen { height: auto; min-height: min(844px, 100svh); min-height: min(844px, var(--app-vh, 100svh)); gap: 0; overflow: visible; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 .seen-it-page { align-items: start; }
-.seen-it-screen { height: auto; min-height: min(844px, 100svh); gap: 0; overflow: visible; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.seen-it-screen { height: auto; min-height: min(844px, 100svh); min-height: min(844px, var(--app-vh, 100svh)); gap: 0; overflow: visible; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 .flow-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
 .flow-progress > span { min-width: 34px; color: #7e766c; font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
 .seen-it-heading { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
@@ -165,7 +165,7 @@ button { cursor: pointer; }
 .fork-footer p { margin: 0; color: #7e766c; font-size: 12px; line-height: 1.45; text-align: center; }
 .message { color: #b3aa9e; }
 .waiting-page { align-items: start; }
-.waiting-screen { height: auto; min-height: min(844px, 100svh); overflow: visible; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+.waiting-screen { height: auto; min-height: min(844px, 100svh); min-height: min(844px, var(--app-vh, 100svh)); overflow: visible; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
 
 /* The card owns the whole gesture.
    `pan-y` handed vertical panning back to the browser, which meant the browser
@@ -199,7 +199,7 @@ button { cursor: pointer; }
    a small phone should lose a row off the bottom of itself rather than take the
    only button with it. On anything tall enough this changes nothing: the body
    is shorter than the space it is given and never scrolls. */
-.compass-screen { max-height: 100svh; }
+.compass-screen { max-height: 100svh; max-height: var(--app-vh, 100svh); }
 .compass-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 /* Only while there is something below the fold of it — a permanent fade would
    dim the last scale on every screen big enough not to need one. */
@@ -537,7 +537,7 @@ button { cursor: pointer; }
  * a card sized to it puts the buttons under the browser chrome exactly when the
  * chrome is showing.
  */
-.deck-screen { block-size: 100svh; min-block-size: 0; }
+.deck-screen { block-size: 100svh; block-size: var(--app-vh, 100svh); min-block-size: 0; }
 .deck-card { display: flex; flex-direction: column; min-block-size: 0; }
 /* The art takes what the copy no longer needs. Dropping the duplicated "picked
    for you" and moving the year onto the poster freed two rows, and the poster is
@@ -606,6 +606,23 @@ button { cursor: pointer; }
 .stance-options button.chosen {
   background: color-mix(in srgb, var(--stance, #eda36b) 22%, #f5efe6);
   box-shadow: 0 0 0 2px var(--stance, #eda36b);
+}
+/* The affordance. A pale tile on a dark page reads as a panel, not a control,
+   and nothing else on it said "press me" — the three faces made it look like an
+   illustration with a caption. The chevron goes last in the flex row and takes
+   the leftover space, so it sits hard right and centred whatever height the
+   tile ends up. It is decoration: `aria-hidden`, because the button already
+   announces itself. */
+.stance-options .stance-go {
+  margin-inline-start: auto; padding-inline: 6px 2px;
+  color: var(--stance, #8a8078); font-size: 26px; line-height: 1;
+  transition: transform 140ms ease, color 140ms ease;
+}
+.stance-options button:hover:not(:disabled) .stance-go { transform: translateX(2px); color: #241c15; }
+.stance-options button.chosen .stance-go { color: #241c15; }
+@media (prefers-reduced-motion: reduce) {
+  .stance-options .stance-go { transition: none; }
+  .stance-options button:hover:not(:disabled) .stance-go { transform: none; }
 }
 .stance-options .stance-words q { color: #4a4038; }
 .stance-options .stance-words small { color: #6f665c; }

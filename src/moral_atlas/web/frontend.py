@@ -1,8 +1,8 @@
 """Serving the built interface from the same process as the API.
 
-On AWS these were two things: CloudFront served the SPA out of a bucket, and
-only `/api/*` reached the box. That split is why the deploy had a whole job for
-publishing the site and another for updating the runner, and why the two could
+These were two things once: a CDN served the SPA out of a bucket, and only
+`/api/*` reached the box. That split is why the deploy had a whole job for
+publishing the site and another for updating the server, and why the two could
 end up on different commits — which happened, and looks from the outside like
 the API having a bad day.
 

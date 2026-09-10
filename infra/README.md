@@ -14,7 +14,13 @@
 > `load_corpus.py` moved a snapshot through S3 to a machine that could not be
 > reached from a laptop. `atlas corpus-push` connects to the store directly.
 >
-> Read on for what exists in AWS and how to take it down.
+> **To take it down: [`teardown-aws.sh`](teardown-aws.sh)** — `--dry-run` first,
+> which prints what it would delete and roughly what it stops paying for
+> (about US$18/month). Read its header before running it: the runner's database
+> was the only copy of the demo's 217 users and 1,988 ratings, and the script
+> refuses to run unless the archive of them is where it expects.
+>
+> Read on for what exists in AWS.
 
 Enough AWS to collaborate and to demo, and deliberately not more.
 

@@ -584,20 +584,20 @@ CREATE TABLE IF NOT EXISTS findings (
     measured_at TEXT
 );
 
--- The document the atlas page draws, kept so it does not have to be made twice.
+-- Derived documents that are expensive to build and cheap to keep: the atlas
+-- page's thousand-permutation null test, a model's two hundred. See
+-- `web/documents.py` for what goes in here, and why keeping it is safe in a way
+-- that caching usually is not.
 --
--- It is derived, wholly reproducible, and expensive in exactly the wrong place:
--- a thousand-permutation null test, three seconds on a laptop and forty on the
--- small machine that serves it. Held in memory it was rebuilt on every restart,
--- and dynos restart daily — so the first person to open the atlas each day paid
--- for it. Held here, the first process to build it is the last one that has to.
---
--- `cache_key` is the store's own counts. A corpus that has not changed reads
--- the same document; one that has cannot, because the key moved with it.
-CREATE TABLE IF NOT EXISTS atlas_documents (
-    cache_key TEXT PRIMARY KEY,
-    payload   TEXT NOT NULL,   -- JSON
-    built_at  TEXT NOT NULL
+-- `cache_key` is a fingerprint of what the document was derived from — counts,
+-- almost always. A corpus that has not changed reads the same document; one
+-- that has cannot, because the key moved with it.
+CREATE TABLE IF NOT EXISTS documents (
+    name      TEXT NOT NULL,
+    cache_key TEXT NOT NULL,
+    payload   TEXT NOT NULL,
+    built_at  TEXT NOT NULL,
+    PRIMARY KEY (name, cache_key)
 );
 
 -- The same permutation test the atlas draws, run again on verdicts with the
@@ -704,7 +704,7 @@ PRIMARY_KEYS: dict[str, tuple[str, ...]] = {
     "taste_dimensions": ("dim_id",),
     "film_taste": ("film_id", "dim_id"),
     "findings": ("key",),
-    "atlas_documents": ("cache_key",),
+    "documents": ("name", "cache_key"),
     "axis_placement": ("scorer", "variant", "bank_version"),
     "null_test_adjusted": ("scorer", "variant", "bank_version"),
     "film_moral_adjusted": ("scorer", "variant", "bank_version", "film_id", "dim_id"),
@@ -971,6 +971,9 @@ def init_schema(con) -> None:
     _add_column_if_missing(con, "latent_factors", "coherent", "INTEGER")
     _add_column_if_missing(con, "latent_factors", "estimator", "TEXT")
     _add_column_if_missing(con, "latent_factor_items", "loading", "REAL")
+    # `atlas_documents` became `documents`, which holds more than the atlas. It
+    # was a cache and nothing in it was worth carrying across.
+    con.execute("DROP TABLE IF EXISTS atlas_documents")
 
 
 def table_columns(con, table: str) -> set[str]:

@@ -11,14 +11,23 @@ from .routes import access, atlas, factors, landing, onboarding, profile, sessio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Build the expensive document before anyone asks for it.
+    """Build the expensive documents before anyone asks for them.
 
     In a thread, and a daemon one: the dyno has sixty seconds to bind its port
-    and this takes half of that on the hardware it runs on, so it must not be in
-    the way of the bind — and a restart must not wait for it to finish either.
+    and this once took most of that on the hardware it runs on, so it must not
+    be in the way of the bind — and a restart must not wait for it either.
+
+    ONE thread for both, in sequence. Two would race for the single CPU they
+    share and each finish later than if they had queued. Since both documents
+    are kept in the store now, this only does real work after a corpus push;
+    every other boot reads two rows.
     """
+    def build() -> None:
+        atlas.warm()
+        factors.warm()
+
     if settings().warm_on_start:
-        threading.Thread(target=atlas.warm, name="atlas-warm", daemon=True).start()
+        threading.Thread(target=build, name="warm-documents", daemon=True).start()
     yield
 
 

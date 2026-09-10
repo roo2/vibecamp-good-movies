@@ -11,6 +11,7 @@ else hangs off which one you picked.
 from __future__ import annotations
 
 import json
+import logging
 
 from typing import Any
 
@@ -18,10 +19,15 @@ from fastapi import APIRouter, HTTPException, status
 
 from ... import db
 from ...analysis import factor_detail, factor_names, latent
+from .. import documents
 from ...config import settings
 from ...llm.schemas import MAX_STRENGTH
 
 router = APIRouter(prefix="/api/factors", tags=["factors"])
+
+# uvicorn's logger, because uvicorn configures that one and nothing configures
+# ours.
+log = logging.getLogger("uvicorn.error").getChild("factors")
 
 # Scorers whose run is not worth putting in front of a reader, and why.
 #
@@ -72,7 +78,7 @@ WITHDRAWN = {
 # author; a pooled bank would report itself as written by "pooled".
 POOLED_WRITERS = {"pooled": "dolphin + deepseek"}
 
-_cache: dict[str, Any] = {}
+
 
 
 def _adjusted_null_test(scorer: str, variant: str, bank: str) -> dict[str, Any] | None:
@@ -306,6 +312,22 @@ def _product_axis_ids(scorer: str, variant: str, bank: str) -> set[int]:
     return {a["dim_id"] for a in user_scores.factor_axes(scorer, variant, bank)}
 
 
+def warm() -> None:
+    """Build the reading the product ships with, off the request path.
+
+    Only that one. Every scorer in the picker has a document of its own and
+    building all of them at boot would take minutes of the single CPU this runs
+    on; the others are built the first time somebody actually asks, and then
+    kept. This is the one somebody asks for without choosing it.
+    """
+    s = settings()
+    try:
+        get_factors(s.product_scorer, s.product_variant, s.factor_bank)
+        log.info("factors document built and cached")
+    except Exception as e:                      # a half-run pipeline, not a fault
+        log.info("factors document not built at startup: %s", e)
+
+
 @router.get("/{scorer}")
 def get_factors(
     scorer: str, variant: str = "subs", bank: str = "", n_iter: int = 200,
@@ -313,12 +335,21 @@ def get_factors(
     """One model's axes, with the evidence that there are that many of them."""
     db.init_db()
     bank = bank or f"{scorer}-{variant}"
-    key = (scorer, variant, bank)
-    fingerprint = _fingerprint(scorer, variant, bank)
-    cached = _cache.get(key)
-    if cached and cached["fingerprint"] == fingerprint:
-        return cached["payload"]
+    return documents.get(
+        f"factors:{scorer}:{variant}:{bank}",
+        documents.key_of(scorer, variant, bank, n_iter, _fingerprint(scorer, variant, bank)),
+        lambda: _build_factors(scorer, variant, bank, n_iter),
+    )
 
+
+def _build_factors(scorer: str, variant: str, bank: str, n_iter: int) -> dict[str, Any]:
+    """The expensive part: a two-hundred-permutation null test and its dressing.
+
+    Held only in memory this ran again on every restart — twelve seconds on the
+    dyno, paid by whoever opened the atlas first each morning, competing for the
+    one CPU with the startup build of the other document. It is derived and
+    reproducible, so it belongs in the store like the atlas one.
+    """
     factors = factor_names.load(scorer, variant, bank)
     try:
         estimator = factor_names.estimator_for(scorer, variant, bank)
@@ -407,7 +438,6 @@ def get_factors(
             for position, factor in enumerate(factors)
         ],
     }
-    _cache[key] = {"fingerprint": fingerprint, "payload": payload}
     return payload
 
 

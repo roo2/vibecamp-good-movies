@@ -100,8 +100,8 @@ def test_the_pipeline_page_keeps_its_own_address():
     assert "atlas" in r.text.lower()
 
 
-def test_the_atlas_document_is_built_once_under_concurrency():
-    """Two cold requests must not each run the thousand-permutation null test.
+def test_an_expensive_document_is_built_once_under_concurrency():
+    """Two cold requests must not each run the same permutation test.
 
     On one dyno CPU that is not twice the work, it is worse than twice: the two
     builds interleave and each makes the other slower, to produce the identical
@@ -110,84 +110,83 @@ def test_the_atlas_document_is_built_once_under_concurrency():
     import threading
 
     from moral_atlas import db
-    from moral_atlas.web.routes import atlas
+    from moral_atlas.web import documents
 
     db.init_db()
+    documents.forget("thing")
     builds = []
-    atlas._cache["key"] = None
 
-    def slow_build(dim_version, bank_version):
+    def slow_build():
         builds.append(1)
         threading.Event().wait(0.2)
         return {"built": True}
 
-    original_build, original_totals = atlas.dataset_mod.build, atlas.dataset_mod.totals
-    atlas.dataset_mod.build = slow_build
-    atlas.dataset_mod.totals = lambda *_: {"films": 1}
-    try:
-        threads = [threading.Thread(target=atlas._payload, args=("d1", "b1"))
-                   for _ in range(4)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-    finally:
-        atlas.dataset_mod.build, atlas.dataset_mod.totals = original_build, original_totals
-        atlas._cache["key"] = None
+    threads = [threading.Thread(target=documents.get, args=("thing", "k1", slow_build))
+               for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
 
     assert len(builds) == 1, f"built {len(builds)} times, wanted once"
 
 
-def test_the_document_survives_the_process_that_built_it():
+def test_a_document_survives_the_process_that_built_it():
     """A restart must not mean building it again.
 
-    Held only in memory it was rebuilt on every boot, and the machine it runs on
-    takes forty seconds over it — so the first person to open the atlas after
-    the daily restart paid for the whole thing. The store outlives the process.
+    Held only in memory these were rebuilt on every boot, and the machine they
+    run on takes forty seconds over the atlas and twelve over a model's factors
+    — so the first person through the door each morning paid for both, while
+    they competed for the one CPU. The store outlives the process.
     """
     from moral_atlas import db
-    from moral_atlas.web.routes import atlas
+    from moral_atlas.web import documents
 
     db.init_db()
-    atlas._cache["key"] = None
-    build_count = []
+    documents.forget("thing")
+    builds = []
 
-    original_build, original_totals = atlas.dataset_mod.build, atlas.dataset_mod.totals
-    atlas.dataset_mod.build = lambda *_: (build_count.append(1), {"films": ["a"]})[1]
-    atlas.dataset_mod.totals = lambda *_: {"films": 1}
-    try:
-        first = atlas._payload("d1", "b1")
-        atlas._cache["key"] = None          # what a restart looks like from here
-        second = atlas._payload("d1", "b1")
-    finally:
-        atlas.dataset_mod.build, atlas.dataset_mod.totals = original_build, original_totals
-        atlas._cache["key"] = None
+    def build():
+        builds.append(1)
+        return {"films": ["a"]}
+
+    first = documents.get("thing", "k1", build)
+    documents.forget("thing")               # what a restart looks like from here
+    second = documents.get("thing", "k1", build)
 
     assert first == second
-    assert len(build_count) == 1, "the second process should have read it, not made it"
+    assert len(builds) == 1, "the second process should have read it, not made it"
 
 
 def test_a_document_built_against_an_older_corpus_is_not_served():
-    """The stored copy is keyed on the counts, so a sweep invalidates it."""
+    """The stored copy is keyed on what it was derived from, so a sweep drops it."""
     from moral_atlas import db
-    from moral_atlas.web.routes import atlas
+    from moral_atlas.web import documents
 
     db.init_db()
-    atlas._cache["key"] = None
-    totals = {"films": 1}
+    documents.forget("thing")
 
-    original_build, original_totals = atlas.dataset_mod.build, atlas.dataset_mod.totals
-    atlas.dataset_mod.build = lambda *_: {"films": totals["films"]}
-    atlas.dataset_mod.totals = lambda *_: dict(totals)
-    try:
-        assert atlas._payload("d1", "b1") == {"films": 1}
-        totals["films"] = 2                 # a sweep landed
-        atlas._cache["key"] = None
-        assert atlas._payload("d1", "b1") == {"films": 2}
+    assert documents.get("thing", "films=1", lambda: {"films": 1}) == {"films": 1}
+    documents.forget("thing")
+    assert documents.get("thing", "films=2", lambda: {"films": 2}) == {"films": 2}
 
-        with db.connect(read_only=True) as con:
-            kept = con.execute("SELECT COUNT(*) AS n FROM atlas_documents").fetchone()["n"]
-        assert kept == 1, "and the superseded one is dropped rather than piling up"
-    finally:
-        atlas.dataset_mod.build, atlas.dataset_mod.totals = original_build, original_totals
-        atlas._cache["key"] = None
+    with db.connect(read_only=True) as con:
+        kept = con.execute("SELECT COUNT(*) AS n FROM documents WHERE name='thing'"
+                           ).fetchone()["n"]
+    assert kept == 1, "and the superseded one is dropped rather than piling up"
+
+
+def test_documents_are_kept_apart_by_name():
+    """The atlas and each model's factors share the table and must not share a row."""
+    from moral_atlas import db
+    from moral_atlas.web import documents
+
+    db.init_db()
+    documents.forget("one")
+    documents.forget("two")
+
+    documents.get("one", "k", lambda: {"which": "one"})
+    documents.get("two", "k", lambda: {"which": "two"})
+    documents.forget("one")
+
+    assert documents.get("one", "k", lambda: {"which": "rebuilt"}) == {"which": "one"}

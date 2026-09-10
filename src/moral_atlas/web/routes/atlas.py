@@ -15,15 +15,14 @@ a page that never loaded at all.
 """
 from __future__ import annotations
 
-import json
 import logging
-import threading
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
 from ... import db
 from ...analysis import dataset as dataset_mod
+from .. import documents
 
 router = APIRouter(prefix="/api", tags=["atlas"])
 
@@ -34,12 +33,8 @@ router = APIRouter(prefix="/api", tags=["atlas"])
 # while it was still going.
 log = logging.getLogger("uvicorn.error").getChild("atlas")
 
-_cache: dict[str, Any] = {"key": None, "payload": None}
-
-# One build at a time. Two requests arriving together on a cold cache would
-# otherwise each run the permutation test, on one CPU, each making the other
-# slower — and it is the same document both times.
-_building = threading.Lock()
+# What this document is called in the `documents` table.
+NAME = "atlas"
 
 
 def _key(dim_version: str, bank_version: str) -> str:
@@ -52,54 +47,12 @@ def _key(dim_version: str, bank_version: str) -> str:
     timestamp would have been wrong under SQLite too.
     """
     totals = sorted(dataset_mod.totals(dim_version, bank_version).items())
-    return json.dumps([dim_version, bank_version, totals], sort_keys=True)
-
-
-def _stored(key: str) -> Any | None:
-    with db.connect(read_only=True) as con:
-        row = con.execute("SELECT payload FROM atlas_documents WHERE cache_key=%s",
-                          [key]).fetchone()
-    return json.loads(row["payload"]) if row else None
-
-
-def _store(key: str, payload: Any) -> None:
-    """Keep this document and drop the one it replaces.
-
-    One row, not a history: an atlas built against a corpus nobody holds any
-    more is not evidence of anything, and this is half a megabyte a time.
-    """
-    with db.connect() as con:
-        con.execute(db.upsert("atlas_documents", ["cache_key", "payload", "built_at"]),
-                    [key, json.dumps(payload), db.now()])
-        con.execute("DELETE FROM atlas_documents WHERE cache_key <> %s", [key])
+    return documents.key_of(dim_version, bank_version, totals)
 
 
 def _payload(dim_version: str, bank_version: str) -> Any:
-    """The document — from memory, then from the store, then built.
-
-    Three tiers because each is roughly a thousand times the cost of the last:
-    a dictionary lookup, a single-row read, and a thousand-permutation null
-    test.
-    """
-    key = _key(dim_version, bank_version)
-    if _cache["key"] == key:
-        return _cache["payload"]
-
-    with _building:
-        # Somebody may have built it while this call waited for the lock.
-        if _cache["key"] == key:
-            return _cache["payload"]
-        payload = _stored(key)
-        if payload is None:
-            payload = dataset_mod.build(dim_version, bank_version)
-            try:
-                _store(key, payload)
-            except db.Error as e:
-                # A read-only replica, or a store mid-deploy. Serving the
-                # document matters; keeping it is an optimisation.
-                log.info("atlas document not stored: %s", e)
-        _cache["payload"], _cache["key"] = payload, key
-    return payload
+    return documents.get(NAME, _key(dim_version, bank_version),
+                         lambda: dataset_mod.build(dim_version, bank_version))
 
 
 def warm(dim_version: str = "d1", bank_version: str = "b1") -> None:

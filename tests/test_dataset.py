@@ -353,8 +353,8 @@ def test_write_produces_the_file_the_interface_fetches(scored_store, tmp_path):
 
 
 def test_api_serves_one_film_evidence(store):
-    from moral_atlas.web.routes import atlas as atlas_route
-    atlas_route._cache["key"] = None
+    from moral_atlas.web import documents
+    documents.forget("atlas")
     db.upsert_evidence("a", "subtitles", "A line of dialogue.")
     client = TestClient(app)
 
@@ -364,8 +364,8 @@ def test_api_serves_one_film_evidence(store):
 
 
 def test_api_serves_the_same_document(scored_store):
-    from moral_atlas.web.routes import atlas as atlas_route
-    atlas_route._cache["key"] = None            # the fixture swapped the store
+    from moral_atlas.web import documents
+    documents.forget("atlas")                   # the fixture swapped the store
     body = TestClient(app).get("/api/atlas").json()
     assert body["totals"]["films"] == 2
     assert [f["title"] for f in body["films"]] == ["Film A", "Film B"]

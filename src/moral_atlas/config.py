@@ -153,13 +153,16 @@ class Settings:
     effort: str = os.environ.get("ATLAS_EFFORT", "high")
     concurrency: int = int(os.environ.get("ATLAS_CONCURRENCY", "6"))
 
-    # Where the landing page at `/` sends people. The defaults are the local dev
-    # ports. On the deployed box the admin UIs are bound to 127.0.0.1 and reached
-    # over an SSM tunnel, so the operator sets these rather than the page
-    # guessing at a hostname it cannot know.
+    # Where the pipeline page at `/internal` sends people. The default is the
+    # local dev port; deployed, it is the site's own address, which the page
+    # cannot guess.
+    #
+    # Two siblings are gone with the box they described: `datasette_url` and
+    # `sqliteweb_url` pointed at admin UIs bound to localhost on the EC2 runner
+    # and reached through an SSM tunnel, over a SQLite file. There is no file
+    # and no tunnel. `heroku pg:psql` is the replacement, and it needs no
+    # setting.
     frontend_url: str = os.environ.get("ATLAS_FRONTEND_URL", "http://localhost:5173")
-    datasette_url: str = os.environ.get("ATLAS_DATASETTE_URL", "http://localhost:8001")
-    sqliteweb_url: str = os.environ.get("ATLAS_SQLITEWEB_URL", "http://localhost:8002")
 
     # How many connections this process keeps open to the store.
     #

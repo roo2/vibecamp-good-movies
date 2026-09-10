@@ -111,14 +111,21 @@ up, reporting any it had to flip.
 
 ## Showing it to someone
 
-The dataset explorer is a page in the interface, at `#/atlas`. It reads one
-JSON document rather than the store, because the demo site is static S3 behind
-CloudFront and cannot query a database:
+It is at **https://moviecompass.net**, and the dataset explorer is a page inside
+it at `#/atlas`. Both are served by the same dyno that serves the API, so the
+explorer reads the store live through `/api/atlas` — a pipeline run shows up on
+reload rather than on rebuild.
+
+That endpoint is a permutation test as much as a page, so its answer is kept in
+`documents` and rebuilt only when the corpus counts move. See
+[`infra/HEROKU.md`](infra/HEROKU.md).
+
+`atlas dataset` still writes the same document to a file, which is what to reach
+for when somebody wants the numbers without the site:
 
 ```bash
 atlas dataset                      # -> src/frontend/public/data/atlas.json
-cd src/frontend && npm run build   # copies it into dist/data/atlas.json
-SITE_DIR=src/frontend/dist ./infra/deploy-site.sh
+atlas dataset --check              # non-zero if that file is behind the store
 ```
 
 The page is built around the reduction the project claims — 696 harvested
@@ -318,7 +325,7 @@ createdb moral_atlas && pg_restore --no-owner --no-privileges -d moral_atlas /tm
 ```
 
 Films, skeletons, propositions, the item bank, the dimensions and every score —
-and, unlike the old S3 snapshot, the user tables as well, because a backup is
+and, unlike the corpus export it replaces, the user tables as well — a backup is
 a backup. Treat it accordingly: it is people's ratings.
 
 Sending work the other way is `atlas corpus-push`, which replaces the corpus

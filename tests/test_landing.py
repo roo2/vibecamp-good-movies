@@ -18,7 +18,7 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-def test_root_serves_html_with_both_doors(client, monkeypatch):
+def test_root_serves_html_with_its_doors(client, monkeypatch):
     monkeypatch.setattr(landing, "_snapshot", lambda: {
         "films": 40, "evidence": 133, "skeletons": 284, "propositions": 696,
         "bank_items": 694, "scores": 3000,
@@ -30,7 +30,10 @@ def test_root_serves_html_with_both_doors(client, monkeypatch):
     assert r.headers["content-type"].startswith("text/html")
     body = r.text
     assert "localhost:5173" in body          # the frontend door
-    assert "localhost:8001" in body          # the data door
+    # The third door was Datasette on :8001, over a SQLite file on a box
+    # reached through an SSM tunnel. Both are gone; `heroku pg:psql` replaced
+    # them and needs no link.
+    assert "localhost:8001" not in body
     assert "Payback or Mercy" in body
     assert "696" in body                     # counts are formatted with separators
     assert "localhost:5173/#/atlas" in body  # the dataset explorer, inside the app

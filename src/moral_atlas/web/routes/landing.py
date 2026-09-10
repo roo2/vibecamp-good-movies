@@ -6,10 +6,14 @@ because the first question anyone asks on opening this box is "did the run
 finish, and what is in there now?"
 
 The page is deliberately a single self-contained document with no build step and
-no assets: it has to work on a bare EC2 box reached through an SSM tunnel, where
-nothing is served but this API. It reads through the same store as everything
-else and degrades to zeroes rather than a 500 when the pipeline has not been run
-yet, since a fresh clone hits `/` before it has a database.
+no assets. That began as a constraint — it had to work on a bare EC2 box where
+nothing was served but this API — and it is kept because it makes the page
+answerable on any dyno, at any time, with nothing built. It reads through the
+same store as everything else and degrades to zeroes rather than a 500 when the
+pipeline has not been run yet, since a fresh checkout reaches it before it has a
+database.
+
+It lives at `/internal`. `/` is the product.
 """
 from __future__ import annotations
 
@@ -204,7 +208,7 @@ films themselves say, not from what anyone says about them &mdash; and to find o
 whose moral message resonates with both of you. This page is the way in.</p>
 
 <section>
-  <h2>Three doors</h2>
+  <h2>Two doors</h2>
   <div class="doors">
     <a class="door" href="{frontend_url}">
       <strong>The app</strong>
@@ -217,12 +221,6 @@ whose moral message resonates with both of you. This page is the way in.</p>
       <p>The explorer, inside the interface: the derived axes, where every film
       sits on them, and each film's full moral skeleton. Public, no sign-in.</p>
       <u>{explorer_label}</u>
-    </a>
-    <a class="door" href="{datasette_url}">
-      <strong>The data</strong>
-      <p>Datasette over the atlas store: browse, query, facet and chart every
-      derived layer, read-only.</p>
-      <u>{datasette_label}</u>
     </a>
   </div>
 </section>
@@ -246,12 +244,13 @@ whose moral message resonates with both of you. This page is the way in.</p>
 
 <footer>
   <a href="/docs">API reference</a> &middot;
-  <a href="{sqliteweb_url}">SQLite admin</a> &middot;
   <a href="/health">health</a>
   <br><br>
-  Admin UIs bind to localhost on the deployed box and are reached over an SSM
-  tunnel. Point this page elsewhere with <code>ATLAS_FRONTEND_URL</code>,
-  <code>ATLAS_DATASETTE_URL</code> and <code>ATLAS_SQLITEWEB_URL</code>.
+  There used to be a third door here, and two links to admin UIs bound to
+  localhost on a box reached through an SSM tunnel. The box is gone and so is
+  the file they read. The store is Postgres: <code>heroku pg:psql</code> browses
+  it, and any client that speaks Postgres will do. Point this page elsewhere
+  with <code>ATLAS_FRONTEND_URL</code>.
 </footer>
 
 </div></body></html>"""
@@ -287,9 +286,6 @@ def landing() -> HTMLResponse:
         frontend_label=escape(_label(s.frontend_url)),
         explorer_url=escape(explorer_url, quote=True),
         explorer_label=escape(_label(explorer_url)),
-        datasette_url=escape(s.datasette_url, quote=True),
-        datasette_label=escape(_label(s.datasette_url)),
-        sqliteweb_url=escape(s.sqliteweb_url, quote=True),
         stats=stats,
         bars=_bars(snap["dimensions"]),
         coverage=_coverage(snap["variants"], snap["films"]),

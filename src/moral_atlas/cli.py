@@ -1794,6 +1794,15 @@ def corpus_push(
 
     result = transfer.push_corpus(url, report=lambda line: console.print(f"[dim]{line}[/]"))
     moved = result["moved"]
+
+    # The counts just moved, so every derived document there is now keyed to a
+    # corpus that no longer exists and the next visitor would rebuild them — a
+    # minute of one small CPU, behind a router that hangs up at thirty seconds.
+    # Build them from here instead, where it takes a few seconds, and write them
+    # to the same store. The dyno then reads two rows and never notices.
+    console.print("[dim]  building the derived documents there…[/]")
+    with db.using(url):
+        warm_documents()
     console.print(f"[green]pushed[/] {sum(moved.values()):,} rows across {len(moved)} tables")
     if result["held"]:
         console.print(f"[yellow]{len(result['held'])} film(s) kept[/] because users have "
@@ -1846,3 +1855,37 @@ def _redact(url: str) -> str:
 
     parts = urlsplit(db.normalise_url(url))
     return f"{parts.scheme}://{parts.hostname or ''}{parts.path}"
+
+
+@app.command("warm-documents")
+def warm_documents() -> None:
+    """Build the expensive derived documents and leave them in the store.
+
+    The atlas page and each model's factors are permutation tests — a thousand
+    iterations and two hundred — held in `documents` so that a restart reads
+    them rather than making them again.
+
+    Something still has to make them the first time, and where that happens
+    matters. On the web dyno the first build after a corpus push takes about a
+    minute, and Heroku's router hangs up at thirty seconds: a visitor arriving
+    in that window gets a 503 from a site that is working perfectly well and
+    simply busy. The release phase has no router in front of it and no visitors,
+    so it is the right place, and by the time the new dyno takes traffic the
+    rows are already there.
+
+    Never fails the release. A store with no corpus in it yet has nothing to
+    build, which is the normal state of a deployment that has not been pushed
+    to, not a reason to refuse to start.
+    """
+    import time
+
+    from .web.routes import atlas as atlas_route
+    from .web.routes import factors as factors_route
+
+    for label, build in (("atlas", atlas_route.warm), ("factors", factors_route.warm)):
+        started = time.perf_counter()
+        try:
+            build()
+            console.print(f"[green]{label}[/] built in {time.perf_counter() - started:.1f}s")
+        except Exception as e:                  # a half-run pipeline, not a fault
+            console.print(f"[yellow]{label} not built[/] {type(e).__name__}: {e}")

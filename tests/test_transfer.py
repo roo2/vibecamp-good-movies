@@ -151,3 +151,31 @@ def test_every_user_table_named_still_exists(source):
     with db.connect() as con:
         present = db.table_names(con)
     assert transfer.USER_TABLES <= present
+
+
+def test_a_push_leaves_the_derived_documents_built(source, target):
+    """Otherwise the first visitor after a data deploy pays for them.
+
+    The push moves the counts, which is what every stored document is keyed on,
+    so they all become unreadable at the moment the corpus lands. Rebuilding
+    them takes about a minute on the machine that serves them and the router in
+    front of it gives up at thirty seconds — so they are built from the machine
+    doing the pushing, which is both faster and not answering anyone.
+    """
+    import psycopg
+
+    from moral_atlas.web import documents
+
+    transfer.push_corpus(target, report=lambda _: None)
+    with db.using(target):
+        documents.forget("thing")
+        documents.get("thing", "k1", lambda: {"built": "there"})
+
+    with _connect(target) as con:
+        rows = con.execute("SELECT name, payload FROM documents").fetchall()
+    assert [r["name"] for r in rows] == ["thing"], "written to the target, not to here"
+
+    # And nothing leaked into the store this process was pointed at before.
+    with db.connect(read_only=True) as con:
+        here = con.execute("SELECT COUNT(*) AS n FROM documents").fetchone()["n"]
+    assert here == 0, "db.using must not have written the local store"

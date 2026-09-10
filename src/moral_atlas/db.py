@@ -840,6 +840,44 @@ atexit.register(close_pools)
 
 
 @contextmanager
+def using(url: str) -> Iterator[None]:
+    """Point this process at another store for the duration of the block.
+
+    For the two jobs that legitimately reach across: `atlas corpus-push`, which
+    builds the deployed store's derived documents after filling it, and reading
+    production for an afternoon's analysis without editing a config file.
+
+    The environment is the lever because it is the same one every other entry
+    point uses — there is one answer to "which store is this?", and it is
+    `DATABASE_URL`. The pools are closed on the way in and out, since a pooled
+    connection to the previous store is exactly the thing that must not be
+    borrowed after the switch.
+    """
+    previous = {name: os.environ.get(name)
+                for name in ("DATABASE_URL", "ATLAS_DB", "ATLAS_DB_SCHEMA")}
+    os.environ["DATABASE_URL"] = url
+    # A complete switch, not a partial one. The schema belongs to the store this
+    # process was pointed at a moment ago, and carrying it across would send the
+    # writes to a schema of that name in the OTHER database — which either does
+    # not exist or, worse, does. The target's own URL may name a schema; if it
+    # names none, `public` is right, and it is what a deployed store uses.
+    for name in ("ATLAS_DB", "ATLAS_DB_SCHEMA"):
+        os.environ.pop(name, None)
+    settings.cache_clear()
+    close_pools()
+    try:
+        yield
+    finally:
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        settings.cache_clear()
+        close_pools()
+
+
+@contextmanager
 def connect(read_only: bool = False) -> Iterator[Connection]:
     """A connection, committed on a clean exit and rolled back on an exception.
 
